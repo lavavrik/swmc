@@ -1,29 +1,30 @@
+/** Components that emit a fixed value. */
 import { defineComponent } from '../define'
+import { num, onoff, prop } from '../portHelpers'
 import type { ComponentDef } from '../types'
 
 export const constantComponents: ComponentDef[] = [
   defineComponent({
     id: 'const.number',
-    swType: null,
+    swType: 15,
     category: 'data',
     name: 'Constant Number',
     description: 'Outputs a fixed number value.',
     inputs: [],
-    outputs: [{ label: 'Value', signal: 'number' }],
+    outputs: [num('Value')],
     properties: [{ kind: 'number', key: 'value', label: 'Value', default: 0 }],
-    eval: ({ properties }) => ({
-      outputs: [typeof properties.value === 'number' ? properties.value : 0],
-    }),
+    eval: ({ properties }) => ({ outputs: [prop(properties, 'value', 0)] }),
   }),
+
   defineComponent({
-    id: 'const.onoff',
-    swType: null,
+    id: 'const.on',
+    swType: 16,
     category: 'data',
-    name: 'Constant On/Off',
-    description: 'Outputs a fixed on/off value.',
+    name: 'Constant On',
+    description: 'Always outputs on.',
     inputs: [],
-    outputs: [{ label: 'Value', signal: 'onoff' }],
-    properties: [{ kind: 'bool', key: 'value', label: 'Value', default: false }],
-    eval: ({ properties }) => ({ outputs: [properties.value === true] }),
+    outputs: [onoff('On')],
+    properties: [],
+    eval: () => ({ outputs: [true] }),
   }),
 ]

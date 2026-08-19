@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { allComponents, getComponent, librarySchema } from './registry'
 import { defaultProperties } from './defaults'
+import { defaultPorts } from './ports'
 
 describe('registry integrity', () => {
   const defs = allComponents()
@@ -29,18 +30,19 @@ describe('registry integrity', () => {
 
   it('labels every port', () => {
     for (const d of defs) {
-      for (const p of [...d.inputs, ...d.outputs]) expect(p.label.length, d.id).toBeGreaterThan(0)
+      for (const p of [...defaultPorts(d, 'in'), ...defaultPorts(d, 'out')])
+        expect(p.label.length, d.id).toBeGreaterThan(0)
     }
   })
 
   it('produces one output value per output port', () => {
     for (const d of defs) {
       const { outputs } = d.eval({
-        inputs: d.inputs.map(() => undefined),
+        inputs: defaultPorts(d, 'in').map(() => undefined),
         properties: defaultProperties(d),
         state: undefined,
       })
-      expect(outputs.length, d.id).toBe(d.outputs.length)
+      expect(outputs.length, d.id).toBe(defaultPorts(d, 'out').length)
     }
   })
 })
@@ -49,9 +51,9 @@ describe('librarySchema', () => {
   it('answers port questions for the model layer', () => {
     expect(librarySchema.has('arithmetic.add')).toBe(true)
     expect(librarySchema.has('nope')).toBe(false)
-    expect(librarySchema.portCount('arithmetic.add', 'in')).toBe(2)
-    expect(librarySchema.portSignal('arithmetic.add', 'out', 0)).toBe('number')
-    expect(librarySchema.portSignal('arithmetic.add', 'out', 1)).toBeUndefined()
+    expect(librarySchema.portCount('arithmetic.add', {}, 'in')).toBe(2)
+    expect(librarySchema.portSignal('arithmetic.add', {}, 'out', 0)).toBe('number')
+    expect(librarySchema.portSignal('arithmetic.add', {}, 'out', 1)).toBeUndefined()
   })
 })
 

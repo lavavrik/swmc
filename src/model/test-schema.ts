@@ -12,8 +12,9 @@ export function fakeSchema(defs: Record<ComponentTypeId, FakeDef>): GraphSchema 
     (kind === 'in' ? defs[type]?.in : defs[type]?.out) ?? []
   return {
     has: (type) => type in defs,
-    portCount: (type, kind) => ports(type, kind).length,
-    portSignal: (type, kind, index) => ports(type, kind)[index],
+    // The fakes are all fixed-shape, so properties are ignored here
+    portCount: (type, _properties, kind) => ports(type, kind).length,
+    portSignal: (type, _properties, kind, index) => ports(type, kind)[index],
   }
 }
 

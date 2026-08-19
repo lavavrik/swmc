@@ -17,6 +17,7 @@ import {
   insertSubgraph,
   moveNodes as moveNodesOp,
   removeNodes as removeNodesOp,
+  pruneDanglingWires,
   setMeta as setMetaOp,
   setProperty as setPropertyOp,
   type Subgraph,
@@ -32,7 +33,7 @@ import type {
   PropertyValue,
   WireId,
 } from '@/model/types'
-import { GRID_PX, nodeBounds } from './layout'
+import { GRID_PX, cardLayout, nodeBounds } from './layout'
 import { emptyHistory, push, redo, undo, type History } from './history'
 import { IDLE, reduce, type InteractionEvent, type InteractionState } from './interaction/machine'
 import {
@@ -99,7 +100,7 @@ export interface EditorState {
 function boundsOf(doc: Microcontroller, id: NodeId): Bounds | null {
   const node = doc.nodes.find((n) => n.id === id)
   const def = node && getComponent(node.type)
-  return node && def ? nodeBounds(node.position, def) : null
+  return node && def ? nodeBounds(node.position, cardLayout(def, node.properties)) : null
 }
 
 export const useEditorStore = create<EditorState>((set, get) => {
@@ -189,7 +190,9 @@ export const useEditorStore = create<EditorState>((set, get) => {
         `property:${id}:${key}`,
         (doc) => {
           const result = setPropertyOp(doc, id, key, value)
-          return result.ok ? result.value : { error: result.error }
+          if (!result.ok) return { error: result.error }
+          // A property change can take ports away — drop any wire left dangling
+          return pruneDanglingWires(librarySchema, result.value)
         },
         { coalesce: true },
       )

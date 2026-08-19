@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getComponent } from '@/library/registry'
-import { GRID_PX, nodeBounds, nodeSize, portPosition } from './layout'
+import { GRID_PX, cardLayout, defaultLayout, nodeBounds, portPosition } from './layout'
 import type { ComponentDef } from '@/library/types'
 
 const def = (id: string): ComponentDef => {
@@ -9,39 +9,45 @@ const def = (id: string): ComponentDef => {
   return d
 }
 
-describe('node layout', () => {
-  it('sizes nodes in whole grid units', () => {
-    const size = nodeSize(def('arithmetic.add'))
-    expect(size.width % GRID_PX).toBe(0)
-    expect(size.height % GRID_PX).toBe(0)
+describe('card layout', () => {
+  it('sizes cards in whole grid units', () => {
+    const layout = defaultLayout(def('arithmetic.add'))
+    expect(layout.width % GRID_PX).toBe(0)
+    expect(layout.height % GRID_PX).toBe(0)
   })
 
   it('grows taller when a component has more ports', () => {
-    const small = nodeSize(def('logic.not'))
-    const big = nodeSize(def('data.function'))
-    expect(big.height).toBeGreaterThan(small.height)
+    expect(defaultLayout(def('arithmetic.function3')).height).toBeGreaterThan(
+      defaultLayout(def('logic.not')).height,
+    )
   })
 
   it('puts inputs on the left edge and outputs on the right edge', () => {
-    const d = def('arithmetic.add')
-    const { width } = nodeSize(d)
-    expect(portPosition(d, 'in', 0).x).toBe(0)
-    expect(portPosition(d, 'out', 0).x).toBe(width)
+    const layout = defaultLayout(def('arithmetic.add'))
+    expect(portPosition(layout, 'in', 0).x).toBe(0)
+    expect(portPosition(layout, 'out', 0).x).toBe(layout.width)
   })
 
-  it('stacks ports downwards inside the node', () => {
-    const d = def('arithmetic.add')
-    const { height } = nodeSize(d)
-    const first = portPosition(d, 'in', 0)
-    const second = portPosition(d, 'in', 1)
+  it('stacks ports downwards inside the card', () => {
+    const layout = defaultLayout(def('arithmetic.add'))
+    const first = portPosition(layout, 'in', 0)
+    const second = portPosition(layout, 'in', 1)
     expect(second.y).toBeGreaterThan(first.y)
-    expect(second.y).toBeLessThanOrEqual(height)
+    expect(second.y).toBeLessThanOrEqual(layout.height)
   })
 
   it('reports world-space bounds from a grid position', () => {
-    const d = def('logic.not')
-    const bounds = nodeBounds({ x: 2, y: 3 }, d)
+    const layout = defaultLayout(def('logic.not'))
+    const bounds = nodeBounds({ x: 2, y: 3 }, layout)
     expect(bounds.minX).toBe(2 * GRID_PX)
-    expect(bounds.maxY).toBe(3 * GRID_PX + nodeSize(d).height)
+    expect(bounds.maxY).toBe(3 * GRID_PX + layout.height)
+  })
+
+  it('resizes a card whose ports depend on its properties', () => {
+    const write = def('composite.writeNumber')
+    const small = cardLayout(write, { channel: 1, count: 1 })
+    const large = cardLayout(write, { channel: 1, count: 8 })
+    expect(large.inputs.length).toBeGreaterThan(small.inputs.length)
+    expect(large.height).toBeGreaterThan(small.height)
   })
 })

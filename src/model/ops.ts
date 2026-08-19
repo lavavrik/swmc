@@ -154,8 +154,8 @@ export function connect(
   if (!source) return err(`no such component: ${from.node}`)
   if (!target) return err(`no such component: ${to.node}`)
 
-  const fromSignal = schema.portSignal(source.type, 'out', from.index)
-  const toSignal = schema.portSignal(target.type, 'in', to.index)
+  const fromSignal = schema.portSignal(source.type, source.properties, 'out', from.index)
+  const toSignal = schema.portSignal(target.type, target.properties, 'in', to.index)
   if (!fromSignal) return err(`output ${from.index} does not exist on ${source.type}`)
   if (!toSignal) return err(`input ${to.index} does not exist on ${target.type}`)
   if (fromSignal !== toSignal) return err(`cannot wire ${fromSignal} to ${toSignal}`)
@@ -211,6 +211,21 @@ export function setMeta(doc: Microcontroller, meta: Partial<MicrocontrollerMeta>
 
 /** The game allows microcontroller blocks from 1x1 up to 6x6. */
 const clampSize = (n: number): number => Math.min(6, Math.max(1, Math.round(n)))
+
+/**
+ * Drops wires that no longer have a port to land on. Needed because some
+ * components change shape with their properties — shrinking a Composite Write's
+ * channel count takes its last inputs away with it.
+ */
+export function pruneDanglingWires(schema: GraphSchema, doc: Microcontroller): Microcontroller {
+  const exists = (port: PortId): boolean => {
+    const node = doc.nodes.find((n) => n.id === port.node)
+    if (!node) return false
+    return schema.portSignal(node.type, node.properties, port.kind, port.index) !== undefined
+  }
+  const wires = doc.wires.filter((w) => exists(w.from) && exists(w.to))
+  return wires.length === doc.wires.length ? doc : { ...doc, wires }
+}
 
 export function reorderIoNodes(
   doc: Microcontroller,

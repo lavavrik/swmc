@@ -9,7 +9,7 @@ import { memo } from 'react'
 import { signalColor } from '@/ui/signals'
 import type { ComponentDef } from '@/library/types'
 import type { GraphNode, PortKind } from '@/model/types'
-import { CARD, nodeOrigin, nodeSize, portPosition } from './layout'
+import { CARD, cardLayout, nodeOrigin, portPosition, portsOf, type CardLayout } from './layout'
 import { CategoryIcon } from './CategoryIcon'
 
 interface Props {
@@ -24,21 +24,20 @@ interface Props {
 }
 
 function PortDots({
-  def,
+  layout,
   kind,
   dim,
   compatible,
 }: {
-  def: ComponentDef
+  layout: CardLayout
   kind: PortKind
   dim: boolean
   compatible?: ((kind: PortKind, index: number) => boolean) | undefined
 }) {
-  const ports = kind === 'in' ? def.inputs : def.outputs
   return (
     <>
-      {ports.map((port, index) => {
-        const { x, y } = portPosition(def, kind, index)
+      {portsOf(layout, kind).map((port, index) => {
+        const { x, y } = portPosition(layout, kind, index)
         const faded = dim && compatible ? !compatible(kind, index) : false
         return (
           <circle
@@ -71,7 +70,8 @@ export const NodeView = memo(function NodeView({
   compatiblePort,
 }: Props) {
   const origin = nodeOrigin(node.position)
-  const { width, height } = nodeSize(def)
+  const layout = cardLayout(def, node.properties)
+  const { width, height } = layout
   const x = origin.x + (offset?.x ?? 0)
   const y = origin.y + (offset?.y ?? 0)
 
@@ -94,8 +94,8 @@ export const NodeView = memo(function NodeView({
         {title}
       </text>
       <NodeDetails def={def} node={node} />
-      <PortDots def={def} kind="in" dim={dimPorts} compatible={compatiblePort} />
-      <PortDots def={def} kind="out" dim={dimPorts} compatible={compatiblePort} />
+      <PortDots layout={layout} kind="in" dim={dimPorts} compatible={compatiblePort} />
+      <PortDots layout={layout} kind="out" dim={dimPorts} compatible={compatiblePort} />
     </g>
   )
 })

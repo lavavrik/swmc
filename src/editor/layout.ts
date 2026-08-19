@@ -1,14 +1,18 @@
 /**
  * Geometry of a component card.
  *
- * Sizes are derived from the definition — port counts and the number of
- * property lines shown on the card — so no component needs bespoke layout
- * code. Results are memoised per definition because they are recomputed on
- * every render of every node.
+ * A card's size comes from its definition and its property values — port counts
+ * and the number of detail lines shown — so no component needs bespoke layout
+ * code. Because some components change shape with their settings, layout is
+ * resolved per node into a `CardLayout` and memoised on the shape that actually
+ * matters, not on the definition object.
  */
-import type { Bounds } from './viewport'
+import { defaultProperties } from '@/library/defaults'
+import { resolvePorts } from '@/library/ports'
 import type { ComponentDef, PortDef } from '@/library/types'
+import type { NodeProperties } from '@/model/schema'
 import type { Point, PortKind } from '@/model/types'
+import type { Bounds } from './viewport'
 
 /** World pixels per grid unit. Node positions in the document are grid units. */
 export const GRID_PX = 16
@@ -26,44 +30,64 @@ export const CARD = {
   portRadius: 6,
 } as const
 
-export interface NodeSize {
+export interface CardLayout {
   readonly width: number
   readonly height: number
+  readonly inputs: readonly PortDef[]
+  readonly outputs: readonly PortDef[]
+  /** Grey detail lines drawn under the title. */
+  readonly detailLines: number
 }
 
-const sizes = new WeakMap<ComponentDef, NodeSize>()
+const cache = new Map<string, CardLayout>()
 
 /** Number of grey detail lines drawn under the title, as the game shows them. */
-export function detailLineCount(def: ComponentDef): number {
-  // "type: ..." plus "desc: ..." wrapped to two lines, matching the game's cards
-  return def.category === 'io' ? 3 : def.properties.length > 0 ? 2 : 1
+function detailLineCount(def: ComponentDef): number {
+  if (def.category === 'io') return 3
+  return def.properties.length > 0 ? 2 : 1
 }
 
-export function nodeSize(def: ComponentDef): NodeSize {
-  const cached = sizes.get(def)
-  if (cached) return cached
+export function cardLayout(def: ComponentDef, properties: NodeProperties): CardLayout {
+  const inputs = resolvePorts(def, 'in', properties)
+  const outputs = resolvePorts(def, 'out', properties)
+  const detailLines = detailLineCount(def)
 
-  const portCount = Math.max(def.inputs.length, def.outputs.length)
+  // Only the port counts and line count affect geometry, so that is the key
+  const key = `${def.id}:${inputs.length}:${outputs.length}:${detailLines}`
+  const cached = cache.get(key)
+  if (cached) return { ...cached, inputs, outputs }
+
+  const portCount = Math.max(inputs.length, outputs.length)
   const portsHeight = CARD.portTop + Math.max(0, portCount - 1) * CARD.portSpacing
-  const textHeight = CARD.headerHeight + detailLineCount(def) * CARD.detailLineHeight
+  const textHeight = CARD.headerHeight + detailLines * CARD.detailLineHeight
   const raw = Math.max(portsHeight, textHeight) + CARD.bottomPadding
 
-  const size: NodeSize = {
+  const layout: CardLayout = {
+    inputs,
+    outputs,
+    detailLines,
     width: def.size ? def.size.w * GRID_PX : CARD.width,
     height: def.size ? def.size.h * GRID_PX : Math.ceil(raw / GRID_PX) * GRID_PX,
   }
-  sizes.set(def, size)
-  return size
+  cache.set(key, layout)
+  return layout
+}
+
+/** Layout of a component as freshly placed, for menus and previews. */
+export function defaultLayout(def: ComponentDef): CardLayout {
+  return cardLayout(def, defaultProperties(def))
+}
+
+export function portsOf(layout: CardLayout, kind: PortKind): readonly PortDef[] {
+  return kind === 'in' ? layout.inputs : layout.outputs
 }
 
 /** Port centre, relative to the card's top-left corner, in world pixels. */
-export function portPosition(def: ComponentDef, kind: PortKind, index: number): Point {
-  const { width } = nodeSize(def)
-  return { x: kind === 'in' ? 0 : width, y: CARD.portTop + index * CARD.portSpacing }
-}
-
-export function portsOf(def: ComponentDef, kind: PortKind): readonly PortDef[] {
-  return kind === 'in' ? def.inputs : def.outputs
+export function portPosition(layout: CardLayout, kind: PortKind, index: number): Point {
+  return {
+    x: kind === 'in' ? 0 : layout.width,
+    y: CARD.portTop + index * CARD.portSpacing,
+  }
 }
 
 /** World-space top-left corner of a node placed at a grid position. */
@@ -71,25 +95,24 @@ export function nodeOrigin(gridPosition: Point): Point {
   return { x: gridPosition.x * GRID_PX, y: gridPosition.y * GRID_PX }
 }
 
-export function nodeBounds(gridPosition: Point, def: ComponentDef): Bounds {
+export function nodeBounds(gridPosition: Point, layout: CardLayout): Bounds {
   const origin = nodeOrigin(gridPosition)
-  const { width, height } = nodeSize(def)
   return {
     minX: origin.x,
     minY: origin.y,
-    maxX: origin.x + width,
-    maxY: origin.y + height,
+    maxX: origin.x + layout.width,
+    maxY: origin.y + layout.height,
   }
 }
 
 /** Absolute world position of a port on a placed node. */
 export function portWorldPosition(
   gridPosition: Point,
-  def: ComponentDef,
+  layout: CardLayout,
   kind: PortKind,
   index: number,
 ): Point {
   const origin = nodeOrigin(gridPosition)
-  const local = portPosition(def, kind, index)
+  const local = portPosition(layout, kind, index)
   return { x: origin.x + local.x, y: origin.y + local.y }
 }

@@ -34,7 +34,7 @@ describe('editing', () => {
   })
 
   it('gives a new component its default property values', () => {
-    place('data.function')
+    place('arithmetic.function3')
     expect(store().doc.nodes[0]?.properties.expression).toBe('x')
   })
 
@@ -202,5 +202,17 @@ describe('viewport', () => {
     store().selectOnly([b])
     store().zoomToFit({ width: 800, height: 600 })
     expect(store().viewport.scale).toBeGreaterThan(1)
+  })
+})
+
+describe('components that change shape', () => {
+  it('drops wires left dangling when a channel count shrinks', () => {
+    const source = place('const.number', 0, 0)
+    const write = place('composite.writeNumber', 12, 0)
+    store().setProperty(write, 'count', 3)
+    store().connect({ node: source, kind: 'out', index: 0 }, { node: write, kind: 'in', index: 3 })
+    expect(store().doc.wires).toHaveLength(1)
+    store().setProperty(write, 'count', 1)
+    expect(store().doc.wires).toHaveLength(0)
   })
 })

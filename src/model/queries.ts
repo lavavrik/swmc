@@ -39,8 +39,8 @@ export function isConnectable(
   const source = nodeById(doc, from.node)
   const target = nodeById(doc, to.node)
   if (!source || !target) return false
-  const fromSignal = schema.portSignal(source.type, 'out', from.index)
-  const toSignal = schema.portSignal(target.type, 'in', to.index)
+  const fromSignal = schema.portSignal(source.type, source.properties, 'out', from.index)
+  const toSignal = schema.portSignal(target.type, target.properties, 'in', to.index)
   if (!fromSignal || fromSignal !== toSignal) return false
   return !doc.wires.some((w) => samePort(w.from, from) && samePort(w.to, to))
 }
@@ -48,5 +48,7 @@ export function isConnectable(
 /** Signal type carried by a wire, or undefined if its source is unknown. */
 export function wireSignal(schema: GraphSchema, doc: Microcontroller, wire: Wire) {
   const source = nodeById(doc, wire.from.node)
-  return source ? schema.portSignal(source.type, 'out', wire.from.index) : undefined
+  return source
+    ? schema.portSignal(source.type, source.properties, 'out', wire.from.index)
+    : undefined
 }

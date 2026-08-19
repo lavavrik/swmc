@@ -1,6 +1,6 @@
 import { describe, expect as vitestExpect, it } from 'vitest'
 import { expect as unwrap } from './result'
-import { testSchema } from './test-schema'
+import { fakeSchema, testSchema } from './test-schema'
 import {
   addIoNode,
   addNode,
@@ -10,6 +10,7 @@ import {
   disconnect,
   disconnectPort,
   moveNodes,
+  pruneDanglingWires,
   removeNodes,
   reorderIoNodes,
   setMeta,
@@ -281,5 +282,27 @@ describe('setMeta', () => {
       width: 1,
       length: 6,
     })
+  })
+})
+
+describe('pruneDanglingWires', () => {
+  it('drops wires whose port no longer exists', () => {
+    const [d1, a] = place(createEmpty(), 'constant')
+    const [d2, b] = place(d1, 'add')
+    const { doc } = unwrap(
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 1 },
+      ),
+    )
+    // A schema where 'add' has only one input leaves the wire with nowhere to land
+    const shrunk = fakeSchema({
+      add: { in: ['number'], out: ['number'] },
+      constant: { in: [], out: ['number'] },
+    })
+    expect(pruneDanglingWires(shrunk, doc).wires).toHaveLength(0)
+    expect(pruneDanglingWires(testSchema, doc).wires).toHaveLength(1)
   })
 })

@@ -6,6 +6,7 @@
  * the tick engine and the XML codec all read from this one shape, so adding a
  * component means adding a definition and nothing else.
  */
+import type { NodeProperties } from '@/model/schema'
 import type { ComponentTypeId, PropertyValue, SignalType } from '@/model/types'
 
 export type Category =
@@ -95,7 +96,20 @@ export interface EvalResult<S = unknown> {
 
 export type EvalFn<S = unknown> = (args: EvalArgs<S>) => EvalResult<S>
 
-export interface ComponentDef<S = unknown> {
+/**
+ * A component's ports. Most components have a fixed shape, so a plain array is
+ * the common case; the composite read/write components resolve their ports from
+ * their channel-count property instead.
+ */
+export type PortSpec = readonly PortDef[] | ((properties: NodeProperties) => readonly PortDef[])
+
+/**
+ * `S` is the component's private state shape. It defaults to `any` so a
+ * heterogeneous registry can hold components with different state types — the
+ * slot is opaque to everything except the component's own eval function.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface ComponentDef<S = any> {
   readonly id: ComponentTypeId
   /**
    * The game's numeric component type in saved XML, or null where the mapping
@@ -106,11 +120,13 @@ export interface ComponentDef<S = unknown> {
   readonly name: string
   /** Tooltip text, matching the game's wording. */
   readonly description: string
-  readonly inputs: readonly PortDef[]
-  readonly outputs: readonly PortDef[]
+  readonly inputs: PortSpec
+  readonly outputs: PortSpec
   readonly properties: readonly PropertyDef[]
   /** Optional size override in grid units; otherwise derived from the ports. */
   readonly size?: { readonly w: number; readonly h: number }
   readonly stateful?: boolean
+  /** Kept for old creations; hidden from the component menu. */
+  readonly deprecated?: boolean
   readonly eval: EvalFn<S>
 }

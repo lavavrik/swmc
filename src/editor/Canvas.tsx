@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { getComponent, librarySchema } from '@/library/registry'
 import { isConnectable } from '@/model/queries'
 import type { Microcontroller, NodeId, Point, PortId, PortKind } from '@/model/types'
-import { GRID_PX, portWorldPosition } from './layout'
+import { GRID_PX, cardLayout, portWorldPosition } from './layout'
 import { NodeView } from './NodeView'
 import { WireView } from './WireView'
 import { useEditorStore } from './store'
@@ -44,7 +44,12 @@ function portWorld(
   const node = doc.nodes.find((n) => n.id === port.node)
   const def = node && getComponent(node.type)
   if (!node || !def) return null
-  const base = portWorldPosition(node.position, def, port.kind, port.index)
+  const base = portWorldPosition(
+    node.position,
+    cardLayout(def, node.properties),
+    port.kind,
+    port.index,
+  )
   const offset = offsetFor(node.id)
   return { x: base.x + offset.x, y: base.y + offset.y }
 }
@@ -155,7 +160,10 @@ export function Canvas() {
             const to = portWorld(doc, wire.to, offsetFor)
             const source = doc.nodes.find((n) => n.id === wire.from.node)
             const def = source && getComponent(source.type)
-            const signal = def?.outputs[wire.from.index]?.signal
+            const signal =
+              source && def
+                ? cardLayout(def, source.properties).outputs[wire.from.index]?.signal
+                : undefined
             if (!from || !to || !signal) return null
             return <WireView key={wire.id} from={from} to={to} signal={signal} />
           })}
@@ -226,8 +234,10 @@ function PendingWire({
   if (!anchor) return null
   const node = doc.nodes.find((n) => n.id === wiring.origin.node)
   const def = node && getComponent(node.type)
-  const ports = wiring.origin.kind === 'out' ? def?.outputs : def?.inputs
-  const signal = ports?.[wiring.origin.index]?.signal
+  if (!node || !def) return null
+  const layout = cardLayout(def, node.properties)
+  const ports = wiring.origin.kind === 'out' ? layout.outputs : layout.inputs
+  const signal = ports[wiring.origin.index]?.signal
   if (!signal) return null
   const [from, to] =
     wiring.origin.kind === 'out' ? [anchor, wiring.cursorWorld] : [wiring.cursorWorld, anchor]

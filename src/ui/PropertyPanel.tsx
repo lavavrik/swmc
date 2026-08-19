@@ -1,5 +1,6 @@
 /** Edits the properties of the selected component, driven by its definition. */
 import { getComponent } from '@/library/registry'
+import { resolvePorts } from '@/library/ports'
 import { useEditorStore } from '@/editor/store'
 import type { PropertyDef } from '@/library/types'
 import type { PropertyValue } from '@/model/types'
@@ -103,8 +104,8 @@ export function PropertyPanel() {
         </div>
       )}
 
-      <PortList title="Inputs" ports={def.inputs} />
-      <PortList title="Outputs" ports={def.outputs} />
+      <PortList title="Inputs" ports={resolvePorts(def, 'in', node.properties)} />
+      <PortList title="Outputs" ports={resolvePorts(def, 'out', node.properties)} />
     </aside>
   )
 }
