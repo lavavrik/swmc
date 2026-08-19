@@ -33,7 +33,7 @@ Non-goals (explicitly out of scope, possibly later):
 |---|---|
 | Purpose | Faithful editor first, simulation second — but the tick engine lands in phase 1 because the Lua live-run needs it |
 | Format source of truth | Public wiki + open-source community parsers; **no local sample files yet** |
-| Component coverage | The full library (~100 components), all categories |
+| Component coverage | The full library — 60 microcontroller component types, all categories |
 | Graph engine | Custom SVG renderer — no React Flow, no canvas immediate mode |
 | Lua editor | Monaco + full Stormworks API intellisense + wasmoon Lua execution + screen preview |
 | Runtime | Browser SPA, local-only. IndexedDB project library, `.xml` import/export via file picker and drag-drop |
@@ -49,7 +49,7 @@ each depends only on those above it.
 | # | Sub-project | Depends on | Deliverable |
 |---|---|---|---|
 | 1 | **Graph model + SVG editor** | — | Editable graph with placeholder components: place, move, wire, select, delete, undo, copy/paste, pan/zoom |
-| 2 | **Component library** | 1 | All ~100 components as declarative definitions; picker menu; property inspector |
+| 2 | **Component library** | 1 | All 60 components as declarative definitions; picker menu; property inspector |
 | 3 | **XML interop + project library** | 1, 2 | Load and save Stormworks `.xml`; IndexedDB project list |
 | 4 | **Tick engine** | 1, 2 | 60 Hz evaluation, stateful components, live signal values on wires, I/O panel |
 | 5 | **Lua subsystem** | 1, 2, 4 | Monaco + SW API intellisense, wasmoon worker, `onTick`/`onDraw`, screen preview |
@@ -86,8 +86,9 @@ it.
   value and mutated only through model operations.
 - **Vitest** for unit tests, **Testing Library** for component tests,
   **Playwright** for canvas interaction tests (drag, wire, marquee select).
-- **Monaco** for the Lua editor. **wasmoon** (Lua 5.3 compiled to wasm) in a
-  Web Worker for execution.
+- **Monaco** for the Lua editor, bundled locally — editor core and the Lua
+  grammar only. **wasmoon** (Lua 5.4 compiled to wasm) for execution, with its
+  WebAssembly bundled rather than fetched from a CDN.
 - **fast-xml-parser** for XML, wrapped so the codec owns all schema knowledge.
 
 No component library, no CSS framework. The skin is bespoke CSS variables
@@ -202,9 +203,12 @@ the tick engine never special-cases a component. Stateful components (memory
 register, SR latch, capacitor, PID, delta, timers, counters) own their state
 slot; everything else is combinational.
 
-The full catalogue is populated in sub-project 2 from the Stormworks wiki, one
-file per category under `src/library/components/`, with a checklist tracking
-coverage. Component `eval` functions that need the game's expression language
+The catalogue covers all 60 component types the game numbers 0 to 59, one file
+per category under `src/library/components/`, and a registry test asserts that
+the numbering is complete and unique. Ports may be a function of the property
+values rather than a fixed list, which is what the composite read and write
+components need — their channel count decides how many ports they have.
+Component `eval` functions that need the game's expression language
 (`x*y+z`, `clamp(x,0,1)`) use the parser in `src/library/expression.ts` rather
 than anything dynamic — saved files are untrusted input. The registry is the only
 place that knows the game's numeric type ids, so a correction from a real save
@@ -285,8 +289,12 @@ as regression tests.
 The Lua script component's `eval` hands its inputs to a worker and takes back
 the outputs produced by the last completed tick.
 
-- **Runtime:** wasmoon (Lua 5.3) in a Web Worker, one interpreter per script
-  node, reset on script change.
+- **Runtime:** wasmoon, one interpreter per script node, reset on script
+  change. It runs synchronously on the main thread rather than in a worker:
+  a tick has to see this tick's inputs and be read back within the same tick,
+  and a worker round-trip would lag every script by one tick. The cost of that
+  choice is that a runaway script would block the page, which is why the
+  interpreter's instruction hook aborts a tick that overruns its budget.
 - **API shim:** `input.getNumber/getBool`, `output.setNumber/setBool`,
   `property.getNumber/getBool/getText`, the full `screen.*` drawing surface,
   `map.*`, `async.*`, and the game's table/string extensions. The shim is the
@@ -317,8 +325,9 @@ Requirements:
 - **Graceful degradation.** An unknown component type imports as an opaque
   placeholder node that keeps its attributes and wires, so an unsupported file
   is still editable and still saves correctly.
-- **Golden-file tests.** Every fixture in `src/io/__fixtures__/` must round-trip
-  byte-stable modulo whitespace.
+- **Golden-file tests.** Every fixture in `src/io/__fixtures__/` must
+  round-trip: parsing, serializing and parsing again yields the same document,
+  and attributes the editor does not model survive verbatim.
 
 Because the schema is derived from public sources rather than samples, the
 first real `.xml` file dropped in is expected to produce corrections. That work
@@ -369,8 +378,18 @@ both are cheap to correct by design.
 
 ## 14. Progress
 
-- **Sub-project 1 — graph model + SVG editor: complete.** Model, registry
-  skeleton with seed components, viewport, card layout, wire geometry,
-  interaction machine, history, store, canvas and app shell, covered by 106
-  unit tests and 6 Playwright interaction tests.
-- Next: **sub-project 2 — the full component catalogue.**
+All five sub-projects are complete, covered by 198 unit tests and 12 Playwright
+interaction tests.
+
+| # | Sub-project | State |
+|---|---|---|
+| 1 | Graph model + SVG editor | Done |
+| 2 | Component catalogue (60 types) | Done |
+| 3 | XML interop + project library | Done |
+| 4 | Tick engine | Done |
+| 5 | Lua subsystem | Done |
+
+Two assumptions still await a real save file to confirm, and both are isolated
+as promised: the position scale and y direction in `io/schema.ts`, and the
+metres-per-pixel meaning of the map zoom in `lua/prelude.ts`. The evaluation
+order within a tick (§8) is likewise confined to `sim/plan.ts`.
