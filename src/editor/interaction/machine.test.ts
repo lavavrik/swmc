@@ -19,7 +19,10 @@ const down = (e: Partial<InteractionEvent & { type: 'pointerDown' }> = {}): Inte
   ...e,
 })
 
-const move = (world: { x: number; y: number }, hover = { kind: 'canvas' } as const): InteractionEvent => ({
+const move = (
+  world: { x: number; y: number },
+  hover = { kind: 'canvas' } as const,
+): InteractionEvent => ({
   type: 'pointerMove',
   screen: world,
   world,
@@ -137,7 +140,11 @@ describe('dragging wires', () => {
 
   it('remembers the hovered port so the view can highlight it', () => {
     const a = reduce(IDLE, down({ target: { kind: 'port', port: out('c1') } }), ctx())
-    const b = reduce(a.state, move({ x: 50, y: 0 }, { kind: 'port', port: inp('c2') } as never), ctx())
+    const b = reduce(
+      a.state,
+      move({ x: 50, y: 0 }, { kind: 'port', port: inp('c2') } as never),
+      ctx(),
+    )
     expect(b.state).toMatchObject({ hover: inp('c2') })
   })
 })

@@ -1,0 +1,65 @@
+/*
+ * The Stormworks skin.
+ *
+ * Every colour and metric the editor draws with lives here, sampled from the
+ * in-game microcontroller editor, so the whole look can be adjusted in one
+ * file. Signal colours follow the game: on/off red, number green, composite
+ * purple, video blue, audio olive.
+ */
+:root {
+  --workspace: #29a8bd;
+  --workspace-grid: #2699ac;
+  --workspace-grid-major: #1f8698;
+
+  --chrome: #22282b;
+  --chrome-raised: #2c3438;
+  --chrome-border: #171b1d;
+  --chrome-text: #e8eef0;
+  --chrome-text-dim: #8b989d;
+
+  --button: #2196c4;
+  --button-hover: #34a9d6;
+  --button-disabled: #39434a;
+  --button-icon: #ffffff;
+  --button-icon-disabled: #6d7b82;
+
+  --card: #ffffff;
+  --card-border: #b9c2c6;
+  --card-title: #2a3134;
+  --card-detail: #9aa4a9;
+  --card-selected: #ffcc33;
+  --card-shadow: rgba(0, 0, 0, 0.28);
+
+  --signal-onoff: #e51937;
+  --signal-number: #22b14c;
+  --signal-composite: #7a3ff0;
+  --signal-video: #1e8ad6;
+  --signal-audio: #9aa815;
+
+  --port-ring: #ffffff;
+  --marquee-fill: rgba(255, 255, 255, 0.18);
+  --marquee-stroke: #ffffff;
+
+  --font-ui: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --toolbar-height: 64px;
+  --statusbar-height: 72px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--chrome-text);
+  background: var(--chrome);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}

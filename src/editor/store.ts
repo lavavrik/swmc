@@ -17,6 +17,7 @@ import {
   insertSubgraph,
   moveNodes as moveNodesOp,
   removeNodes as removeNodesOp,
+  setMeta as setMetaOp,
   setProperty as setPropertyOp,
   type Subgraph,
 } from '@/model/ops'
@@ -24,6 +25,7 @@ import { isConnectable } from '@/model/queries'
 import type {
   ComponentTypeId,
   Microcontroller,
+  MicrocontrollerMeta,
   NodeId,
   Point,
   PortId,
@@ -66,6 +68,7 @@ export interface EditorState {
   connect(from: PortId, to: PortId): void
   disconnect(wireId: WireId): void
   setProperty(id: NodeId, key: string, value: PropertyValue): void
+  setMeta(meta: Partial<MicrocontrollerMeta>): void
 
   // clipboard
   copy(): void
@@ -192,6 +195,10 @@ export const useEditorStore = create<EditorState>((set, get) => {
       )
     },
 
+    setMeta(meta) {
+      edit('microcontroller settings', (doc) => setMetaOp(doc, meta), { coalesce: true })
+    },
+
     copy() {
       const { doc, selection } = get()
       if (selection.length === 0) return
@@ -218,9 +225,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     toggleSelect(id) {
       const selection = get().selection
       set({
-        selection: selection.includes(id)
-          ? selection.filter((s) => s !== id)
-          : [...selection, id],
+        selection: selection.includes(id) ? selection.filter((s) => s !== id) : [...selection, id],
       })
     },
 

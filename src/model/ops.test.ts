@@ -12,6 +12,7 @@ import {
   moveNodes,
   removeNodes,
   reorderIoNodes,
+  setMeta,
   setProperty,
 } from './ops'
 import type { Microcontroller, NodeId } from './types'
@@ -69,7 +70,12 @@ describe('connect', () => {
     const [d1, a] = place(createEmpty(), 'constant')
     const [d2, b] = place(d1, 'add')
     const { doc } = unwrap(
-      connect(testSchema, d2, { node: a, kind: 'out', index: 0 }, { node: b, kind: 'in', index: 0 }),
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 0 },
+      ),
     )
     expect(doc.wires).toHaveLength(1)
     expect(doc.wires[0]?.from.node).toBe(a)
@@ -92,8 +98,12 @@ describe('connect', () => {
     const [d1, a] = place(createEmpty(), 'constant')
     const [d2, b] = place(d1, 'constant')
     expect(
-      connect(testSchema, d2, { node: a, kind: 'out', index: 0 }, { node: b, kind: 'out', index: 0 })
-        .ok,
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'out', index: 0 },
+      ).ok,
     ).toBe(false)
   })
 
@@ -149,7 +159,12 @@ describe('removeNodes', () => {
     const [d1, a] = place(createEmpty(), 'constant')
     const [d2, b] = place(d1, 'add')
     const { doc: d3 } = unwrap(
-      connect(testSchema, d2, { node: a, kind: 'out', index: 0 }, { node: b, kind: 'in', index: 0 }),
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 0 },
+      ),
     )
     const d4 = removeNodes(d3, [a])
     expect(d4.nodes).toHaveLength(1)
@@ -192,7 +207,12 @@ describe('disconnect', () => {
     const [d1, a] = place(createEmpty(), 'constant')
     const [d2, b] = place(d1, 'add')
     const { doc: d3, wireId } = unwrap(
-      connect(testSchema, d2, { node: a, kind: 'out', index: 0 }, { node: b, kind: 'in', index: 0 }),
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 0 },
+      ),
     )
     expect(disconnect(d3, wireId).wires).toHaveLength(0)
     expect(disconnectPort(d3, { node: b, kind: 'in', index: 0 }).wires).toHaveLength(0)
@@ -205,7 +225,12 @@ describe('cloneSubgraph', () => {
     const [d2, b] = place(d1, 'add', 2, 0)
     const [d3, outside] = place(d2, 'add', 8, 0)
     const { doc: d4 } = unwrap(
-      connect(testSchema, d3, { node: a, kind: 'out', index: 0 }, { node: b, kind: 'in', index: 0 }),
+      connect(
+        testSchema,
+        d3,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 0 },
+      ),
     )
     const { doc: d5 } = unwrap(
       connect(
@@ -243,5 +268,18 @@ describe('io pins', () => {
       addIoNode(testSchema, createEmpty(), { type: 'io.in.number', position: { x: 0, y: 0 } }),
     )
     expect(reorderIoNodes(doc, []).ok).toBe(false)
+  })
+})
+
+describe('setMeta', () => {
+  it('renames the microcontroller', () => {
+    expect(setMeta(createEmpty(), { name: 'PID' }).meta.name).toBe('PID')
+  })
+
+  it('clamps the block size to the range the game allows', () => {
+    expect(setMeta(createEmpty(), { width: 0, length: 99 }).meta).toMatchObject({
+      width: 1,
+      length: 6,
+    })
   })
 })

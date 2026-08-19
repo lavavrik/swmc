@@ -43,7 +43,8 @@ const FUNCTIONS: Record<string, (...a: number[]) => number> = {
   clamp: (v = 0, lo = 0, hi = 0) => Math.min(Math.max(v, lo), hi),
 }
 
-type Token = { type: 'num'; value: number } | { type: 'name'; value: string } | { type: 'op'; value: string }
+type Token =
+  { type: 'num'; value: number } | { type: 'name'; value: string } | { type: 'op'; value: string }
 
 function tokenize(src: string): Token[] {
   const tokens: Token[] = []

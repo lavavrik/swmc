@@ -17,8 +17,6 @@ export interface History<T> {
   readonly future: readonly HistoryEntry<T>[]
 }
 
-export const EMPTY_HISTORY: History<never> = { past: [], future: [] }
-
 /** Maximum number of undo steps kept. */
 export const HISTORY_LIMIT = 200
 

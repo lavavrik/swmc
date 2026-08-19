@@ -104,10 +104,13 @@ input of the same type.
 | Type | Meaning | Wire colour |
 |---|---|---|
 | `onoff` | Boolean | Red |
-| `number` | 32-bit float | Purple |
-| `composite` | 32 numbers + 32 booleans in one channel | Green |
+| `number` | 32-bit float | Green |
+| `composite` | 32 numbers + 32 booleans in one channel | Purple |
 | `video` | Frame buffer channel | Blue |
 | `audio` | Audio channel | Olive |
+
+Colours are sampled from the in-game editor and defined once, in
+`src/ui/theme.css`.
 
 Composite channels are 1-indexed in the UI (channels 1–32) as the game presents
 them, and 0-indexed internally; the conversion lives in one place.
@@ -134,16 +137,19 @@ interface Wire {
 
 interface Microcontroller {
   meta: { name: string; description: string; width: number; length: number }
-  ioNodes: IoNode[]           // the microcontroller's own external in/out pins
   nodes: GraphNode[]
   wires: Wire[]
+  ioOrder: NodeId[]           // the microcontroller's own external pins, in order
+  idCounter: number           // kept in the document so operations stay pure
 }
 ```
 
-`IoNode` models the external pins on the microcontroller's faces (name,
-description, signal type, direction, and position on the face). In the game
-these correspond to the property/bridge components; the mapping is the XML
-codec's problem, not the model's.
+The microcontroller's external pins are ordinary nodes whose component type
+belongs to the `io` category, mirroring how the game stores them as bridge
+components. That means a wire endpoint has exactly one form, and the pins get
+selection, dragging and undo for free. `ioOrder` records the order they appear
+on the block's faces; translating that to and from the game's encoding is the
+XML codec's problem, not the model's.
 
 Invariants enforced by model operations, not by callers:
 
@@ -163,10 +169,12 @@ was refused.
 
 ### 5.4 Undo/redo
 
-Command-based. Every user action produces a named command holding the
-before/after document slices it touched. The history is a bounded stack (200
-entries). Continuous gestures (dragging a node) push a single command on
-gesture end, not per pointer move.
+The document is a persistent immutable value, so a history entry is a labelled
+past document rather than a diff — structural sharing means an entry costs a
+few arrays, not a copy of the graph. The history is a bounded stack (200
+entries). Continuous gestures (dragging a node) commit a single entry on
+gesture end, not per pointer move, and consecutive edits carrying the same
+label (typing in a property field) coalesce into one step.
 
 ## 6. Component library (`src/library/`)
 
@@ -195,7 +203,10 @@ register, SR latch, capacitor, PID, delta, timers, counters) own their state
 slot; everything else is combinational.
 
 The full catalogue is populated in sub-project 2 from the Stormworks wiki, one
-file per category, with a checklist tracking coverage. The registry is the only
+file per category under `src/library/components/`, with a checklist tracking
+coverage. Component `eval` functions that need the game's expression language
+(`x*y+z`, `clamp(x,0,1)`) use the parser in `src/library/expression.ts` rather
+than anything dynamic — saved files are untrusted input. The registry is the only
 place that knows the game's numeric type ids, so a correction from a real save
 file is a one-line change per component.
 
@@ -356,6 +367,10 @@ modules: the XML schema (§10) and the tick evaluation order (§8). Both are
 expected to need correction once a real microcontroller file is available, and
 both are cheap to correct by design.
 
-## 14. Next step
+## 14. Progress
 
-Write the implementation plan for **sub-project 1: graph model + SVG editor**.
+- **Sub-project 1 — graph model + SVG editor: complete.** Model, registry
+  skeleton with seed components, viewport, card layout, wire geometry,
+  interaction machine, history, store, canvas and app shell, covered by 106
+  unit tests and 6 Playwright interaction tests.
+- Next: **sub-project 2 — the full component catalogue.**

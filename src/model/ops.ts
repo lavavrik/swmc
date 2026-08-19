@@ -202,6 +202,16 @@ export function setProperty(
   })
 }
 
+/** Renames or resizes the microcontroller itself. */
+export function setMeta(doc: Microcontroller, meta: Partial<MicrocontrollerMeta>): Microcontroller {
+  const width = clampSize(meta.width ?? doc.meta.width)
+  const length = clampSize(meta.length ?? doc.meta.length)
+  return { ...doc, meta: { ...doc.meta, ...meta, width, length } }
+}
+
+/** The game allows microcontroller blocks from 1x1 up to 6x6. */
+const clampSize = (n: number): number => Math.min(6, Math.max(1, Math.round(n)))
+
 export function reorderIoNodes(
   doc: Microcontroller,
   order: readonly NodeId[],
@@ -237,11 +247,7 @@ export function extractSubgraph(doc: Microcontroller, ids: readonly NodeId[]): S
 }
 
 /** Adds a subgraph to a document under fresh ids, offset by whole grid units. */
-export function insertSubgraph(
-  doc: Microcontroller,
-  sub: Subgraph,
-  offset: Point,
-): InsertResult {
+export function insertSubgraph(doc: Microcontroller, sub: Subgraph, offset: Point): InsertResult {
   let counter = doc.idCounter
   const idMap = new Map<NodeId, NodeId>()
   const nodes: GraphNode[] = sub.nodes.map((n) => {
@@ -281,6 +287,7 @@ export function cloneSubgraph(
   offset: Point,
 ): Result<InsertResult> {
   const sub = extractSubgraph(doc, sourceIds)
-  if (sub.nodes.length !== sourceIds.length) return err('cannot copy a component that is not present')
+  if (sub.nodes.length !== sourceIds.length)
+    return err('cannot copy a component that is not present')
   return ok(insertSubgraph(doc, sub, offset))
 }

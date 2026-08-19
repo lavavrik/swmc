@@ -26,9 +26,24 @@ export interface PortDef {
 }
 
 export type PropertyDef =
-  | { readonly kind: 'number'; readonly key: string; readonly label: string; readonly default: number }
-  | { readonly kind: 'text'; readonly key: string; readonly label: string; readonly default: string }
-  | { readonly kind: 'bool'; readonly key: string; readonly label: string; readonly default: boolean }
+  | {
+      readonly kind: 'number'
+      readonly key: string
+      readonly label: string
+      readonly default: number
+    }
+  | {
+      readonly kind: 'text'
+      readonly key: string
+      readonly label: string
+      readonly default: string
+    }
+  | {
+      readonly kind: 'bool'
+      readonly key: string
+      readonly label: string
+      readonly default: boolean
+    }
   | {
       readonly kind: 'dropdown'
       readonly key: string

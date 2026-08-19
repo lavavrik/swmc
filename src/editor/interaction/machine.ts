@@ -171,18 +171,15 @@ function onPointerMove(
 ): Transition {
   switch (state.kind) {
     case 'panning':
-      return stay(
-        { kind: 'panning', lastScreen: event.screen },
-        [
-          {
-            type: 'pan',
-            delta: {
-              x: event.screen.x - state.lastScreen.x,
-              y: event.screen.y - state.lastScreen.y,
-            },
+      return stay({ kind: 'panning', lastScreen: event.screen }, [
+        {
+          type: 'pan',
+          delta: {
+            x: event.screen.x - state.lastScreen.x,
+            y: event.screen.y - state.lastScreen.y,
           },
-        ],
-      )
+        },
+      ])
 
     case 'draggingNodes':
       return stay({ ...state, gridDelta: snapToGrid(state.startWorld, event.world) })

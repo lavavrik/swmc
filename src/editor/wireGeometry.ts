@@ -28,12 +28,7 @@ export interface WirePath {
 }
 
 export function wirePath(from: Point, to: Point): WirePath {
-  const points: Point[] = [
-    from,
-    { x: from.x + STUB, y: from.y },
-    { x: to.x - STUB, y: to.y },
-    to,
-  ]
+  const points: Point[] = [from, { x: from.x + STUB, y: from.y }, { x: to.x - STUB, y: to.y }, to]
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
   return { points, d, arrows: arrowsAlong(points[1]!, points[2]!) }
 }

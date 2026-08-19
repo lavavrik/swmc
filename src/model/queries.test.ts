@@ -2,16 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { expect as unwrap } from './result'
 import { testSchema } from './test-schema'
 import { addNode, connect, createEmpty } from './ops'
-import {
-  incomingWire,
-  isConnectable,
-  nodeById,
-  outgoingWires,
-  wiresTouching,
-} from './queries'
+import { incomingWire, isConnectable, nodeById, outgoingWires, wiresTouching } from './queries'
 
 function fixture() {
-  const a = unwrap(addNode(testSchema, createEmpty(), { type: 'constant', position: { x: 0, y: 0 } }))
+  const a = unwrap(
+    addNode(testSchema, createEmpty(), { type: 'constant', position: { x: 0, y: 0 } }),
+  )
   const b = unwrap(addNode(testSchema, a.doc, { type: 'add', position: { x: 4, y: 0 } }))
   const { doc } = unwrap(
     connect(
