@@ -24,3 +24,11 @@
 .port {
   cursor: crosshair;
 }
+
+.wire-value {
+  fill: #10343b;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 3px;
+  font-variant-numeric: tabular-nums;
+}

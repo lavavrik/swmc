@@ -1,14 +1,16 @@
 /** Application chrome: toolbar, workspace, side panel and status bar. */
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Canvas } from '@/editor/Canvas'
 import { useEditorStore } from '@/editor/store'
 import { importFile } from '@/io/library'
 import { ComponentPicker } from './ComponentPicker'
 import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
+import { PinPanel } from './PinPanel'
 import { PropertyPanel } from './PropertyPanel'
 import { StatusBar } from './StatusBar'
 import { Toolbar } from './Toolbar'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
+import { useSimulationDriver } from '@/sim/useSimulationDriver'
 import './shell.css'
 
 export function AppShell() {
@@ -16,19 +18,13 @@ export function AppShell() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [dialog, setDialog] = useState<ProjectDialogMode | null>(null)
   const [showTooltips, setShowTooltips] = useState(true)
-  const [viewSize, setViewSize] = useState({ width: 1280, height: 720 })
-
-  useEffect(() => {
-    const element = workspaceRef.current
-    if (!element) return
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setViewSize({ width: entry.contentRect.width, height: entry.contentRect.height })
-    })
-    observer.observe(element)
-    return () => observer.disconnect()
+  const viewSize = useCallback(() => {
+    const box = workspaceRef.current?.getBoundingClientRect()
+    return { width: box?.width ?? window.innerWidth, height: box?.height ?? window.innerHeight }
   }, [])
 
   useKeyboardShortcuts(viewSize)
+  useSimulationDriver()
 
   // Dropping a .xml file anywhere on the workspace opens it
   const load = useEditorStore((s) => s.load)
@@ -57,6 +53,7 @@ export function AppShell() {
       >
         <Canvas />
         <PropertyPanel />
+        <PinPanel />
       </div>
       <StatusBar onOpenPicker={() => setPickerOpen(true)} />
       {pickerOpen && <ComponentPicker onClose={() => setPickerOpen(false)} />}

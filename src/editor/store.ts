@@ -9,6 +9,7 @@ import { create } from 'zustand'
 import { getComponent, librarySchema } from '@/library/registry'
 import { defaultProperties } from '@/library/defaults'
 import {
+  addIoNode as addIoNodeOp,
   addNode as addNodeOp,
   connect as connectOp,
   createEmpty,
@@ -141,8 +142,10 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
       const position = { x: world.x / GRID_PX, y: world.y / GRID_PX }
       let created: NodeId | null = null
+      // Pins are registered in the microcontroller's pin order as well
+      const add = def.category === 'io' ? addIoNodeOp : addNodeOp
       edit('add component', (doc) => {
-        const result = addNodeOp(librarySchema, doc, {
+        const result = add(librarySchema, doc, {
           type,
           position,
           properties: defaultProperties(def),

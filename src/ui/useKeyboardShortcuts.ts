@@ -14,7 +14,12 @@ function isTextEntry(target: EventTarget | null): boolean {
   )
 }
 
-export function useKeyboardShortcuts(viewSize: { width: number; height: number }) {
+/**
+ * @param viewSize measures the workspace when a shortcut needs it. Measuring on
+ * demand rather than tracking it in state means framing is never computed
+ * against a size the window has already grown out of.
+ */
+export function useKeyboardShortcuts(viewSize: () => { width: number; height: number }) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTextEntry(e.target)) return
@@ -31,7 +36,7 @@ export function useKeyboardShortcuts(viewSize: { width: number; height: number }
         return
       }
       if (!mod && (e.key === 'f' || e.key === 'F')) {
-        store.zoomToFit(viewSize)
+        store.zoomToFit(viewSize())
         return
       }
       if (!mod) return

@@ -12,6 +12,7 @@ import { isConnectable } from '@/model/queries'
 import type { Microcontroller, NodeId, Point, PortId, PortKind } from '@/model/types'
 import { GRID_PX, cardLayout, portWorldPosition } from './layout'
 import { NodeView } from './NodeView'
+import { WireValues } from './WireValues'
 import { WireView } from './WireView'
 import { useEditorStore } from './store'
 import { screenToWorld, type Viewport } from './viewport'
@@ -196,6 +197,8 @@ export function Canvas() {
             )
           })}
         </g>
+
+        <WireValues doc={doc} offsetFor={offsetFor} scale={viewport.scale} />
 
         <g className="layer-overlay" pointerEvents="none">
           {wiring && <PendingWire doc={doc} wiring={wiring} offsetFor={offsetFor} />}

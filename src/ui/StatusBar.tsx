@@ -1,6 +1,7 @@
 /** The bottom bar: microcontroller size, a status message, and the picker button. */
 import { useEditorStore } from '@/editor/store'
 import { Icon } from './icons'
+import { SimulationControls } from './SimulationControls'
 
 function SizeControl({
   label,
@@ -54,6 +55,7 @@ export function StatusBar({ onOpenPicker }: { onOpenPicker: () => void }) {
       />
       <SizeControl label="width" value={meta.width} onChange={(width) => setMeta({ width })} />
       <SizeControl label="length" value={meta.length} onChange={(length) => setMeta({ length })} />
+      <SimulationControls />
       <div className="status-message">
         {problem ? (
           <span className="status-problem">{problem}</span>

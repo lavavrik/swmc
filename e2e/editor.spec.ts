@@ -3,8 +3,12 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 /** Opens the component menu and places the named component. */
 async function place(page: Page, name: string) {
   await page.getByTitle('Add component').first().click()
-  // Scope to the picker: the toolbar has its own "Add component" button
-  await page.locator('.picker').getByRole('button', { name, exact: false }).first().click()
+  // Match the item's own name, not its description, and not the toolbar button
+  await page
+    .locator('.picker .picker-item')
+    .filter({ has: page.locator('.picker-item-name', { hasText: new RegExp(`^${name}$`) }) })
+    .first()
+    .click()
 }
 
 const nodes = (page: Page) => page.locator('[data-node-id]')
@@ -140,4 +144,36 @@ test('imports a dropped-in file through the open dialog', async ({ page }) => {
   })
   await expect(nodes(page)).toHaveCount(1)
   await expect(page.locator('.name-field')).toHaveValue('Imported')
+})
+
+test('runs the simulation and shows values on the wires', async ({ page }) => {
+  await place(page, 'Constant Number')
+  await page.locator('.panel input[type=number]').fill('12')
+  await place(page, 'Absolute Value')
+  await drag(page, await centre(nodes(page).nth(1)), { x: 640, y: 200 })
+
+  const source = nodes(page).first().locator('[data-port-kind="out"]')
+  const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+  await drag(page, await centre(source), await centre(target))
+
+  await page.getByTitle('Advance one tick').click()
+  await expect(page.locator('.wire-value')).toHaveText(['12'])
+  await expect(page.locator('.sim-tick')).toContainText('tick 1')
+
+  await page.getByTitle('Reset the simulation').click()
+  await expect(page.locator('.wire-value')).toHaveCount(0)
+})
+
+test('drives the graph from a microcontroller input pin', async ({ page }) => {
+  await place(page, 'number input')
+  await place(page, 'number output')
+  await drag(page, await centre(nodes(page).nth(1)), { x: 700, y: 260 })
+
+  const source = nodes(page).first().locator('[data-port-kind="out"]')
+  const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+  await drag(page, await centre(source), await centre(target))
+
+  await page.locator('.pin-panel input[type=number]').fill('7')
+  await page.getByTitle('Advance one tick').click()
+  await expect(page.locator('.pin-panel .pin-value')).toHaveText('7')
 })

@@ -216,3 +216,11 @@ describe('components that change shape', () => {
     expect(store().doc.wires).toHaveLength(0)
   })
 })
+
+describe('microcontroller pins', () => {
+  it('registers a placed pin in the pin order', () => {
+    const pin = place('io.in.number', 0, 0)
+    place('arithmetic.add', 8, 0)
+    expect(store().doc.ioOrder).toEqual([pin])
+  })
+})
