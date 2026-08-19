@@ -1,7 +1,10 @@
 /** Application chrome: toolbar, workspace, side panel and status bar. */
 import { useEffect, useRef, useState } from 'react'
 import { Canvas } from '@/editor/Canvas'
+import { useEditorStore } from '@/editor/store'
+import { importFile } from '@/io/library'
 import { ComponentPicker } from './ComponentPicker'
+import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
 import { PropertyPanel } from './PropertyPanel'
 import { StatusBar } from './StatusBar'
 import { Toolbar } from './Toolbar'
@@ -11,6 +14,7 @@ import './shell.css'
 export function AppShell() {
   const workspaceRef = useRef<HTMLDivElement>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [dialog, setDialog] = useState<ProjectDialogMode | null>(null)
   const [showTooltips, setShowTooltips] = useState(true)
   const [viewSize, setViewSize] = useState({ width: 1280, height: 720 })
 
@@ -26,19 +30,37 @@ export function AppShell() {
 
   useKeyboardShortcuts(viewSize)
 
+  // Dropping a .xml file anywhere on the workspace opens it
+  const load = useEditorStore((s) => s.load)
+  const onDrop = async (event: React.DragEvent) => {
+    event.preventDefault()
+    const file = event.dataTransfer.files[0]
+    if (!file) return
+    const result = await importFile(file)
+    if (result.ok) load(result.value)
+  }
+
   return (
     <div className={`shell${showTooltips ? '' : ' no-tooltips'}`}>
       <Toolbar
         onOpenPicker={() => setPickerOpen(true)}
+        onOpenProjects={() => setDialog('open')}
+        onSaveProject={() => setDialog('save')}
         showTooltips={showTooltips}
         onToggleTooltips={() => setShowTooltips((v) => !v)}
       />
-      <div className="workspace" ref={workspaceRef}>
+      <div
+        className="workspace"
+        ref={workspaceRef}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => void onDrop(e)}
+      >
         <Canvas />
         <PropertyPanel />
       </div>
       <StatusBar onOpenPicker={() => setPickerOpen(true)} />
       {pickerOpen && <ComponentPicker onClose={() => setPickerOpen(false)} />}
+      {dialog && <ProjectDialog mode={dialog} onClose={() => setDialog(null)} />}
     </div>
   )
 }

@@ -135,8 +135,20 @@ export const logicComponents: ComponentDef[] = [
     inputs: [onoff('A')],
     outputs: [onoff('Value')],
     properties: [
-      { kind: 'number', key: 'charge', label: 'Charge time', default: 1 },
-      { kind: 'number', key: 'discharge', label: 'Discharge time', default: 1 },
+      {
+        kind: 'number',
+        key: 'charge',
+        label: 'Charge time',
+        default: 1,
+        xml: { form: 'attributeNumber', name: 'ct' },
+      },
+      {
+        kind: 'number',
+        key: 'discharge',
+        label: 'Discharge time',
+        default: 1,
+        xml: { form: 'attributeNumber', name: 'dt' },
+      },
     ],
     stateful: true,
     eval: ({ inputs, properties, state }) => {
@@ -163,8 +175,20 @@ export const logicComponents: ComponentDef[] = [
     inputs: [onoff('Enable')],
     outputs: [onoff('Value')],
     properties: [
-      { kind: 'number', key: 'onDuration', label: 'On duration', default: 0.5 },
-      { kind: 'number', key: 'offDuration', label: 'Off duration', default: 0.5 },
+      {
+        kind: 'number',
+        key: 'onDuration',
+        label: 'On duration',
+        default: 0.5,
+        xml: { form: 'attributeNumber', name: 'on' },
+      },
+      {
+        kind: 'number',
+        key: 'offDuration',
+        label: 'Off duration',
+        default: 0.5,
+        xml: { form: 'attributeNumber', name: 'off' },
+      },
     ],
     stateful: true,
     eval: ({ inputs, properties, state }) => {
@@ -198,6 +222,7 @@ export const logicComponents: ComponentDef[] = [
         key: 'mode',
         label: 'Trigger',
         default: 'offToOn',
+        xml: { form: 'attributeEnum', name: 'm', values: { onToOff: 0, offToOn: 1, either: 2 } },
         options: [
           { value: 'offToOn', label: 'Off to on' },
           { value: 'onToOff', label: 'On to off' },
@@ -244,7 +269,15 @@ function booleanFunction(id: string, swType: number, name: string, variables: st
     description: `Evaluates a boolean expression of the inputs ${variables.join(', ')}.`,
     inputs: variables.map(onoff),
     outputs: [onoff('Result')],
-    properties: [{ kind: 'text', key: 'expression', label: 'Expression', default: 'x' }],
+    properties: [
+      {
+        kind: 'text',
+        key: 'expression',
+        label: 'Expression',
+        default: 'x',
+        xml: { form: 'attribute', name: 'e' },
+      },
+    ],
     eval: ({ inputs, properties }) => {
       const vars: Record<string, number> = {}
       variables.forEach((name, i) => {

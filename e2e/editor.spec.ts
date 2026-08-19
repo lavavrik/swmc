@@ -102,3 +102,42 @@ test('pans the workspace with the middle button', async ({ page }) => {
   const after = await nodes(page).first().boundingBox()
   expect(after!.x).toBeGreaterThan(before!.x)
 })
+
+test('saves a microcontroller to the library and opens it again', async ({ page }) => {
+  await place(page, 'Constant Number')
+  await page.locator('.name-field').fill('Test Rig')
+
+  await page.getByTitle('Save or export this microcontroller').click()
+  await page.getByRole('button', { name: 'Save to library' }).click()
+
+  await page.getByTitle('Discard and start again').click()
+  await expect(nodes(page)).toHaveCount(0)
+
+  await page.getByTitle('Open or import a microcontroller').click()
+  await page.getByRole('button', { name: /Test Rig/ }).click()
+  await expect(nodes(page)).toHaveCount(1)
+  await expect(page.locator('.name-field')).toHaveValue('Test Rig')
+})
+
+test('imports a dropped-in file through the open dialog', async ({ page }) => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="Imported" description="" width="1" length="1">
+	<nodes/>
+	<group>
+		<data><inputs/><outputs/></data>
+		<components>
+			<c type="15"><object id="1"><pos x="1" y="-1"/><n text="3" value="3"/></object></c>
+		</components>
+		<components_bridge/>
+		<groups/>
+	</group>
+</microprocessor>`
+  await page.getByTitle('Open or import a microcontroller').click()
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'imported.xml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(xml),
+  })
+  await expect(nodes(page)).toHaveCount(1)
+  await expect(page.locator('.name-field')).toHaveValue('Imported')
+})

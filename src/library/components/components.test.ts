@@ -192,10 +192,11 @@ describe('arithmetic', () => {
   })
 
   it('holds a value in the memory register until written or reset', () => {
+    // Inputs are set, reset, value — the order saved files use
     const out = ticks('arithmetic.memoryRegister', [
-      [5, true, false],
-      [9, false, false],
-      [9, false, true],
+      [true, false, 5],
+      [false, false, 9],
+      [false, true, 9],
     ])
     expect(out.map((o) => o[0])).toEqual([5, 5, 0])
   })
@@ -309,23 +310,18 @@ describe('timers', () => {
 describe('composite', () => {
   it('reads a channel using 1-based channel numbers', () => {
     const bools = Array.from({ length: 32 }, (_, i) => i === 3)
-    expect(run('composite.readOnoff', [composite({ bools })], { channel: 4, count: 1 })).toEqual([
-      true,
-    ])
-    expect(run('composite.readOnoff', [composite({ bools })], { channel: 1, count: 1 })).toEqual([
-      false,
-    ])
+    expect(run('composite.readOnoff', [composite({ bools })], { channel: 4 })).toEqual([true])
+    expect(run('composite.readOnoff', [composite({ bools })], { channel: 1 })).toEqual([false])
   })
 
-  it('reads several channels at once', () => {
+  it('lets a wired start channel override the property', () => {
     const numbers = Array.from({ length: 32 }, (_, i) => i)
-    const outputs = run('composite.readNumber', [composite({ numbers })], { channel: 2, count: 3 })
-    expect(outputs).toEqual([1, 2, 3])
+    expect(run('composite.readNumber', [composite({ numbers }), 3], { channel: 1 })).toEqual([2])
   })
 
   it('writes channels without disturbing the rest of the signal', () => {
     const numbers = Array.from({ length: 32 }, () => 9)
-    const [written] = run('composite.writeNumber', [composite({ numbers }), 1, 2], {
+    const [written] = run('composite.writeNumber', [composite({ numbers }), undefined, 1, 2], {
       channel: 5,
       count: 2,
     })
@@ -337,14 +333,19 @@ describe('composite', () => {
 
   it('exposes one input port per channel it writes', () => {
     const write = def('composite.writeOnoff')
-    expect(resolvePorts(write, 'in', { channel: 1, count: 4 })).toHaveLength(5)
-    expect(resolvePorts(write, 'in', { channel: 1, count: 1 })).toHaveLength(2)
+    // composite + start channel + one port per channel
+    expect(resolvePorts(write, 'in', { channel: 1, count: 4 })).toHaveLength(6)
+    expect(resolvePorts(write, 'in', { channel: 1, count: 1 })).toHaveLength(3)
   })
 
   it('never addresses a channel past 32', () => {
+    // composite + start channel + channels 31 and 32 only
     expect(
-      resolvePorts(def('composite.readNumber'), 'out', { channel: 31, count: 8 }),
-    ).toHaveLength(2)
+      resolvePorts(def('composite.writeNumber'), 'in', { channel: 31, count: 8 }),
+    ).toHaveLength(4)
+    expect(
+      resolvePorts(def('composite.writeNumber'), 'in', { channel: 32, count: 8 }),
+    ).toHaveLength(3)
   })
 
   it('switches between two composite signals', () => {

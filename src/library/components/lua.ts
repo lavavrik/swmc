@@ -21,7 +21,15 @@ export const luaComponents: ComponentDef[] = [
     description: 'Runs a Lua script every tick, reading and writing composite channels.',
     inputs: [composite('Composite'), video('Video')],
     outputs: [composite('Composite'), video('Video')],
-    properties: [{ kind: 'text', key: 'script', label: 'Script', default: '-- onTick()\n' }],
+    properties: [
+      {
+        kind: 'text',
+        key: 'script',
+        label: 'Script',
+        default: '-- onTick()\n',
+        xml: { form: 'attribute', name: 'script' },
+      },
+    ],
     eval: ({ inputs }) => ({ outputs: [asComposite(inputs[0]), inputs[1]] }),
   }),
 ]

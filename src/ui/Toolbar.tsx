@@ -20,10 +20,14 @@ function RoundButton({ icon, title, onClick, disabled = false }: ButtonProps) {
 
 export function Toolbar({
   onOpenPicker,
+  onOpenProjects,
+  onSaveProject,
   showTooltips,
   onToggleTooltips,
 }: {
   onOpenPicker: () => void
+  onOpenProjects: () => void
+  onSaveProject: () => void
   showTooltips: boolean
   onToggleTooltips: () => void
 }) {
@@ -48,8 +52,12 @@ export function Toolbar({
       <RoundButton icon="confirm" title="Confirm (not yet implemented)" disabled />
       <span className="toolbar-gap" />
       <RoundButton icon="new" title="Add component" onClick={onOpenPicker} />
-      <RoundButton icon="open" title="Open — arrives with XML import" disabled />
-      <RoundButton icon="save" title="Save — arrives with XML export" disabled />
+      <RoundButton icon="open" title="Open or import a microcontroller" onClick={onOpenProjects} />
+      <RoundButton
+        icon="save"
+        title="Save or export this microcontroller"
+        onClick={onSaveProject}
+      />
       <RoundButton icon="workshop" title="Steam Workshop — not applicable" disabled />
       <RoundButton icon="preview3d" title="3D preview — not yet implemented" disabled />
       <RoundButton

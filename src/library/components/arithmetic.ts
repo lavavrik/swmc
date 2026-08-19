@@ -35,7 +35,15 @@ function numberFunction(id: string, swType: number, name: string, variables: str
     description: `Evaluates a mathematical expression of the inputs ${variables.join(', ')}.`,
     inputs: variables.map(num),
     outputs: [num('Result')],
-    properties: [{ kind: 'text', key: 'expression', label: 'Expression', default: 'x' }],
+    properties: [
+      {
+        kind: 'text',
+        key: 'expression',
+        label: 'Expression',
+        default: 'x',
+        xml: { form: 'attribute', name: 'e' },
+      },
+    ],
     eval: ({ inputs, properties }) => {
       const vars: Record<string, number> = {}
       variables.forEach((name, i) => {
@@ -113,8 +121,20 @@ export const arithmeticComponents: ComponentDef[] = [
     inputs: [num('A')],
     outputs: [num('Value')],
     properties: [
-      { kind: 'number', key: 'min', label: 'Minimum', default: 0 },
-      { kind: 'number', key: 'max', label: 'Maximum', default: 1 },
+      {
+        kind: 'number',
+        key: 'min',
+        label: 'Minimum',
+        default: 0,
+        xml: { form: 'numberElement', name: 'min' },
+      },
+      {
+        kind: 'number',
+        key: 'max',
+        label: 'Maximum',
+        default: 1,
+        xml: { form: 'numberElement', name: 'max' },
+      },
     ],
     eval: ({ inputs, properties }) => {
       const min = prop(properties, 'min', 0)
@@ -191,11 +211,41 @@ export const arithmeticComponents: ComponentDef[] = [
     inputs: [onoff('Up'), onoff('Down'), onoff('Reset')],
     outputs: [num('Value')],
     properties: [
-      { kind: 'number', key: 'increment', label: 'Increment', default: 1 },
-      { kind: 'number', key: 'min', label: 'Minimum', default: 0 },
-      { kind: 'number', key: 'max', label: 'Maximum', default: 10 },
-      { kind: 'number', key: 'resetValue', label: 'Reset value', default: 0 },
-      { kind: 'bool', key: 'clamp', label: 'Clamp', default: true },
+      {
+        kind: 'number',
+        key: 'increment',
+        label: 'Increment',
+        default: 1,
+        xml: { form: 'numberElement', name: 'i' },
+      },
+      {
+        kind: 'number',
+        key: 'min',
+        label: 'Minimum',
+        default: 0,
+        xml: { form: 'numberElement', name: 'min' },
+      },
+      {
+        kind: 'number',
+        key: 'max',
+        label: 'Maximum',
+        default: 10,
+        xml: { form: 'numberElement', name: 'max' },
+      },
+      {
+        kind: 'number',
+        key: 'resetValue',
+        label: 'Reset value',
+        default: 0,
+        xml: { form: 'numberElement', name: 'r' },
+      },
+      {
+        kind: 'bool',
+        key: 'clamp',
+        label: 'Clamp',
+        default: true,
+        xml: { form: 'attributeBool', name: 'm', asInt: true },
+      },
     ],
     stateful: true,
     eval: ({ inputs, properties, state }) => {
@@ -227,15 +277,24 @@ export const arithmeticComponents: ComponentDef[] = [
     category: 'arithmetic',
     name: 'Memory Register',
     description: 'Stores a number, holding it until it is written again or reset.',
-    inputs: [num('Value'), onoff('Set'), onoff('Reset')],
+    // Port order follows the saved-file order: set, reset, then the value
+    inputs: [onoff('Set'), onoff('Reset'), num('Value')],
     outputs: [num('Value')],
-    properties: [{ kind: 'number', key: 'resetValue', label: 'Reset value', default: 0 }],
+    properties: [
+      {
+        kind: 'number',
+        key: 'resetValue',
+        label: 'Reset value',
+        default: 0,
+        xml: { form: 'numberElement', name: 'r' },
+      },
+    ],
     stateful: true,
     eval: ({ inputs, properties, state }) => {
       const resetValue = prop(properties, 'resetValue', 0)
       let value = state ?? resetValue
-      if (asBool(inputs[1])) value = asNumber(inputs[0])
-      if (asBool(inputs[2])) value = resetValue
+      if (asBool(inputs[0])) value = asNumber(inputs[2])
+      if (asBool(inputs[1])) value = resetValue
       return { outputs: [value], state: value }
     },
   }),
@@ -274,9 +333,27 @@ function pidController(id: string, swType: number, name: string, gainsAsInputs: 
     properties: gainsAsInputs
       ? []
       : [
-          { kind: 'number', key: 'kp', label: 'Proportional', default: 1 },
-          { kind: 'number', key: 'ki', label: 'Integral', default: 0 },
-          { kind: 'number', key: 'kd', label: 'Derivative', default: 0 },
+          {
+            kind: 'number',
+            key: 'kp',
+            label: 'Proportional',
+            default: 1,
+            xml: { form: 'numberElement', name: 'kp' },
+          },
+          {
+            kind: 'number',
+            key: 'ki',
+            label: 'Integral',
+            default: 0,
+            xml: { form: 'numberElement', name: 'ki' },
+          },
+          {
+            kind: 'number',
+            key: 'kd',
+            label: 'Derivative',
+            default: 0,
+            xml: { form: 'numberElement', name: 'kd' },
+          },
         ],
     stateful: true,
     eval: ({ inputs, properties, state }) => {

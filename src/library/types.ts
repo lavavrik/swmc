@@ -26,41 +26,60 @@ export interface PortDef {
   readonly signal: SignalType
 }
 
-export type PropertyDef =
+/**
+ * How a property is written into the game's XML. The registry is the only place
+ * this knowledge lives, so a correction against a real save file is a one-line
+ * change on the property it concerns.
+ */
+export type XmlProperty =
+  /** A string attribute on the component's `<object>` element. */
+  | { readonly form: 'attribute'; readonly name: string }
+  /**
+   * A numeric attribute. `offset` is added when reading and subtracted when
+   * writing (channel numbers are stored zero-based); `absent` is the value the
+   * game means when the attribute is missing.
+   */
   | {
-      readonly kind: 'number'
-      readonly key: string
-      readonly label: string
-      readonly default: number
+      readonly form: 'attributeNumber'
+      readonly name: string
+      readonly offset?: number
+      readonly absent?: number
     }
+  /** A boolean attribute written as `true`/`false`, or as `1`/`0` when `asInt`. */
+  | { readonly form: 'attributeBool'; readonly name: string; readonly asInt?: boolean }
+  /** An attribute holding the numeric code of one of our string values. */
   | {
-      readonly kind: 'text'
-      readonly key: string
-      readonly label: string
-      readonly default: string
+      readonly form: 'attributeEnum'
+      readonly name: string
+      readonly values: Readonly<Record<string, number>>
     }
-  | {
-      readonly kind: 'bool'
-      readonly key: string
-      readonly label: string
-      readonly default: boolean
-    }
-  | {
-      readonly kind: 'dropdown'
-      readonly key: string
-      readonly label: string
-      readonly default: string
-      readonly options: readonly { readonly value: string; readonly label: string }[]
-    }
-  | {
-      readonly kind: 'slider'
-      readonly key: string
-      readonly label: string
-      readonly default: number
-      readonly min: number
-      readonly max: number
-      readonly step: number
-    }
+  /** A child element `<name text="…" value="…"/>`, the game's number property. */
+  | { readonly form: 'numberElement'; readonly name: string }
+
+interface PropertyCommon {
+  readonly key: string
+  readonly label: string
+  readonly xml?: XmlProperty
+}
+
+export type PropertyDef = PropertyCommon &
+  (
+    | { readonly kind: 'number'; readonly default: number }
+    | { readonly kind: 'text'; readonly default: string }
+    | { readonly kind: 'bool'; readonly default: boolean }
+    | {
+        readonly kind: 'dropdown'
+        readonly default: string
+        readonly options: readonly { readonly value: string; readonly label: string }[]
+      }
+    | {
+        readonly kind: 'slider'
+        readonly default: number
+        readonly min: number
+        readonly max: number
+        readonly step: number
+      }
+  )
 
 /** 32 numbers and 32 booleans travelling on one composite wire. */
 export interface CompositeValue {
@@ -128,5 +147,14 @@ export interface ComponentDef<S = any> {
   readonly stateful?: boolean
   /** Kept for old creations; hidden from the component menu. */
   readonly deprecated?: boolean
+  /** Component-level XML encoding details. */
+  readonly xml?: {
+    /**
+     * Names of the `<inN>` elements for each input port, aligned with the
+     * resolved input list. Defaults to the 1-based index, which is what most
+     * components use.
+     */
+    readonly inputNames?: (properties: NodeProperties) => readonly string[]
+  }
   readonly eval: EvalFn<S>
 }

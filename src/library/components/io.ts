@@ -18,9 +18,16 @@ const SIGNAL_NAMES: Record<SignalType, string> = {
   audio: 'audio',
 }
 
+/**
+ * `faceX` and `faceZ` place the pin on the block's face, and `nodeId` is the
+ * identifier the vehicle uses for it — both come straight from a saved file and
+ * are kept so imports round-trip.
+ */
 const labelProperties = [
   { kind: 'text', key: 'label', label: 'Name', default: '' },
   { kind: 'text', key: 'description', label: 'Description', default: '' },
+  { kind: 'number', key: 'faceX', label: 'Face x', default: 0 },
+  { kind: 'number', key: 'faceZ', label: 'Face z', default: 0 },
 ] as const
 
 export const ioComponents: ComponentDef[] = SIGNAL_TYPES.flatMap((signal) => [

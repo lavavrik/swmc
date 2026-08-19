@@ -15,6 +15,7 @@ const unitsProperty = {
   key: 'units',
   label: 'Duration units',
   default: 'seconds',
+  xml: { form: 'attributeEnum', name: 'u', values: { seconds: 0, ticks: 1 } },
   options: [
     { value: 'seconds', label: 'Seconds' },
     { value: 'ticks', label: 'Ticks' },

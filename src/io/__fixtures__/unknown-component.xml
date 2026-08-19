@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="From The Future" description="" width="1" length="1" id_counter="3" id_counter_node="0">
+	<nodes/>
+	<group>
+		<data>
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="15">
+				<object id="1">
+					<pos x="1" y="-1"/>
+					<n text="5" value="5"/>
+				</object>
+			</c>
+			<c type="99">
+				<object id="2" mystery="42">
+					<pos x="3" y="-1"/>
+					<in1 component_id="1"/>
+				</object>
+			</c>
+			<c type="6">
+				<object id="3">
+					<pos x="5" y="-1"/>
+					<in1 component_id="2" node_index="1"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge/>
+		<groups/>
+	</group>
+</microprocessor>

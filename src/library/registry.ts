@@ -17,6 +17,7 @@ import { logicComponents } from './components/logic'
 import { luaComponents } from './components/lua'
 import { propertyComponents } from './components/properties'
 import { timerComponents } from './components/timers'
+import { unknownComponents } from './components/unknown'
 import { tooltipComponents } from './components/tooltips'
 import type { Category, ComponentDef } from './types'
 
@@ -32,6 +33,7 @@ const DEFS: ComponentDef[] = [
   ...avComponents,
   ...luaComponents,
   ...ioComponents,
+  ...unknownComponents,
 ]
 
 const BY_ID = new Map<ComponentTypeId, ComponentDef>(DEFS.map((d) => [d.id, d]))

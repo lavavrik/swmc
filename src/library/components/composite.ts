@@ -1,38 +1,50 @@
 /**
  * Composite components.
  *
- * A composite signal carries 32 numbers and 32 booleans. The read and write
- * components expose one port per channel they touch, so their port lists are
- * resolved from their `count` property rather than being fixed — that is what
- * the "active inputs: 2, 3" line on an in-game card reports.
+ * A composite signal carries 32 numbers and 32 booleans. Write components
+ * expose one input per channel they touch, so their port lists are resolved
+ * from their `count` property rather than being fixed — that is what the
+ * "active inputs: 2, 3" line on an in-game card reports.
+ *
+ * Channel numbers are 1-based everywhere the user sees them, and zero-based in
+ * saved files; the `offset` in the XML mapping is the only place that differs.
  */
+import type { NodeProperties } from '@/model/schema'
+import type { SignalType } from '@/model/types'
 import { defineComponent } from '../define'
 import { clampChannel, composite, num, onoff, prop } from '../portHelpers'
 import { EMPTY_COMPOSITE, asBool, asComposite, asNumber } from '../values'
-import type { SignalType } from '@/model/types'
 import type { ComponentDef, CompositeValue, PortDef } from '../types'
 
-/** Channel numbers are 1-based everywhere the user sees them. */
-const startChannel = (properties: Readonly<Record<string, unknown>>): number =>
+const startChannel = (properties: NodeProperties): number =>
   clampChannel(prop(properties, 'channel', 1))
 
-const channelCount = (properties: Readonly<Record<string, unknown>>): number =>
+const channelCount = (properties: NodeProperties): number =>
   clampChannel(prop(properties, 'count', 1))
 
 /** Channel ports, labelled with the channel number they actually address. */
-function channelPorts(
-  properties: Readonly<Record<string, unknown>>,
-  signal: SignalType,
-): PortDef[] {
+function channelPorts(properties: NodeProperties, signal: SignalType): PortDef[] {
   const start = startChannel(properties)
   const count = Math.min(channelCount(properties), 33 - start)
   return Array.from({ length: count }, (_, i) => ({ label: `Channel ${start + i}`, signal }))
 }
 
-const channelProperties = [
-  { kind: 'number', key: 'channel', label: 'Start channel', default: 1 },
-  { kind: 'number', key: 'count', label: 'Channel count', default: 1 },
-] as const
+const channelProperty = {
+  kind: 'number',
+  key: 'channel',
+  label: 'Start channel',
+  default: 1,
+  xml: { form: 'attributeNumber', name: 'offset', offset: 1 },
+} as const
+
+const countProperty = {
+  kind: 'number',
+  key: 'count',
+  label: 'Channel count',
+  default: 1,
+  // The game means 32 channels when the attribute is absent
+  xml: { form: 'attributeNumber', name: 'count', absent: 32 },
+} as const
 
 /** Replaces a run of channels in a composite value. */
 function writeChannels<T>(base: readonly T[], start: number, values: readonly T[]): readonly T[] {
@@ -44,31 +56,25 @@ function writeChannels<T>(base: readonly T[], start: number, values: readonly T[
   return next
 }
 
-function compositeRead(
-  id: string,
-  swType: number,
-  name: string,
-  signal: 'onoff' | 'number',
-  deprecated = false,
-) {
+function compositeRead(id: string, swType: number, name: string, signal: 'onoff' | 'number') {
+  const kind = signal === 'onoff' ? 'on/off' : 'number'
   return defineComponent({
     id,
     swType,
     category: 'composite',
     name,
-    description: `Reads ${signal === 'onoff' ? 'on/off' : 'number'} channels out of a composite signal.`,
-    inputs: [composite('Composite')],
-    outputs: (properties) => channelPorts(properties, signal),
-    properties: [...channelProperties],
-    deprecated,
+    description: `Reads one ${kind} channel out of a composite signal.`,
+    inputs: [composite('Composite'), num('Start channel')],
+    outputs: [{ label: 'Value', signal }],
+    properties: [channelProperty],
     eval: ({ inputs, properties }) => {
       const value = asComposite(inputs[0])
-      const start = startChannel(properties)
-      const ports = channelPorts(properties, signal)
+      // A wired start channel overrides the property, as in the game
+      const channel = clampChannel(
+        inputs[1] === undefined ? startChannel(properties) : asNumber(inputs[1]),
+      )
       const source = signal === 'onoff' ? value.bools : value.numbers
-      return {
-        outputs: ports.map((_, i) => source[start - 1 + i] ?? (signal === 'onoff' ? false : 0)),
-      }
+      return { outputs: [source[channel - 1] ?? (signal === 'onoff' ? false : 0)] }
     },
   })
 }
@@ -80,21 +86,36 @@ function compositeWrite(
   signal: 'onoff' | 'number',
   deprecated = false,
 ) {
+  const kind = signal === 'onoff' ? 'on/off' : 'number'
   return defineComponent({
     id,
     swType,
     category: 'composite',
     name,
-    description: `Writes ${signal === 'onoff' ? 'on/off' : 'number'} values into channels of a composite signal.`,
-    inputs: (properties) => [composite('Composite'), ...channelPorts(properties, signal)],
+    description: `Writes ${kind} values into channels of a composite signal.`,
+    inputs: (properties) => [
+      composite('Composite'),
+      num('Start channel'),
+      ...channelPorts(properties, signal),
+    ],
     outputs: [composite('Composite')],
-    properties: [...channelProperties],
+    properties: [channelProperty, countProperty],
     deprecated,
+    xml: {
+      // The composite and start-channel inputs are named; channels are numbered
+      inputNames: (properties) => [
+        'c',
+        'off',
+        ...channelPorts(properties, signal).map((_, i) => String(i + 1)),
+      ],
+    },
     eval: ({ inputs, properties }) => {
       const base = asComposite(inputs[0])
-      const start = startChannel(properties)
+      const start = clampChannel(
+        inputs[1] === undefined ? startChannel(properties) : asNumber(inputs[1]),
+      )
       const values = channelPorts(properties, signal).map((_, i) =>
-        signal === 'onoff' ? asBool(inputs[i + 1]) : asNumber(inputs[i + 1]),
+        signal === 'onoff' ? asBool(inputs[i + 2]) : asNumber(inputs[i + 2]),
       )
       const written: CompositeValue =
         signal === 'onoff'
@@ -135,9 +156,7 @@ export const compositeComponents: ComponentDef[] = [
     inputs: [composite('Composite (on)'), composite('Composite (off)'), onoff('Switch')],
     outputs: [composite('Composite')],
     properties: [],
-    eval: ({ inputs }) => ({
-      outputs: [asComposite(asBool(inputs[2]) ? inputs[0] : inputs[1])],
-    }),
+    eval: ({ inputs }) => ({ outputs: [asComposite(asBool(inputs[2]) ? inputs[0] : inputs[1])] }),
   }),
 
   defineComponent({

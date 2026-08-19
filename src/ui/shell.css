@@ -284,3 +284,92 @@
   font-size: 13px;
   color: var(--chrome-text-dim);
 }
+
+/* ---------- open / save dialog ---------- */
+
+.dialog-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.dialog-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.dialog-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-size: 12px;
+}
+
+.dialog-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #3d474c;
+  border-radius: 3px;
+  background: #1a1f22;
+  color: var(--chrome-text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.text-button {
+  padding: 7px 12px;
+  border: 1px solid #3d474c;
+  border-radius: 4px;
+  background: var(--chrome-raised);
+  color: var(--chrome-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.text-button:hover {
+  border-color: var(--button);
+}
+
+.text-button.primary {
+  background: var(--button);
+  border-color: var(--button);
+}
+
+.project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 18px;
+}
+
+.project-row .picker-item {
+  flex: 1;
+}
+
+.dialog-problem {
+  margin: 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--chrome-border);
+  color: #ff8a8a;
+  font-size: 12px;
+}
+
+.name-field {
+  width: 200px;
+  padding: 7px 9px;
+  border: 1px solid #3d474c;
+  border-radius: 3px;
+  background: #1a1f22;
+  color: var(--chrome-text);
+  font: inherit;
+  font-size: 13px;
+}

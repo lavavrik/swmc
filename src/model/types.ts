@@ -43,6 +43,11 @@ export interface GraphNode {
   /** Position in grid units. Always integral — the game snaps to its grid. */
   readonly position: Point
   readonly properties: Readonly<Record<string, PropertyValue>>
+  /**
+   * Attributes from an imported file that this editor does not model. They are
+   * carried through untouched so a round-trip does not lose anything.
+   */
+  readonly raw?: Readonly<Record<string, string>>
 }
 
 export interface Point {
@@ -64,6 +69,11 @@ export interface MicrocontrollerMeta {
   /** Physical size of the microcontroller block, in blocks. */
   readonly width: number
   readonly length: number
+  /**
+   * Attributes of the microprocessor element this editor does not model —
+   * notably `sym0`…`sym15`, the 16×16 icon. Preserved verbatim.
+   */
+  readonly extra?: Readonly<Record<string, string>>
 }
 
 /**

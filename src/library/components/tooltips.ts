@@ -8,6 +8,7 @@ const displayProperty = {
   key: 'display',
   label: 'Show',
   default: 'always',
+  xml: { form: 'attributeEnum', name: 'm', values: { always: 0, on: 1, off: 2 } },
   options: [
     { value: 'always', label: 'Always' },
     { value: 'on', label: 'When on' },
@@ -37,9 +38,27 @@ export const tooltipComponents: ComponentDef[] = [
     inputs: [onoff('Value')],
     outputs: [],
     properties: [
-      { kind: 'text', key: 'name', label: 'Label', default: 'state' },
-      { kind: 'text', key: 'onLabel', label: 'On label', default: 'on' },
-      { kind: 'text', key: 'offLabel', label: 'Off label', default: 'off' },
+      {
+        kind: 'text',
+        key: 'name',
+        label: 'Label',
+        default: 'state',
+        xml: { form: 'attribute', name: 'l' },
+      },
+      {
+        kind: 'text',
+        key: 'onLabel',
+        label: 'On label',
+        default: 'on',
+        xml: { form: 'attribute', name: 'on' },
+      },
+      {
+        kind: 'text',
+        key: 'offLabel',
+        label: 'Off label',
+        default: 'off',
+        xml: { form: 'attribute', name: 'off' },
+      },
       displayProperty,
     ],
     eval: () => ({ outputs: [] }),

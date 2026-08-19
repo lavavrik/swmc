@@ -12,7 +12,15 @@ export const constantComponents: ComponentDef[] = [
     description: 'Outputs a fixed number value.',
     inputs: [],
     outputs: [num('Value')],
-    properties: [{ kind: 'number', key: 'value', label: 'Value', default: 0 }],
+    properties: [
+      {
+        kind: 'number',
+        key: 'value',
+        label: 'Value',
+        default: 0,
+        xml: { form: 'numberElement', name: 'n' },
+      },
+    ],
     eval: ({ properties }) => ({ outputs: [prop(properties, 'value', 0)] }),
   }),
 

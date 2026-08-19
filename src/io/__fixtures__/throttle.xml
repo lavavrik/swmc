@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="Throttle Limiter" description="Clamps the throttle" width="1" length="1" id_counter="6" id_counter_node="2" sym0="255">
+	<nodes>
+		<n id="1" component_id="2">
+			<node label="Throttle In" mode="1" type="1" description="the requested throttle">
+				<position x="-1"/>
+			</node>
+		</n>
+		<n id="2" component_id="3">
+			<node label="Throttle Out" mode="0" type="1" description="the limited throttle">
+				<position x="1"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data>
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="11">
+				<object id="4">
+					<pos x="1" y="-1"/>
+					<in1 component_id="2"/>
+					<min text="0" value="0"/>
+					<max text="0.75" value="0.75"/>
+				</object>
+			</c>
+			<c type="10">
+				<object id="5" e="x*2">
+					<pos x="3" y="-1"/>
+					<in1 component_id="4"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="2">
+				<object id="2">
+					<pos x="-1" y="-1"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="3">
+					<in1 component_id="5"/>
+					<pos x="5" y="-1"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+	</group>
+</microprocessor>
