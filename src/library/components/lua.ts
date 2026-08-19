@@ -1,11 +1,14 @@
 /**
  * The Lua script component.
  *
- * Until the Lua subsystem lands, evaluation passes its inputs straight through
- * so a graph containing a script node still behaves sensibly.
+ * Evaluation delegates to whatever interpreter is installed through the Lua
+ * hook. With none installed — before the interpreter has loaded, or in a test
+ * that does not need it — the component passes its signals straight through so
+ * a graph containing a script node still behaves sensibly.
  */
 import { defineComponent } from '../define'
-import { composite, video } from '../portHelpers'
+import { runLuaTick } from '../hooks'
+import { composite, textProp, video } from '../portHelpers'
 import { asComposite } from '../values'
 import type { ComponentDef } from '../types'
 
@@ -30,6 +33,15 @@ export const luaComponents: ComponentDef[] = [
         xml: { form: 'attribute', name: 'script' },
       },
     ],
-    eval: ({ inputs }) => ({ outputs: [asComposite(inputs[0]), inputs[1]] }),
+    eval: ({ inputs, properties, nodeId }) => {
+      const input = asComposite(inputs[0])
+      const outcome = runLuaTick({
+        nodeId,
+        script: textProp(properties, 'script'),
+        input,
+        properties,
+      })
+      return { outputs: [outcome ? outcome.output : input, inputs[1]] }
+    },
   }),
 ]

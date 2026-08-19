@@ -4,6 +4,7 @@ import { Canvas } from '@/editor/Canvas'
 import { useEditorStore } from '@/editor/store'
 import { importFile } from '@/io/library'
 import { ComponentPicker } from './ComponentPicker'
+import { LuaEditor } from './LuaEditor'
 import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
 import { PinPanel } from './PinPanel'
 import { PropertyPanel } from './PropertyPanel'
@@ -11,6 +12,9 @@ import { StatusBar } from './StatusBar'
 import { Toolbar } from './Toolbar'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useSimulationDriver } from '@/sim/useSimulationDriver'
+import { installLuaRunner } from '@/lua/runner'
+
+installLuaRunner()
 import './shell.css'
 
 export function AppShell() {
@@ -25,6 +29,9 @@ export function AppShell() {
 
   useKeyboardShortcuts(viewSize)
   useSimulationDriver()
+
+  const editingScript = useEditorStore((s) => s.editingScript)
+  const openScript = useEditorStore((s) => s.openScript)
 
   // Dropping a .xml file anywhere on the workspace opens it
   const load = useEditorStore((s) => s.load)
@@ -58,6 +65,7 @@ export function AppShell() {
       <StatusBar onOpenPicker={() => setPickerOpen(true)} />
       {pickerOpen && <ComponentPicker onClose={() => setPickerOpen(false)} />}
       {dialog && <ProjectDialog mode={dialog} onClose={() => setDialog(null)} />}
+      {editingScript && <LuaEditor node={editingScript} onClose={() => openScript(null)} />}
     </div>
   )
 }

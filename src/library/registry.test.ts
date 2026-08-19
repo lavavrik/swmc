@@ -38,6 +38,7 @@ describe('registry integrity', () => {
   it('produces one output value per output port', () => {
     for (const d of defs) {
       const { outputs } = d.eval({
+        nodeId: 'test',
         inputs: defaultPorts(d, 'in').map(() => undefined),
         properties: defaultProperties(d),
         state: undefined,

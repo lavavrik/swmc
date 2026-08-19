@@ -110,7 +110,12 @@ export class Simulation {
         continue
       }
 
-      const result = def.eval({ inputs, properties: node.properties, state: this.state.get(id) })
+      const result = def.eval({
+        nodeId: id,
+        inputs,
+        properties: node.properties,
+        state: this.state.get(id),
+      })
       if (def.stateful === true) this.state.set(id, result.state)
       result.outputs.forEach((value, index) => this.current.set(portKey(id, index), value))
     }

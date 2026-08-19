@@ -20,6 +20,14 @@ async function centre(locator: Locator): Promise<{ x: number; y: number }> {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
 }
 
+/** Replaces the whole script in the Monaco editor. */
+async function typeScript(page: Page, source: string) {
+  await page.locator('.lua-code .monaco-editor').click()
+  await page.keyboard.press('ControlOrMeta+a')
+  // insertText goes straight into the model, past autocomplete and auto-closing
+  await page.keyboard.insertText(source)
+}
+
 async function drag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
   await page.mouse.move(from.x, from.y)
   await page.mouse.down()
@@ -176,4 +184,40 @@ test('drives the graph from a microcontroller input pin', async ({ page }) => {
   await page.locator('.pin-panel input[type=number]').fill('7')
   await page.getByTitle('Advance one tick').click()
   await expect(page.locator('.pin-panel .pin-value')).toHaveText('7')
+})
+
+test('runs a Lua script and draws it on the monitor', async ({ page }) => {
+  await place(page, 'Lua Script')
+  await page.getByRole('button', { name: 'Edit script' }).click()
+  await expect(page.locator('.monaco-editor')).toBeVisible()
+
+  await typeScript(
+    page,
+    'function onDraw() screen.setColor(255,0,0) screen.drawRectF(0,0,32,32) end',
+  )
+
+  await page.getByRole('button', { name: 'Run simulation' }).click()
+
+  // The preview is red once the script has drawn
+  await expect
+    .poll(
+      async () =>
+        page.locator('canvas.screen-preview').evaluate((canvas) => {
+          const ctx = (canvas as HTMLCanvasElement).getContext('2d')
+          const pixel = ctx?.getImageData(16, 16, 1, 1).data
+          return pixel ? [pixel[0], pixel[1], pixel[2]].join(',') : ''
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe('255,0,0')
+
+  await expect(page.locator('.lua-error')).toHaveCount(0)
+})
+
+test('reports a Lua error without breaking the editor', async ({ page }) => {
+  await place(page, 'Lua Script')
+  await page.getByRole('button', { name: 'Edit script' }).click()
+  await typeScript(page, 'function onTick( end')
+  await page.getByRole('button', { name: 'Run simulation' }).click()
+  await expect(page.locator('.lua-error')).toBeVisible({ timeout: 15_000 })
 })

@@ -71,6 +71,7 @@ export function PropertyPanel() {
   const selection = useEditorStore((s) => s.selection)
   const node = useEditorStore((s) => s.doc.nodes.find((n) => n.id === s.selection[0]))
   const setProperty = useEditorStore((s) => s.setProperty)
+  const openScript = useEditorStore((s) => s.openScript)
 
   if (selection.length === 0) return null
   if (selection.length > 1) {
@@ -89,18 +90,26 @@ export function PropertyPanel() {
       <h2>{def.name}</h2>
       <p className="panel-hint">{def.description}</p>
 
+      {def.id === 'data.luaScript' && (
+        <button className="text-button primary panel-action" onClick={() => openScript(node.id)}>
+          Edit script
+        </button>
+      )}
+
       {def.properties.length > 0 && (
         <div className="panel-fields">
-          {def.properties.map((property) => (
-            <label key={property.key}>
-              <span>{property.label}</span>
-              <Field
-                property={property}
-                value={node.properties[property.key]}
-                onChange={(next) => setProperty(node.id, property.key, next)}
-              />
-            </label>
-          ))}
+          {def.properties
+            .filter((property) => property.key !== 'script')
+            .map((property) => (
+              <label key={property.key}>
+                <span>{property.label}</span>
+                <Field
+                  property={property}
+                  value={node.properties[property.key]}
+                  onChange={(next) => setProperty(node.id, property.key, next)}
+                />
+              </label>
+            ))}
         </div>
       )}
 

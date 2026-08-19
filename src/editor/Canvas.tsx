@@ -127,6 +127,13 @@ export function Canvas() {
     })
   }
 
+  const onDoubleClick = (e: React.MouseEvent) => {
+    const target = hitTarget(e.target instanceof Element ? e.target : null)
+    if (target.kind !== 'node') return
+    const node = useEditorStore.getState().doc.nodes.find((n) => n.id === target.id)
+    if (node?.type === 'data.luaScript') useEditorStore.getState().openScript(node.id)
+  }
+
   const onWheel = (e: React.WheelEvent) => {
     const { screen } = locate(e.clientX, e.clientY)
     zoom(screen, Math.exp(-e.deltaY * 0.0015))
@@ -150,6 +157,7 @@ export function Canvas() {
       ref={svgRef}
       className="canvas"
       onPointerDown={onPointerDown}
+      onDoubleClick={onDoubleClick}
       onWheel={onWheel}
       onContextMenu={(e) => e.preventDefault()}
     >

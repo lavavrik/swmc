@@ -7,7 +7,7 @@
  * component means adding a definition and nothing else.
  */
 import type { NodeProperties } from '@/model/schema'
-import type { ComponentTypeId, PropertyValue, SignalType } from '@/model/types'
+import type { ComponentTypeId, NodeId, PropertyValue, SignalType } from '@/model/types'
 
 export type Category =
   | 'arithmetic'
@@ -101,6 +101,9 @@ export interface AudioValue {
 export type SignalValue = number | boolean | CompositeValue | VideoValue | AudioValue
 
 export interface EvalArgs<S = unknown> {
+  /** Which instance is being evaluated. Components that own an external
+   * resource — the Lua script and its interpreter — key it on this. */
+  readonly nodeId: NodeId
   /** One entry per input port; `undefined` where nothing is connected. */
   readonly inputs: readonly (SignalValue | undefined)[]
   readonly properties: Readonly<Record<string, PropertyValue>>

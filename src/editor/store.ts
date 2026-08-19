@@ -61,6 +61,8 @@ export interface EditorState {
   clipboard: Subgraph | null
   /** Last refused edit, for the status line. Cleared by the next successful edit. */
   problem: string | null
+  /** The Lua Script component whose editor is open, if any. */
+  editingScript: NodeId | null
 
   // document edits
   addNodeAt(type: ComponentTypeId, world: Point): NodeId | null
@@ -93,6 +95,7 @@ export interface EditorState {
 
   undo(): void
   redo(): void
+  openScript(id: NodeId | null): void
   /** Replaces the whole document, e.g. after an import. Clears history. */
   load(doc: Microcontroller): void
 }
@@ -133,6 +136,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     history: emptyHistory<Microcontroller>(),
     clipboard: null,
     problem: null,
+    editingScript: null,
 
     addNodeAt(type, world) {
       const def = getComponent(type)
@@ -308,8 +312,13 @@ export const useEditorStore = create<EditorState>((set, get) => {
       if (step) set({ doc: step.value, history: step.history, selection: [], problem: null })
     },
 
+    openScript(id) {
+      set({ editingScript: id })
+    },
+
     load(doc) {
       set({
+        editingScript: null,
         doc,
         selection: [],
         history: emptyHistory<Microcontroller>(),

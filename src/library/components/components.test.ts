@@ -18,8 +18,12 @@ function run(
   props: Record<string, PropertyValue> = {},
 ) {
   const d = def(id)
-  return d.eval({ inputs, properties: { ...defaultProperties(d), ...props }, state: undefined })
-    .outputs
+  return d.eval({
+    nodeId: 'test',
+    inputs,
+    properties: { ...defaultProperties(d), ...props },
+    state: undefined,
+  }).outputs
 }
 
 /** Evaluates a sequence of ticks, threading state, and returns each tick's outputs. */
@@ -32,7 +36,7 @@ function ticks(
   const properties = { ...defaultProperties(d), ...props }
   let state: unknown = undefined
   return sequence.map((inputs) => {
-    const result = d.eval({ inputs, properties, state })
+    const result = d.eval({ nodeId: 'test', inputs, properties, state })
     state = result.state
     return result.outputs
   })
