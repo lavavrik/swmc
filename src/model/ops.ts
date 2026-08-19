@@ -213,30 +213,38 @@ export function reorderIoNodes(
   return ok({ ...doc, ioOrder: [...order] })
 }
 
-export interface CloneResult {
+export interface Subgraph {
+  readonly nodes: readonly GraphNode[]
+  readonly wires: readonly Wire[]
+}
+
+export interface InsertResult {
   doc: Microcontroller
-  /** New ids, in the same order as the requested source ids. */
+  /** New ids, in the same order as the incoming nodes. */
   ids: NodeId[]
 }
 
 /**
- * Duplicates a set of nodes and the wires *between* them, offsetting the copy.
- * Wires crossing the selection boundary are deliberately dropped — the same
- * behaviour as copy/paste in the game.
+ * Lifts a set of nodes and the wires *between* them out of a document. Wires
+ * crossing the selection boundary are deliberately dropped — the same
+ * behaviour as copy in the game.
  */
-export function cloneSubgraph(
-  doc: Microcontroller,
-  sourceIds: readonly NodeId[],
-  offset: Point,
-): Result<CloneResult> {
-  const sources = sourceIds
-    .map((id) => doc.nodes.find((n) => n.id === id))
-    .filter((n): n is GraphNode => n !== undefined)
-  if (sources.length !== sourceIds.length) return err('cannot copy a component that is not present')
+export function extractSubgraph(doc: Microcontroller, ids: readonly NodeId[]): Subgraph {
+  const wanted = new Set(ids)
+  const nodes = doc.nodes.filter((n) => wanted.has(n.id))
+  const wires = doc.wires.filter((w) => wanted.has(w.from.node) && wanted.has(w.to.node))
+  return { nodes, wires }
+}
 
+/** Adds a subgraph to a document under fresh ids, offset by whole grid units. */
+export function insertSubgraph(
+  doc: Microcontroller,
+  sub: Subgraph,
+  offset: Point,
+): InsertResult {
   let counter = doc.idCounter
   const idMap = new Map<NodeId, NodeId>()
-  const clones: GraphNode[] = sources.map((n) => {
+  const nodes: GraphNode[] = sub.nodes.map((n) => {
     const id: NodeId = `c${counter++}`
     idMap.set(n.id, id)
     return {
@@ -247,25 +255,32 @@ export function cloneSubgraph(
     }
   })
 
-  const clonedWires: Wire[] = []
-  for (const w of doc.wires) {
+  const wires: Wire[] = []
+  for (const w of sub.wires) {
     const from = idMap.get(w.from.node)
     const to = idMap.get(w.to.node)
     if (!from || !to) continue
-    clonedWires.push({
-      id: `w${counter++}`,
-      from: { ...w.from, node: from },
-      to: { ...w.to, node: to },
-    })
+    wires.push({ id: `w${counter++}`, from: { ...w.from, node: from }, to: { ...w.to, node: to } })
   }
 
-  return ok({
-    ids: clones.map((c) => c.id),
+  return {
+    ids: nodes.map((n) => n.id),
     doc: {
       ...doc,
-      nodes: [...doc.nodes, ...clones],
-      wires: [...doc.wires, ...clonedWires],
+      nodes: [...doc.nodes, ...nodes],
+      wires: [...doc.wires, ...wires],
       idCounter: counter,
     },
-  })
+  }
+}
+
+/** Duplicates nodes in place: extract, then insert under new ids. */
+export function cloneSubgraph(
+  doc: Microcontroller,
+  sourceIds: readonly NodeId[],
+  offset: Point,
+): Result<InsertResult> {
+  const sub = extractSubgraph(doc, sourceIds)
+  if (sub.nodes.length !== sourceIds.length) return err('cannot copy a component that is not present')
+  return ok(insertSubgraph(doc, sub, offset))
 }
