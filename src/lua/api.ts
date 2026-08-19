@@ -226,5 +226,15 @@ export const LUA_CALLBACKS: readonly LuaFunctionDoc[] = [
   },
 ]
 
-/** The in-game limit on the length of a script. */
-export const SCRIPT_CHARACTER_LIMIT = 4096
+/**
+ * How long a script may be. The base game allows 4096 characters; the Space DLC
+ * raises it to 8192. Both are shown, so a script that would not fit in the base
+ * game is obvious even when it is still within the larger limit.
+ */
+export const SCRIPT_LIMITS = {
+  base: 4096,
+  spaceDlc: 8192,
+} as const
+
+/** The largest a script may be under any version. */
+export const SCRIPT_CHARACTER_LIMIT = SCRIPT_LIMITS.spaceDlc

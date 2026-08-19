@@ -8,7 +8,8 @@
 import Editor from '@monaco-editor/react'
 import { useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
-import { SCRIPT_CHARACTER_LIMIT } from '@/lua/api'
+import { SCRIPT_LIMITS } from '@/lua/api'
+import { minifyLua } from '@/lua/minify'
 import { setDrawTarget } from '@/lua/runner'
 import { MONITORS } from '@/lua/screen'
 import { useLuaStore } from '@/lua/store'
@@ -30,6 +31,7 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
   const toggle = useSimulationStore((s) => s.toggle)
 
   const [monitor, setMonitor] = useState(0)
+  const [note, setNote] = useState<string | null>(null)
   const size = MONITORS[monitor] ?? MONITORS[0]
 
   // Only the script being edited draws, so the rest cost nothing
@@ -38,15 +40,46 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
     return () => setDrawTarget(null)
   }, [node, size.width, size.height])
 
-  const overLimit = script.length > SCRIPT_CHARACTER_LIMIT
+  // Past the base limit the script needs the Space DLC; past that it fits nowhere
+  const minify = () => {
+    const result = minifyLua(script)
+    if (result.error !== null) {
+      setNote(`Could not minify: ${result.error}`)
+      return
+    }
+    const saved = result.before - result.after
+    setNote(saved > 0 ? `Minified, saving ${saved} characters` : 'Already as small as it gets')
+    if (saved > 0) setProperty(node, 'script', result.code, false)
+  }
+
+  const overBase = script.length > SCRIPT_LIMITS.base
+  const overDlc = script.length > SCRIPT_LIMITS.spaceDlc
 
   return (
     <div className="lua-editor">
       <header className="lua-header">
         <h2>Lua Script</h2>
-        <span className={`lua-count${overLimit ? ' over' : ''}`}>
-          {script.length} / {SCRIPT_CHARACTER_LIMIT} characters
+        <span
+          className={`lua-count${overDlc ? ' over' : overBase ? ' warn' : ''}`}
+          title={
+            overDlc
+              ? 'Too long for the game'
+              : overBase
+                ? `Over the base game's ${SCRIPT_LIMITS.base} characters; needs the Space DLC`
+                : 'Fits in the base game'
+          }
+        >
+          {script.length} / {SCRIPT_LIMITS.base}
+          <span className="lua-count-dlc"> · {SCRIPT_LIMITS.spaceDlc} with Space DLC</span>
         </span>
+        {note && <span className="lua-note">{note}</span>}
+        <button
+          className="text-button"
+          title="Strip comments and spacing, without changing what the script does"
+          onClick={minify}
+        >
+          Minify
+        </button>
         <button className="text-button" onClick={toggle}>
           {running ? 'Pause simulation' : 'Run simulation'}
         </button>
@@ -61,7 +94,10 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
             language="lua"
             theme="vs-dark"
             value={script}
-            onChange={(value) => setProperty(node, 'script', value ?? '')}
+            onChange={(value) => {
+              setNote(null)
+              setProperty(node, 'script', value ?? '')
+            }}
             options={{
               minimap: { enabled: false },
               fontSize: 13,

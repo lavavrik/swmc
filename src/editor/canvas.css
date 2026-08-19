@@ -25,6 +25,21 @@
   cursor: crosshair;
 }
 
+/*
+ * The casing behind every wire. Kept in CSS so the whole scheme is one place to
+ * adjust, and drawn in a translucent near-black that darkens the workspace
+ * without turning into a hard black line.
+ */
+.wire-casing {
+  stroke: rgba(8, 32, 38, 0.55);
+}
+
+.wire-arrow {
+  stroke: rgba(8, 32, 38, 0.55);
+  stroke-width: 1.5px;
+  paint-order: stroke;
+}
+
 .wire-value {
   fill: #10343b;
   paint-order: stroke;

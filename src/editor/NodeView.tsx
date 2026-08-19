@@ -50,7 +50,7 @@ function PortDots({
             r={CARD.portRadius}
             fill={signalColor(port.signal)}
             stroke="var(--port-ring)"
-            strokeWidth={2}
+            strokeWidth={2.5}
             opacity={faded ? 0.25 : 1}
           >
             <title>{`${port.label} (${port.signal})`}</title>
@@ -90,7 +90,7 @@ export const NodeView = memo(function NodeView({
         strokeWidth={selected ? 2.5 : 1}
       />
       <CategoryIcon category={def.category} x={6} y={6} />
-      <text className="node-title" x={24} y={16} fontSize={11} fill="var(--card-title)">
+      <text className="node-title" x={26} y={17} fontSize={CARD.titleSize} fill="var(--card-title)">
         {title}
       </text>
       <NodeDetails def={def} node={node} />
@@ -116,12 +116,14 @@ function NodeDetails({ def, node }: { def: ComponentDef; node: GraphNode }) {
         <text
           key={i}
           className="node-detail"
-          x={24}
+          x={26}
           y={CARD.headerHeight + 5 + i * CARD.detailLineHeight}
-          fontSize={8}
+          fontSize={CARD.detailSize}
           fill="var(--card-detail)"
         >
-          {line.length > 34 ? `${line.slice(0, 33)}…` : line}
+          {line.length > CARD.detailCharacters
+            ? `${line.slice(0, CARD.detailCharacters - 1)}…`
+            : line}
         </text>
       ))}
     </>

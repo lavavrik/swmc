@@ -71,7 +71,8 @@ export interface EditorState {
   moveNodes(ids: readonly NodeId[], gridDelta: Point): void
   connect(from: PortId, to: PortId): void
   disconnect(wireId: WireId): void
-  setProperty(id: NodeId, key: string, value: PropertyValue): void
+  /** `coalesce` false starts a fresh undo step rather than folding into the last. */
+  setProperty(id: NodeId, key: string, value: PropertyValue, coalesce?: boolean): void
   setMeta(meta: Partial<MicrocontrollerMeta>): void
 
   // clipboard
@@ -192,7 +193,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       edit('disconnect', (doc) => disconnectOp(doc, wireId))
     },
 
-    setProperty(id, key, value) {
+    setProperty(id, key, value, coalesce = true) {
       edit(
         `property:${id}:${key}`,
         (doc) => {
@@ -201,7 +202,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
           // A property change can take ports away — drop any wire left dangling
           return pruneDanglingWires(librarySchema, result.value)
         },
-        { coalesce: true },
+        { coalesce },
       )
     },
 

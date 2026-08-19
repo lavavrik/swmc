@@ -304,8 +304,12 @@ the outputs produced by the last completed tick.
 - **Screen:** `screen.*` calls are recorded as a display list and replayed onto
   a canvas at the selected monitor size (1x1, 2x1, 3x2, 9x5 …), so the preview
   matches in-game pixel dimensions.
-- **Limits:** the game's 4096-character script limit and property limits are
-  shown in the editor as warnings, not hard blocks.
+- **Limits:** the editor shows both script limits — 4096 characters in the base
+  game and 8192 with the Space DLC — warning at each rather than blocking, so a
+  script that needs the DLC is visible as such.
+- **Minifying:** a lexer drops comments and unnecessary spacing, keeping the
+  line breaks that carry meaning. It does not rename locals, which would risk
+  changing behaviour for a smaller further saving.
 - **Safety:** a per-tick instruction budget aborts runaway scripts; a worker
   crash surfaces as an error banner on the node rather than killing the app.
 

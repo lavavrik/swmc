@@ -12,9 +12,6 @@ import { composite, textProp, video } from '../portHelpers'
 import { asComposite } from '../values'
 import type { ComponentDef } from '../types'
 
-/** The in-game limit on script length. */
-export const SCRIPT_CHARACTER_LIMIT = 4096
-
 export const luaComponents: ComponentDef[] = [
   defineComponent({
     id: 'data.luaScript',

@@ -20,14 +20,19 @@ export const GRID_PX = 16
 /** Card metrics, chosen to match the proportions of the in-game cards. */
 export const CARD = {
   width: 11 * GRID_PX,
-  headerHeight: 22,
+  headerHeight: 24,
   /** Vertical gap between adjacent ports. */
   portSpacing: 24,
   /** Distance from the top of the card to the first port. */
-  portTop: 34,
+  portTop: 36,
   bottomPadding: 10,
-  detailLineHeight: 11,
+  detailLineHeight: 12,
   portRadius: 6,
+  /** Type sizes, in world pixels. */
+  titleSize: 12,
+  detailSize: 9,
+  /** Roughly how many detail characters fit across a card at that size. */
+  detailCharacters: 30,
 } as const
 
 export interface CardLayout {

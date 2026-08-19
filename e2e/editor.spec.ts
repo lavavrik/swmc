@@ -221,3 +221,27 @@ test('reports a Lua error without breaking the editor', async ({ page }) => {
   await page.getByRole('button', { name: 'Run simulation' }).click()
   await expect(page.locator('.lua-error')).toBeVisible({ timeout: 15_000 })
 })
+
+test('minifies a script and shows both size limits', async ({ page }) => {
+  await place(page, 'Lua Script')
+  await page.getByRole('button', { name: 'Edit script' }).click()
+  await typeScript(
+    page,
+    '-- limit the throttle\nfunction onTick()\n  local raw = input.getNumber( 1 )\n  output.setNumber( 1, raw )\nend\n',
+  )
+
+  await expect(page.locator('.lua-count')).toContainText('/ 4096')
+  await expect(page.locator('.lua-count')).toContainText('8192 with Space DLC')
+
+  const sizeOf = async () =>
+    Number((await page.locator('.lua-count').innerText()).match(/^(\d+)/)?.[1])
+  const before = await sizeOf()
+
+  await page.getByRole('button', { name: 'Minify' }).click()
+  await expect(page.locator('.lua-note')).toContainText('saving')
+  expect(await sizeOf()).toBeLessThan(before!)
+
+  // The script still runs after being minified
+  await page.getByRole('button', { name: 'Run simulation' }).click()
+  await expect(page.locator('.lua-error')).toHaveCount(0)
+})
