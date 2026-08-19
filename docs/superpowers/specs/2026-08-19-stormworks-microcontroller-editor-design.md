@@ -290,7 +290,9 @@ The Lua script component's `eval` hands its inputs to a worker and takes back
 the outputs produced by the last completed tick.
 
 - **Runtime:** wasmoon, one interpreter per script node, reset on script
-  change. It runs synchronously on the main thread rather than in a worker:
+  change. It provides Lua 5.4 where the game runs 5.3; the differences do not
+  reach ordinary microcontroller scripts, but this is a known divergence rather
+  than an exact match. It runs synchronously on the main thread rather than in a worker:
   a tick has to see this tick's inputs and be read back within the same tick,
   and a worker round-trip would lag every script by one tick. The cost of that
   choice is that a runaway script would block the page, which is why the
