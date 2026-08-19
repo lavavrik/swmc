@@ -1,0 +1,361 @@
+# Stormworks Microcontroller Editor — System Design
+
+**Date:** 2026-08-19
+**Status:** Approved (system level). Sub-project specs follow.
+
+## 1. Goal
+
+A browser-based, full-fidelity replica of the Stormworks: Build and Rescue
+microcontroller editor:
+
+- **Logic editor** — node graph on a pan/zoom canvas with drag-and-drop
+  components, typed input/output ports, and wires; visually and behaviourally
+  identical to the in-game editor.
+- **Lua editor** — Monaco with Stormworks API completion and hover docs, plus a
+  real Lua runtime executing `onTick`/`onDraw` with a live screen preview.
+- **Simulation** — the whole graph evaluates at 60 Hz so signals can be watched
+  flowing on the wires while editing.
+- **Interop** — import and export Stormworks microprocessor `.xml` so designs
+  round-trip with the game.
+
+Non-goals (explicitly out of scope, possibly later):
+
+- The vehicle editor, block placement, or anything outside a microcontroller.
+- Multiplayer/collaborative editing, accounts, cloud storage, sharing links.
+- A backend of any kind. The app is a static SPA.
+- Physics simulation of the vehicle a microcontroller would be attached to.
+- Byte-exact reproduction of in-game audio/video DSP. Audio and video signals
+  are modelled as typed values and routed correctly, but not rendered as sound.
+
+## 2. Product decisions
+
+| Question | Decision |
+|---|---|
+| Purpose | Faithful editor first, simulation second — but the tick engine lands in phase 1 because the Lua live-run needs it |
+| Format source of truth | Public wiki + open-source community parsers; **no local sample files yet** |
+| Component coverage | The full library (~100 components), all categories |
+| Graph engine | Custom SVG renderer — no React Flow, no canvas immediate mode |
+| Lua editor | Monaco + full Stormworks API intellisense + wasmoon Lua execution + screen preview |
+| Runtime | Browser SPA, local-only. IndexedDB project library, `.xml` import/export via file picker and drag-drop |
+| Simulation depth | Full graph tick engine at 60 Hz with 1-tick delay on feedback edges |
+| Visual target | Exact replica of the in-game skin (teal grid, white node cards, circular toolbar, coloured wires with arrowheads) |
+
+## 3. Decomposition
+
+The system is too large for one spec. It splits into five sub-projects, each
+with its own spec, plan, and implementation cycle. Build order is top to bottom;
+each depends only on those above it.
+
+| # | Sub-project | Depends on | Deliverable |
+|---|---|---|---|
+| 1 | **Graph model + SVG editor** | — | Editable graph with placeholder components: place, move, wire, select, delete, undo, copy/paste, pan/zoom |
+| 2 | **Component library** | 1 | All ~100 components as declarative definitions; picker menu; property inspector |
+| 3 | **XML interop + project library** | 1, 2 | Load and save Stormworks `.xml`; IndexedDB project list |
+| 4 | **Tick engine** | 1, 2 | 60 Hz evaluation, stateful components, live signal values on wires, I/O panel |
+| 5 | **Lua subsystem** | 1, 2, 4 | Monaco + SW API intellisense, wasmoon worker, `onTick`/`onDraw`, screen preview |
+
+Rationale for the order: the model must exist before anything can be described
+against it; components must exist before the XML codec has anything to map type
+numbers onto; the tick engine needs component `eval` functions; the Lua node is
+just one more component whose `eval` delegates to a worker.
+
+## 4. Architecture
+
+Strict layering. Each layer may import only from layers above it in this list.
+Nothing below `editor/` imports React.
+
+```
+src/model/      Pure graph data types and operations. No React, no DOM.
+src/library/    ComponentDef registry: ports, properties, eval, layout hints.
+src/sim/        Tick scheduler and evaluator over the model.
+src/lua/        wasmoon worker host, Stormworks API shim, screen raster.
+src/io/         Stormworks XML codec, IndexedDB project store.
+src/editor/     SVG canvas, viewport, interaction state machines. React.
+src/ui/         App shell, toolbar, panels, Stormworks theme. React.
+```
+
+The point of the split is that the interesting logic — graph mutation, signal
+evaluation, XML mapping — is plain TypeScript that can be unit-tested without
+rendering anything, and that a rewrite of the rendering layer would not touch
+it.
+
+### 4.1 Stack
+
+- **Vite** + **React** + **TypeScript** in `strict` mode.
+- **Zustand** for the editor store, with the document held as an immutable
+  value and mutated only through model operations.
+- **Vitest** for unit tests, **Testing Library** for component tests,
+  **Playwright** for canvas interaction tests (drag, wire, marquee select).
+- **Monaco** for the Lua editor. **wasmoon** (Lua 5.3 compiled to wasm) in a
+  Web Worker for execution.
+- **fast-xml-parser** for XML, wrapped so the codec owns all schema knowledge.
+
+No component library, no CSS framework. The skin is bespoke CSS variables
+mirroring the game's palette.
+
+## 5. Data model (`src/model/`)
+
+### 5.1 Signal types
+
+Five signal types, matching the game, each with its own wire colour and its own
+port-dot colour. Connections are type-checked: an output may only connect to an
+input of the same type.
+
+| Type | Meaning | Wire colour |
+|---|---|---|
+| `onoff` | Boolean | Red |
+| `number` | 32-bit float | Purple |
+| `composite` | 32 numbers + 32 booleans in one channel | Green |
+| `video` | Frame buffer channel | Blue |
+| `audio` | Audio channel | Olive |
+
+Composite channels are 1-indexed in the UI (channels 1–32) as the game presents
+them, and 0-indexed internally; the conversion lives in one place.
+
+### 5.2 Document
+
+```ts
+type NodeId = string          // stable, generated on create
+type PortId = { node: NodeId; kind: 'in' | 'out'; index: number }
+
+interface GraphNode {
+  id: NodeId
+  type: ComponentTypeId       // key into the component registry
+  position: { x: number; y: number }   // grid units, integers
+  properties: Record<string, PropertyValue>
+  label?: string
+}
+
+interface Wire {
+  id: WireId
+  from: PortId                // always an output
+  to: PortId                  // always an input
+}
+
+interface Microcontroller {
+  meta: { name: string; description: string; width: number; length: number }
+  ioNodes: IoNode[]           // the microcontroller's own external in/out pins
+  nodes: GraphNode[]
+  wires: Wire[]
+}
+```
+
+`IoNode` models the external pins on the microcontroller's faces (name,
+description, signal type, direction, and position on the face). In the game
+these correspond to the property/bridge components; the mapping is the XML
+codec's problem, not the model's.
+
+Invariants enforced by model operations, not by callers:
+
+- An input port has at most one incoming wire; connecting a second replaces it.
+- An output port may fan out to many inputs.
+- Wires only connect matching signal types.
+- No wire may connect a node to itself.
+- Deleting a node deletes its wires.
+
+### 5.3 Operations
+
+All mutations are pure functions `(doc, args) => doc` in `model/ops.ts`:
+`addNode`, `removeNodes`, `moveNodes`, `connect`, `disconnect`, `setProperty`,
+`addIoNode`, `reorderIoNodes`, `paste`. Each returns a new document; none
+throws on user error — they return a `Result` so the UI can show why an action
+was refused.
+
+### 5.4 Undo/redo
+
+Command-based. Every user action produces a named command holding the
+before/after document slices it touched. The history is a bounded stack (200
+entries). Continuous gestures (dragging a node) push a single command on
+gesture end, not per pointer move.
+
+## 6. Component library (`src/library/`)
+
+Every component is a declarative definition — no per-component React code:
+
+```ts
+interface ComponentDef {
+  id: ComponentTypeId          // our stable string id, e.g. 'arithmetic.add'
+  swType: number               // the game's numeric type in XML
+  category: Category           // Arithmetic | Logic | Comparison | Composite |
+                               // Video | Audio | Data | Property
+  name: string                 // display name, e.g. 'Add'
+  description: string          // tooltip text, verbatim from the game
+  inputs: PortDef[]            // label, signal type, optional
+  outputs: PortDef[]
+  properties: PropertyDef[]    // number / text / bool / dropdown / slider
+  size?: { w: number; h: number }        // grid units; defaults from port count
+  eval: EvalFn                 // pure, or stateful via the state slot
+  stateful?: boolean
+}
+```
+
+`EvalFn` has the shape `(inputs, properties, state) => { outputs, state }`, so
+the tick engine never special-cases a component. Stateful components (memory
+register, SR latch, capacitor, PID, delta, timers, counters) own their state
+slot; everything else is combinational.
+
+The full catalogue is populated in sub-project 2 from the Stormworks wiki, one
+file per category, with a checklist tracking coverage. The registry is the only
+place that knows the game's numeric type ids, so a correction from a real save
+file is a one-line change per component.
+
+## 7. Editor (`src/editor/`)
+
+### 7.1 Rendering
+
+One SVG element covers the workspace. Layers, back to front:
+
+1. Grid — a tiled `<pattern>`, so pan/zoom costs nothing.
+2. Wires — one `<path>` each, coloured by signal type, with arrow markers
+   placed along the path exactly as the game draws them.
+3. Nodes — one `<g>` each: card background, icon, title, property summary
+   lines, and port dots on the left and right edges.
+4. Overlay — marquee rectangle, the wire currently being dragged, snap hints.
+
+Node cards are SVG, not HTML-in-`foreignObject`: text is measured once per
+definition and cached, keeping DOM node counts low. A graph of ~1000 components
+must stay interactive; if profiling shows otherwise, nodes outside the viewport
+are culled before any other optimisation is considered.
+
+### 7.2 Viewport
+
+A single `{ x, y, scale }` transform. Pan with middle-drag or space-drag, zoom
+with the wheel anchored at the pointer. Screen↔world conversion lives in one
+module and is unit-tested; nothing else does coordinate arithmetic.
+
+### 7.3 Interaction
+
+Pointer handling is an explicit state machine — `idle`, `panning`,
+`draggingNodes`, `draggingWire`, `marqueeSelecting`, `resizing` — rather than
+scattered event handlers. Each state declares what pointer-down, move, up, and
+Escape do. This is the part of a node editor that rots fastest, so it is
+modelled explicitly and tested with Playwright.
+
+Node positions snap to the grid, matching the game. Wire drags snap to the
+nearest compatible port within a radius; incompatible ports visibly dim while
+dragging.
+
+### 7.4 Keyboard
+
+Replicates the in-game bindings where they exist, and follows platform
+convention where they do not: delete, copy/cut/paste, undo/redo, select all,
+duplicate, frame selection, zoom to fit.
+
+## 8. Tick engine (`src/sim/`)
+
+Runs at 60 Hz off `requestAnimationFrame` with a fixed-step accumulator, so
+tick count stays correct under frame drops. One tick:
+
+1. Read the microcontroller's external input pins from the I/O panel.
+2. Evaluate components in a precomputed order.
+3. Write the external output pins.
+4. Publish a signal snapshot for the editor to render on wires.
+
+Evaluation order is a topological sort of the graph. Cycles are broken by
+marking back edges: a back edge delivers the **previous** tick's value, giving
+the 1-tick feedback delay that Stormworks exhibits. The sort is recomputed only
+when the graph structure changes, not per tick.
+
+The engine is a plain class with `step()`, driven by React but not aware of it.
+Tests drive it directly and assert values over sequences of ticks — this is how
+stateful-component semantics get pinned down.
+
+Signal values are surfaced in the UI as small labels on wires and as colour
+intensity, toggleable, matching the game's debug display.
+
+**Known risk:** the game's exact evaluation order within a tick is not
+authoritatively documented. The chosen semantics are stated here as the
+assumption and isolated in the scheduler, so correcting them later is one
+module's change. Divergences found against real microcontrollers get recorded
+as regression tests.
+
+## 9. Lua subsystem (`src/lua/`)
+
+The Lua script component's `eval` hands its inputs to a worker and takes back
+the outputs produced by the last completed tick.
+
+- **Runtime:** wasmoon (Lua 5.3) in a Web Worker, one interpreter per script
+  node, reset on script change.
+- **API shim:** `input.getNumber/getBool`, `output.setNumber/setBool`,
+  `property.getNumber/getBool/getText`, the full `screen.*` drawing surface,
+  `map.*`, `async.*`, and the game's table/string extensions. The shim is the
+  single source of truth for both execution and intellisense.
+- **Screen:** `screen.*` calls are recorded as a display list and replayed onto
+  a canvas at the selected monitor size (1x1, 2x1, 3x2, 9x5 …), so the preview
+  matches in-game pixel dimensions.
+- **Limits:** the game's 4096-character script limit and property limits are
+  shown in the editor as warnings, not hard blocks.
+- **Safety:** a per-tick instruction budget aborts runaway scripts; a worker
+  crash surfaces as an error banner on the node rather than killing the app.
+
+Intellisense is generated from the same API description that the shim
+implements, so the two cannot drift.
+
+## 10. XML interop (`src/io/`)
+
+A codec with two entry points, `parseMicrocontroller(xml)` and
+`serializeMicrocontroller(doc)`, plus a schema module holding every piece of
+game-format knowledge: element and attribute names, the numeric component type
+table, port index conventions, and the bridge/property component encoding.
+
+Requirements:
+
+- **Round-trip fidelity.** Parsing then serializing a file reproduces it
+  semantically. Attributes the editor does not understand are preserved
+  verbatim on the node they belong to and written back out.
+- **Graceful degradation.** An unknown component type imports as an opaque
+  placeholder node that keeps its attributes and wires, so an unsupported file
+  is still editable and still saves correctly.
+- **Golden-file tests.** Every fixture in `src/io/__fixtures__/` must round-trip
+  byte-stable modulo whitespace.
+
+Because the schema is derived from public sources rather than samples, the
+first real `.xml` file dropped in is expected to produce corrections. That work
+is confined to `schema.ts` and the `swType` fields in the registry.
+
+The project library stores documents in IndexedDB (id, name, thumbnail,
+updated-at, document). Import accepts file picker and drag-drop; export
+downloads a `.xml`. The File System Access API — binding the game's
+`microprocessors` folder directly — is deliberately deferred until the codec is
+proven.
+
+## 11. UI shell (`src/ui/`)
+
+Replicates the in-game layout from the reference screenshot: a dark top bar of
+circular icon buttons (new, open, save, workshop, 3D preview, tooltips, undo,
+redo, copy, cut, paste), the teal gridded workspace, and a bottom bar with the
+microcontroller size controls and the component picker button.
+
+Panels: component picker (categorised, searchable), property inspector for the
+selection, I/O pin editor, simulation controls with the external input values,
+and the Lua editor opening as a full-height overlay over the workspace.
+
+Colours, fonts, and metrics live in one theme module as CSS custom properties,
+sourced from the screenshot, so the skin is adjustable in one file.
+
+## 12. Testing strategy
+
+| Layer | How it is tested |
+|---|---|
+| `model` | Unit tests per operation, plus invariant property tests |
+| `library` | Table-driven `eval` tests per component; a registry integrity test asserting unique ids, unique `swType`, and complete metadata |
+| `sim` | Multi-tick scenario tests, including feedback loops and every stateful component |
+| `lua` | Worker integration tests: script in, outputs and screen display list out |
+| `io` | Golden-file round-trip tests |
+| `editor` | Playwright interaction tests: place, drag, wire, marquee, undo |
+| `ui` | Testing Library for panels; no snapshot tests of the canvas |
+
+Development follows TDD: each sub-project's plan writes tests before
+implementation for `model`, `library`, `sim`, and `io`, which is where
+correctness actually lives.
+
+## 13. Open questions
+
+None blocking. Two assumptions are recorded above and isolated behind single
+modules: the XML schema (§10) and the tick evaluation order (§8). Both are
+expected to need correction once a real microcontroller file is available, and
+both are cheap to correct by design.
+
+## 14. Next step
+
+Write the implementation plan for **sub-project 1: graph model + SVG editor**.
