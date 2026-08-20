@@ -516,7 +516,9 @@ test.describe('with motion held still', () => {
   })
 })
 
-test('offers the player’s own Stormworks folders', async ({ page }) => {
+test('offers the player’s own Stormworks folders', async ({ page, context }) => {
+  // Copying a path writes to the clipboard, which needs saying so up front
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.getByTitle('Your Stormworks files').click()
   const dialog = page.locator('.dialog')
   await expect(dialog).toContainText('Your Stormworks files')
@@ -528,4 +530,15 @@ test('offers the player’s own Stormworks folders', async ({ page }) => {
 
   // Chromium has the picker, so the buttons are live
   await expect(dialog.getByRole('button', { name: 'Choose…' }).first()).toBeEnabled()
+
+  // A page cannot open a folder by name, so the paths are there to paste.
+  // Which paths depends on the platform, so this checks the parts that do not.
+  await expect(dialog).toContainText('common')
+  await expect(dialog).toContainText('microprocessors')
+  await expect(dialog).toContainText('573090')
+  await expect(dialog).toContainText('then paste')
+
+  await dialog.getByRole('button', { name: 'Copy' }).first().click()
+  await expect(dialog.getByRole('button', { name: 'Copied' })).toHaveCount(1)
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Stormworks')
 })

@@ -11,9 +11,49 @@
  */
 import { useEffect, useState } from 'react'
 import { connectDesignsFolder, connectGameFolder, forgetFolder, isSupported } from '@/io/gameFiles'
+import {
+  designPaths,
+  detectPlatform,
+  gamePaths,
+  pasteHint,
+  type SuggestedPath,
+} from '@/io/gamePaths'
 import { loadFontFrom, adoptBundledFont } from '@/lua/gameFont'
 import { tinyFont } from '@/lua/tinyFont'
 import { useGameFilesStore } from './gameFilesStore'
+
+/** The paths worth going to, each one click from the clipboard. */
+function Paths({
+  paths,
+  copied,
+  onCopy,
+}: {
+  paths: readonly SuggestedPath[]
+  copied: string | null
+  onCopy: (path: string | null) => void
+}) {
+  return (
+    <ul className="folder-paths">
+      {paths.map((suggested) => (
+        <li key={suggested.path}>
+          <span className="folder-path-label">{suggested.label}</span>
+          <code>{suggested.path}</code>
+          <button
+            className="text-button tiny"
+            onClick={() => {
+              void navigator.clipboard?.writeText(suggested.path).then(
+                () => onCopy(suggested.path),
+                () => onCopy(null),
+              )
+            }}
+          >
+            {copied === suggested.path ? 'Copied' : 'Copy'}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export function GameFilesDialog({ onClose }: { onClose: () => void }) {
   const game = useGameFilesStore((s) => s.game)
@@ -22,6 +62,8 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
   const setDesigns = useGameFilesStore((s) => s.setDesigns)
   const [problem, setProblem] = useState<string | null>(null)
   const [face, setFace] = useState(tinyFont().face)
+  const [copied, setCopied] = useState<string | null>(null)
+  const platform = detectPlatform()
 
   useEffect(() => setFace(tinyFont().face), [game])
 
@@ -57,7 +99,8 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
         </header>
 
         <p className="dialog-note plain">
-          Read where they sit, on this machine only. Nothing is copied and nothing is uploaded.
+          Read where they sit, on this machine only. Nothing is copied and nothing is uploaded. A
+          page cannot open a folder by name, so copy a path below — {pasteHint(platform)}
         </p>
 
         {!supported && (
@@ -74,6 +117,7 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
               The Stormworks folder, its <code>rom</code> folder, or the application itself. Used
               for the monitor font — currently {face}.
             </p>
+            <Paths paths={gamePaths(platform)} copied={copied} onCopy={setCopied} />
             {game && <p className="folder-current">Reading {game.name}</p>}
           </div>
           <div className="folder-actions">
@@ -104,10 +148,9 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
           <div>
             <h3>Microcontrollers</h3>
             <p className="panel-hint">
-              Where your designs are saved — <code>Stormworks/data/microprocessors</code> for your
-              own, <code>steamapps/workshop/content/573090</code> for subscribed ones. They then
-              appear in the open dialog.
+              Where your designs are saved. Whichever you point at, they appear in the open dialog.
             </p>
+            <Paths paths={designPaths(platform)} copied={copied} onCopy={setCopied} />
             {designs && <p className="folder-current">Reading {designs.name}</p>}
           </div>
           <div className="folder-actions">

@@ -98,6 +98,22 @@ export async function readText(
 
 // ------------------------------------------------------- keeping the choice
 
+/**
+ * Opens the picker, starting where this folder was last time. A page cannot
+ * name a path — that is the point of the permission — but it can hand back a
+ * folder the player has already granted, and the browser remembers the rest
+ * against the `id`.
+ */
+async function pick(id: string, kind: FolderKind): Promise<FileSystemDirectoryHandle> {
+  const show = window.showDirectoryPicker as NonNullable<typeof window.showDirectoryPicker>
+  const previous = await transact<FileSystemDirectoryHandle | undefined>(
+    SETTINGS,
+    'readonly',
+    (store) => store.get(kind),
+  ).catch(() => undefined)
+  return show(previous ? { id, mode: 'read', startIn: previous } : { id, mode: 'read' })
+}
+
 /** Whether the app may still read the folder, asking only if told to. */
 async function stillAllowed(handle: FileSystemDirectoryHandle, ask: boolean): Promise<boolean> {
   const mode = { mode: 'read' } as const
@@ -116,10 +132,7 @@ export async function connectGameFolder(): Promise<Result<GameFolder>> {
   }
   let picked: FileSystemDirectoryHandle
   try {
-    picked = await (window.showDirectoryPicker as NonNullable<typeof window.showDirectoryPicker>)({
-      id: 'stormworks',
-      mode: 'read',
-    })
+    picked = await pick('stormworks', 'game')
   } catch {
     return err('no folder chosen')
   }
@@ -205,10 +218,7 @@ export async function connectDesignsFolder(): Promise<
   }
   let picked: FileSystemDirectoryHandle
   try {
-    picked = await (window.showDirectoryPicker as NonNullable<typeof window.showDirectoryPicker>)({
-      id: 'stormworks-designs',
-      mode: 'read',
-    })
+    picked = await pick('stormworks-designs', 'designs')
   } catch {
     return err('no folder chosen')
   }

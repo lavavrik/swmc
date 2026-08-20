@@ -411,6 +411,16 @@ Two folders are worth having, because they are in different places:
   item. Rather than teach the app both layouts, it scans a few levels down for
   XML and lets the codec decide what is a microprocessor.
 
+A page cannot open the picker at a path it names, which is exactly the
+protection the permission provides. What it can do is say where to go: the
+dialog lists the paths for the platform with a button to copy each, and every
+file dialog takes a pasted path. After the first choice the picker reopens
+where it was, from the handle the app still holds.
+
+Working out the platform prefers what the browser states outright over the user
+agent string, because an automated browser hands out a user agent for a system
+it is not running on — which is how the tests found it.
+
 Handles are kept in the same browser database as the project library — one
 module owns that schema, because opening a database at two versions fails, and
 only once both features are used in one session.
