@@ -104,6 +104,48 @@ test('copies and pastes the selection', async ({ page }) => {
   expect(positions[0]).not.toBe(positions[1])
 })
 
+test('pans the workspace with a two-finger swipe and zooms with a wheel', async ({ page }) => {
+  await place(page, 'Constant Number')
+  const before = await nodes(page).first().boundingBox()
+
+  // A trackpad swipe: small deltas, with a horizontal component
+  await page.mouse.move(400, 250)
+  await page.mouse.wheel(24, 12)
+  const panned = await nodes(page).first().boundingBox()
+  expect(panned!.x).toBeLessThan(before!.x)
+  expect(panned!.y).toBeLessThan(before!.y)
+
+  // A mouse notch: a coarse step straight down the y axis
+  await page.mouse.wheel(0, -120)
+  const zoomed = await nodes(page).first().boundingBox()
+  expect(zoomed!.width).toBeGreaterThan(panned!.width)
+})
+
+test('imports a file dropped onto the open dialog', async ({ page }) => {
+  await page.getByTitle('Open or import a microcontroller').click()
+  await page.locator('.dialog-drop').dispatchEvent('drop', {
+    dataTransfer: await page.evaluateHandle(() => {
+      const data = new DataTransfer()
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="Dropped" description="" width="1" length="1">
+	<nodes/>
+	<group>
+		<data><inputs/><outputs/></data>
+		<components>
+			<c type="15"><object id="1"><pos x="1" y="-1"/><n text="8" value="8"/></object></c>
+		</components>
+		<components_bridge/>
+		<groups/>
+	</group>
+</microprocessor>`
+      data.items.add(new File([xml], 'dropped.xml', { type: 'application/xml' }))
+      return data
+    }),
+  })
+  await expect(nodes(page)).toHaveCount(1)
+  await expect(page.locator('.name-field')).toHaveValue('Dropped')
+})
+
 test('pans the workspace with the middle button', async ({ page }) => {
   await place(page, 'Constant Number')
   const before = await nodes(page).first().boundingBox()
@@ -145,7 +187,7 @@ test('imports a dropped-in file through the open dialog', async ({ page }) => {
 	</group>
 </microprocessor>`
   await page.getByTitle('Open or import a microcontroller').click()
-  await page.locator('input[type=file]').setInputFiles({
+  await page.locator('.dialog input[type=file]').setInputFiles({
     name: 'imported.xml',
     mimeType: 'application/xml',
     buffer: Buffer.from(xml),

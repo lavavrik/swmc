@@ -4,7 +4,7 @@
  * The same dialog covers the library (IndexedDB) and the game's own `.xml`
  * files, because to the user they are the same task.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
 import {
   deleteProject,
@@ -28,7 +28,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [name, setName] = useState(doc.meta.name)
   const [problem, setProblem] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [dropping, setDropping] = useState(false)
 
   const refresh = useCallback(() => {
     listProjects().then(setProjects, (error: unknown) => setProblem(String(error)))
@@ -100,17 +100,34 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
         )}
 
         {mode === 'open' && (
-          <div className="dialog-row">
-            <button className="text-button primary" onClick={() => fileRef.current?.click()}>
-              Import .xml file…
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xml,application/xml"
-              hidden
-              onChange={(e) => void importChosenFile(e.target.files?.[0])}
-            />
+          <div
+            className={`dialog-drop${dropping ? ' active' : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDropping(true)
+            }}
+            onDragLeave={() => setDropping(false)}
+            onDrop={(e) => {
+              e.preventDefault()
+              setDropping(false)
+              void importChosenFile(e.dataTransfer.files[0])
+            }}
+          >
+            {/*
+              A label rather than a button calling `input.click()`: Safari and
+              Firefox refuse to open the picker for a hidden input driven from
+              script, but they honour a label every time.
+            */}
+            <label className="text-button primary">
+              Choose a .xml file…
+              <input
+                type="file"
+                accept=".xml,application/xml"
+                className="visually-hidden"
+                onChange={(e) => void importChosenFile(e.target.files?.[0])}
+              />
+            </label>
+            <span>or drop one here</span>
           </div>
         )}
 

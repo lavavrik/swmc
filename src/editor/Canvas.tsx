@@ -16,6 +16,7 @@ import { WireValues } from './WireValues'
 import { WireView } from './WireView'
 import { useEditorStore } from './store'
 import { screenToWorld, type Viewport } from './viewport'
+import { wheelIntent } from './wheel'
 import type { HitTarget } from './interaction/machine'
 import './canvas.css'
 
@@ -64,7 +65,6 @@ export function Canvas() {
   const viewport = useEditorStore((s) => s.viewport)
   const interaction = useEditorStore((s) => s.interaction)
   const dispatch = useEditorStore((s) => s.dispatch)
-  const zoom = useEditorStore((s) => s.zoomAt)
 
   /** Converts client coordinates into the svg's own screen space and to world space. */
   const locate = useCallback((clientX: number, clientY: number) => {
@@ -148,10 +148,22 @@ export function Canvas() {
     if (node?.type === 'data.luaScript') store.openScript(node.id)
   }
 
-  const onWheel = (e: React.WheelEvent) => {
-    const { screen } = locate(e.clientX, e.clientY)
-    zoom(screen, Math.exp(-e.deltaY * 0.0015))
-  }
+  // Wheel events are handled directly rather than through React, which attaches
+  // them passively: pinch-zoom has to be preventDefault-ed or the browser zooms
+  // the whole page instead of the workspace.
+  useEffect(() => {
+    const element = svgRef.current
+    if (!element) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const { screen } = locate(e.clientX, e.clientY)
+      const intent = wheelIntent(e)
+      if (intent.kind === 'zoom') useEditorStore.getState().zoomAt(screen, intent.factor)
+      else useEditorStore.getState().panBy(intent.delta)
+    }
+    element.addEventListener('wheel', onWheel, { passive: false })
+    return () => element.removeEventListener('wheel', onWheel)
+  }, [locate])
 
   const dragging = interaction.kind === 'draggingNodes' ? interaction : null
   const draggingIds = useMemo(() => new Set(dragging?.nodes ?? []), [dragging])
@@ -172,7 +184,6 @@ export function Canvas() {
       className="canvas"
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
-      onWheel={onWheel}
       onContextMenu={(e) => e.preventDefault()}
     >
       <GridBackground viewport={viewport} />

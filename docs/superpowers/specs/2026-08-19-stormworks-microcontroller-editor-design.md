@@ -236,8 +236,12 @@ are culled before any other optimisation is considered.
 
 ### 7.2 Viewport
 
-A single `{ x, y, scale }` transform. Pan with middle-drag or space-drag, zoom
-with the wheel anchored at the pointer. Screen↔world conversion lives in one
+A single `{ x, y, scale }` transform. Pan with middle-drag, space-drag or a
+two-finger swipe; zoom with the mouse wheel or a pinch, anchored at the
+pointer. A wheel event does not say which device produced it, so the shape of
+its deltas decides — coarse whole-number steps down the y axis are a wheel,
+anything smaller or sideways is a trackpad — and that judgement lives in one
+tested function. Screen↔world conversion lives in one
 module and is unit-tested; nothing else does coordinate arithmetic.
 
 ### 7.3 Interaction
@@ -335,6 +339,11 @@ game-format knowledge: element and attribute names, the numeric component type
 table, port index conventions, and the bridge/property component encoding.
 
 Requirements:
+
+Files reach the codec three ways: a picker, a drop onto the workspace, and a
+drop onto the open dialog. The picker is opened by a `<label>` wrapping the
+input rather than by calling `click()` on a hidden one, because Safari and
+Firefox refuse the latter.
 
 - **Round-trip fidelity.** Parsing then serializing a file reproduces it
   semantically. Attributes the editor does not understand are preserved
