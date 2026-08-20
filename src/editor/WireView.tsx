@@ -5,7 +5,7 @@
  * top — so it stays legible against the teal workspace and against other wires
  * crossing it. Arrowheads get the same treatment.
  */
-import { memo } from 'react'
+import { memo, type CSSProperties } from 'react'
 import { signalColor } from '@/ui/signals'
 import type { Point, SignalType } from '@/model/types'
 import { wirePath } from './wireGeometry'
@@ -49,17 +49,32 @@ export const WireView = memo(function WireView({ from, to, signal, scale, faded 
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      {path.arrows.map((arrow, i) => (
-        <path
-          key={i}
-          className="wire-arrow"
-          d={ARROW}
-          fill={colour}
-          transform={`translate(${arrow.x} ${arrow.y}) rotate(${
-            (arrow.angle * 180) / Math.PI
-          }) scale(${1 / scale})`}
-        />
-      ))}
+      {/*
+        The arrows march along the wire: the group slides forward by exactly one
+        arrow spacing and repeats, and the extra arrow behind the start keeps
+        that repeat from showing.
+      */}
+      <g
+        className="wire-flow"
+        style={
+          {
+            '--flow-x': `${path.direction.x * path.arrowSpacing}px`,
+            '--flow-y': `${path.direction.y * path.arrowSpacing}px`,
+          } as CSSProperties
+        }
+      >
+        {path.arrows.map((arrow, i) => (
+          <path
+            key={i}
+            className="wire-arrow"
+            d={ARROW}
+            fill={colour}
+            transform={`translate(${arrow.x} ${arrow.y}) rotate(${
+              (arrow.angle * 180) / Math.PI
+            }) scale(${1 / scale})`}
+          />
+        ))}
+      </g>
     </g>
   )
 })

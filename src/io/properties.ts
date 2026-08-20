@@ -38,7 +38,7 @@ function decodeOne(
     }
     case 'attributeEnum': {
       const raw = object.attrs[form.name]
-      if (raw === undefined) return undefined
+      if (raw === undefined) return form.absent
       const code = Number(raw)
       const match = Object.entries(form.values).find(([, value]) => value === code)
       return match?.[0] ?? fallback

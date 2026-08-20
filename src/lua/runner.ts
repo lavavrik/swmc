@@ -53,6 +53,46 @@ export function frameFor(node: NodeId): VideoFrame | null {
   return frames.get(node) ?? null
 }
 
+/**
+ * What a monitor reports back to the script driving it.
+ *
+ * In the game a monitor sends a composite back into the microcontroller —
+ * screen size on number channels 1 and 2, the touch position on 3 and 4, and
+ * whether it is being touched on on/off channel 1. Scripts read exactly those,
+ * so simulating a touchscreen means writing them into the composite the script
+ * sees while a monitor of ours is attached to it.
+ */
+export interface MonitorTouch {
+  readonly width: number
+  readonly height: number
+  readonly x: number
+  readonly y: number
+  readonly pressed: boolean
+  /** A second finger, which the game reports on on/off channel 2. */
+  readonly secondPressed?: boolean
+}
+
+const touches = new Map<NodeId, MonitorTouch>()
+
+export function setMonitorTouch(node: NodeId, touch: MonitorTouch | null): void {
+  if (touch) touches.set(node, touch)
+  else touches.delete(node)
+}
+
+/** Overlays the monitor's channels onto what the graph is feeding the script. */
+function withTouch(input: CompositeValue, touch: MonitorTouch | undefined): CompositeValue {
+  if (!touch) return input
+  const numbers = [...input.numbers]
+  const bools = [...input.bools]
+  numbers[0] = touch.width
+  numbers[1] = touch.height
+  numbers[2] = touch.x
+  numbers[3] = touch.y
+  bools[0] = touch.pressed
+  bools[1] = touch.secondPressed === true
+  return { numbers, bools }
+}
+
 function toComposite(numbers: readonly number[], bools: readonly boolean[]): CompositeValue {
   return { numbers, bools }
 }
@@ -68,7 +108,11 @@ function tick(request: LuaTickRequest) {
   if (size) runtime.setScreenSize(size.width, size.height)
 
   const loadError = runtime.setScript(request.script)
-  const result = runtime.tick(request.input, request.properties, size !== null)
+  const result = runtime.tick(
+    withTouch(request.input, touches.get(request.nodeId)),
+    request.properties,
+    size !== null,
+  )
   useLuaStore.getState().reportError(request.nodeId, loadError ?? result.error)
 
   let frame: VideoFrame | null = null
@@ -109,4 +153,5 @@ export function disposeLuaRuntime(node: NodeId): void {
   runtimes.get(node)?.close()
   runtimes.delete(node)
   frames.delete(node)
+  touches.delete(node)
 }

@@ -16,6 +16,7 @@ import { WireValues } from './WireValues'
 import { WireView } from './WireView'
 import { useEditorStore } from './store'
 import { screenToWorld, type Viewport } from './viewport'
+import { canWatchVideo } from './video'
 import { wheelIntent } from './wheel'
 import type { HitTarget } from './interaction/machine'
 import './canvas.css'
@@ -131,15 +132,9 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
     const target = hitTarget(e.target instanceof Element ? e.target : null)
     const store = useEditorStore.getState()
 
-    // A video port opens a monitor on whatever it is carrying
+    // A video output opens a monitor on what it is sending
     if (target.kind === 'port') {
-      const node = store.doc.nodes.find((n) => n.id === target.port.node)
-      const def = node && getComponent(node.type)
-      const ports = node && def ? cardLayout(def, node.properties) : null
-      const port = ports
-        ? (target.port.kind === 'in' ? ports.inputs : ports.outputs)[target.port.index]
-        : undefined
-      if (port?.signal === 'video') store.watchVideo(target.port)
+      if (canWatchVideo(store.doc, target.port)) store.watchVideo(target.port)
       return
     }
 
@@ -296,6 +291,11 @@ function GridBackground({ viewport }: { viewport: Viewport }) {
   const cell = GRID_PX * viewport.scale
   // A heavier line every game unit, which is every four quarter-unit cells
   const major = cell * GRID_PER_UNIT
+  // Each grid is its own layer. Nesting one pattern inside the other makes the
+  // inner one's offset resolve in the outer one's tile space, and the two
+  // grids then slide apart as the workspace is panned.
+  const offset = `translate(${viewport.x} ${viewport.y})`
+
   return (
     <>
       <defs>
@@ -304,7 +304,7 @@ function GridBackground({ viewport }: { viewport: Viewport }) {
           width={cell}
           height={cell}
           patternUnits="userSpaceOnUse"
-          patternTransform={`translate(${viewport.x} ${viewport.y})`}
+          patternTransform={offset}
         >
           <path
             d={`M ${cell} 0 L 0 0 0 ${cell}`}
@@ -318,9 +318,8 @@ function GridBackground({ viewport }: { viewport: Viewport }) {
           width={major}
           height={major}
           patternUnits="userSpaceOnUse"
-          patternTransform={`translate(${viewport.x} ${viewport.y})`}
+          patternTransform={offset}
         >
-          <rect width={major} height={major} fill="url(#grid-minor)" />
           <path
             d={`M ${major} 0 L 0 0 0 ${major}`}
             fill="none"
@@ -330,6 +329,7 @@ function GridBackground({ viewport }: { viewport: Viewport }) {
         </pattern>
       </defs>
       <rect className="grid" width="100%" height="100%" fill="var(--workspace)" />
+      <rect className="grid" width="100%" height="100%" fill="url(#grid-minor)" />
       <rect className="grid" width="100%" height="100%" fill="url(#grid-major)" />
     </>
   )

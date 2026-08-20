@@ -234,10 +234,16 @@ and `0.25 × (ports + 1)` units tall — a rule that reproduces every height the
 community library records, from a half-unit composite read to a composite write
 that grows a quarter unit per channel. Those measurements belong to the
 component rather than to any view, so they live in `library/geometry.ts`, which
-the canvas turns into pixels and the codec needs for the position conversion. At that size there is no room for text,
-which is why the game draws a glyph and nothing else, and why this does too:
-names go underneath when they are switched on, the full detail is a hover away,
-and an imported microcontroller lays out exactly as it did in the game.
+the canvas turns into pixels and the codec needs for the position conversion. The game puts a small glyph in the corner of a card and the component's name
+and settings beside it, and so does this — with one difference: the text is
+drawn at a fixed size on screen rather than scaling with the workspace, so
+zooming in does not inflate it. What the zoom changes is how much fits. Far out
+a card is its glyph alone; closer in the name appears; closer still its
+settings. The full detail is always a hover away.
+
+Inputs are drawn as rings and outputs as solid dots, so which end of a wire is
+which reads without following it, and the arrows along a wire march in the
+direction the signal flows.
 
 A composite read or write only has a start-channel port when its channel is set
 to 0, meaning "take it from the wire" — that is why the game's cards are a
@@ -337,11 +343,15 @@ the outputs produced by the last completed tick.
   local installation of the game by `scripts/extract-tiny-font.mjs`, which
   reads the BMFont pair the game ships and writes out one bitmask per glyph
   row.
+- **Touch:** a monitor in the game reports back over composite — its size on
+  number channels 1 and 2, the touch position on 3 and 4, and whether it is
+  being touched on on/off channel 1. The script editor's monitor does the same,
+  so a touch interface can be built and tried without leaving the editor.
 - **Monitors:** the game has no monitor component inside a microcontroller —
   a monitor is a block on the vehicle — so a monitor here is an instrument
-  rather than a component. It attaches to any port carrying video (double-click
-  the port, or use the property panel) and watches it without touching the
-  document, which keeps saved files unaffected by where it is pointed.
+  rather than a component. It attaches to any port that *emits* video — an output, or one of the
+  microcontroller's own output pins (double-click the port, or use the property
+  panel) — and watches it without touching the document, which keeps saved files unaffected by where it is pointed.
   Attaching one tells the scripts upstream how big the screen is, which is what
   `screen.getWidth()` answers, and a script with nothing watching it does not
   run `onDraw` at all — as in the game.

@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
 import { SCRIPT_LIMITS } from '@/lua/api'
 import { minifyLua } from '@/lua/minify'
-import { frameFor, setWatched } from '@/lua/runner'
+import { frameFor, setMonitorTouch, setWatched } from '@/lua/runner'
 import { MONITORS } from '@/library/video'
 import { useLuaStore } from '@/lua/store'
 import { useSimulationStore } from '@/sim/store'
@@ -32,12 +32,19 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
 
   const [monitor, setMonitor] = useState(0)
   const [note, setNote] = useState<string | null>(null)
+  const [touching, setTouching] = useState(false)
   const size = MONITORS[monitor] ?? MONITORS[0]
 
   // Only the script being edited draws for this watcher, so the rest cost nothing
   useEffect(() => {
     setWatched('editor', new Map([[node, size]]))
-    return () => setWatched('editor', new Map())
+    // The monitor reports its size back even when nothing is touching it, which
+    // is how a script learns how big its screen is
+    setMonitorTouch(node, { width: size.width, height: size.height, x: 0, y: 0, pressed: false })
+    return () => {
+      setWatched('editor', new Map())
+      setMonitorTouch(node, null)
+    }
   }, [node, size])
 
   // Past the base limit the script needs the Space DLC; past that it fits nowhere
@@ -125,7 +132,20 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
             width={size.width}
             height={size.height}
             scale={Math.max(1, Math.floor(288 / size.width))}
+            onTouch={(touch) => {
+              setTouching(touch?.pressed === true)
+              setMonitorTouch(node, {
+                width: size.width,
+                height: size.height,
+                x: touch?.x ?? 0,
+                y: touch?.y ?? 0,
+                pressed: touch?.pressed === true,
+              })
+            }}
           />
+          <p className="panel-hint monitor-hint">
+            {touching ? 'Touching the screen' : 'Click the screen to touch it'}
+          </p>
           <p className="panel-hint">
             Write <code>onTick()</code> to read inputs and write outputs, and <code>onDraw()</code>{' '}
             to draw on the monitor.

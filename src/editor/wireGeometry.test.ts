@@ -16,11 +16,21 @@ describe('wire geometry', () => {
     expect(path.d.split('L')).toHaveLength(4)
   })
 
-  it('places at least one arrow, pointing along the wire', () => {
+  it('places arrows along the wire, pointing the way the signal flows', () => {
     const path = wirePath({ x: 0, y: 0 }, { x: 300, y: 0 })
-    expect(path.arrows.length).toBeGreaterThan(0)
+    expect(path.arrows.length).toBeGreaterThan(1)
     expect(path.arrows[0]?.angle).toBeCloseTo(0)
-    expect(path.arrows.every((a) => a.x > 0 && a.x < 300)).toBe(true)
+    expect(path.direction).toEqual({ x: 1, y: 0 })
+    // The leading arrow sits behind the start; the rest are on the wire
+    expect(path.arrows.slice(1).every((a) => a.x > 0 && a.x < 300)).toBe(true)
+  })
+
+  it('leads with one arrow a whole spacing behind, so the march repeats cleanly', () => {
+    const path = wirePath({ x: 0, y: 0 }, { x: 300, y: 0 })
+    const [first, second] = path.arrows
+    expect(second!.x - first!.x).toBeCloseTo(path.arrowSpacing, 5)
+    expect(path.arrowSpacing).toBeCloseTo(ARROW_SPACING, -1)
+    expect(first!.x).toBeLessThan(STUB)
   })
 
   it('spaces arrows out along a long wire', () => {

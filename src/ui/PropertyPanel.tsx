@@ -2,6 +2,7 @@
 import { getComponent } from '@/library/registry'
 import { resolvePorts } from '@/library/ports'
 import { useEditorStore } from '@/editor/store'
+import { canWatchVideo } from '@/editor/video'
 import type { PropertyDef } from '@/library/types'
 import type { PropertyValue } from '@/model/types'
 import { SIGNAL_LABELS, signalColor } from './signals'
@@ -68,6 +69,7 @@ function Field({
 }
 
 export function PropertyPanel() {
+  const doc = useEditorStore((s) => s.doc)
   const selection = useEditorStore((s) => s.selection)
   const node = useEditorStore((s) => s.doc.nodes.find((n) => n.id === s.selection[0]))
   const setProperty = useEditorStore((s) => s.setProperty)
@@ -117,11 +119,13 @@ export function PropertyPanel() {
       <PortList
         title="Inputs"
         ports={resolvePorts(def, 'in', node.properties)}
+        canWatch={(index) => canWatchVideo(doc, { node: node.id, kind: 'in', index })}
         onWatch={(index) => watchVideo({ node: node.id, kind: 'in', index })}
       />
       <PortList
         title="Outputs"
         ports={resolvePorts(def, 'out', node.properties)}
+        canWatch={(index) => canWatchVideo(doc, { node: node.id, kind: 'out', index })}
         onWatch={(index) => watchVideo({ node: node.id, kind: 'out', index })}
       />
     </aside>
@@ -131,10 +135,12 @@ export function PropertyPanel() {
 function PortList({
   title,
   ports,
+  canWatch,
   onWatch,
 }: {
   title: string
   ports: readonly { label: string; signal: keyof typeof SIGNAL_LABELS }[]
+  canWatch: (index: number) => boolean
   onWatch: (index: number) => void
 }) {
   if (ports.length === 0) return null
@@ -146,7 +152,7 @@ function PortList({
           <li key={i}>
             <span className="port-swatch" style={{ background: signalColor(port.signal) }} />
             {port.label}
-            {port.signal === 'video' ? (
+            {canWatch(i) ? (
               <button
                 className="text-button tiny"
                 title="Watch this signal on a monitor"

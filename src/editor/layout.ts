@@ -33,12 +33,29 @@ export const CARD = {
   /** Ports sit a quarter unit apart, starting a quarter unit down. */
   portSpacing: GRID_PX,
   portTop: GRID_PX,
-  portRadius: 5,
+  portRadius: 4,
   /** The glyph is the same size on every card, whatever the card's height. */
-  iconSize: 24,
-  /** Name label size, in screen pixels — it does not grow with the zoom. */
-  labelSize: 11,
+  iconSize: 14,
+  /** Padding inside a card. */
+  padding: 4,
+  /** Type sizes, in screen pixels — they do not grow with the zoom. */
+  titleSize: 11,
+  detailSize: 9,
+  detailLeading: 10,
 } as const
+
+/**
+ * How much of a card's contents there is room for on screen.
+ *
+ * Text is drawn at a fixed size however far the workspace is zoomed, so what
+ * changes with the zoom is how much of it fits. Below these widths the card
+ * shows its glyph alone, which is what the game's cards look like from far out.
+ */
+export function cardDetail(screenWidth: number): 'icon' | 'title' | 'full' {
+  if (screenWidth < 84) return 'icon'
+  if (screenWidth < 150) return 'title'
+  return 'full'
+}
 
 export interface CardLayout {
   readonly width: number

@@ -357,7 +357,7 @@ test('keeps wires and labels the same size while zooming', async ({ page }) => {
   await place(page, 'Constant Number')
   const labelHeight = () =>
     page
-      .locator('.node-name')
+      .locator('.node-title')
       .first()
       .evaluate((text) => text.getBoundingClientRect().height)
 
@@ -367,11 +367,15 @@ test('keeps wires and labels the same size while zooming', async ({ page }) => {
   const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
   await drag(page, await centre(source), await centre(target))
 
+  // Zoom in far enough that the cards have room for their names
+  await page.mouse.move(400, 250)
+  for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -120)
+  await expect(page.locator('.node-title').first()).toBeVisible()
+
   const beforeLabel = await labelHeight()
   const beforeCard = await nodes(page).first().boundingBox()
 
-  await page.mouse.move(400, 250)
-  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -120)
+  for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -120)
 
   // The graph is bigger, but its labels are not
   expect((await nodes(page).first().boundingBox())!.width).toBeGreaterThan(beforeCard!.width * 1.5)
@@ -379,4 +383,44 @@ test('keeps wires and labels the same size while zooming', async ({ page }) => {
 
   // Wire weight is held by the stroke not scaling with the canvas
   await expect(page.locator('.wire path').first()).toHaveCSS('vector-effect', 'non-scaling-stroke')
+})
+
+test('a script sees the monitor as a touchscreen', async ({ page }) => {
+  await place(page, 'Lua Script')
+  await page.getByRole('button', { name: 'Edit script' }).click()
+  await typeScript(
+    page,
+    'function onDraw() screen.setColor(0,0,0) screen.drawClear() ' +
+      'if input.getBool(1) then screen.setColor(255,0,0) ' +
+      'screen.drawRectF(input.getNumber(3)-1, input.getNumber(4)-1, 3, 3) end end',
+  )
+  await page.getByRole('button', { name: 'Run simulation' }).click()
+
+  const screen = page.locator('.screen-preview')
+  const box = (await screen.boundingBox())!
+  const size = await screen.evaluate((c) => [
+    (c as HTMLCanvasElement).width,
+    (c as HTMLCanvasElement).height,
+  ])
+  // The middle of the screen, in monitor pixels
+  const target = { x: Math.floor(size[0]! / 2), y: Math.floor(size[1]! / 2) }
+  const pixelAt = (x: number, y: number) =>
+    page.evaluate(
+      ({ px, py }) => {
+        const canvas = document.querySelector('.screen-preview') as HTMLCanvasElement | null
+        const data = canvas?.getContext('2d')?.getImageData(px, py, 1, 1).data
+        return data ? [data[0], data[1], data[2]].join(',') : ''
+      },
+      { px: x, py: y },
+    )
+
+  await expect.poll(() => pixelAt(target.x, target.y), { timeout: 15_000 }).toBe('0,0,0')
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  // The script reads the touch on number channels 3 and 4 and on/off channel 1
+  await expect.poll(() => pixelAt(target.x, target.y), { timeout: 15_000 }).toBe('255,0,0')
+
+  await page.mouse.up()
+  await expect.poll(() => pixelAt(target.x, target.y), { timeout: 15_000 }).toBe('0,0,0')
 })

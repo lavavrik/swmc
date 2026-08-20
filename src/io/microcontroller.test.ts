@@ -251,3 +251,12 @@ describe('attributes this editor does not model', () => {
     expect(serializeMicrocontroller(doc)).toContain('type="1236352852"')
   })
 })
+
+describe('attributes the game leaves out', () => {
+  it('reads a pulse with no mode as on-to-off, the code the game omits', () => {
+    const doc = parse('thermostat-v3')
+    const pulses = doc.nodes.filter((n) => n.type === 'logic.pulse')
+    expect(pulses).toHaveLength(3)
+    expect(pulses.every((p) => p.properties.mode === 'onToOff')).toBe(true)
+  })
+})

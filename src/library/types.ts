@@ -48,11 +48,16 @@ export type XmlProperty =
     }
   /** A boolean attribute written as `true`/`false`, or as `1`/`0` when `asInt`. */
   | { readonly form: 'attributeBool'; readonly name: string; readonly asInt?: boolean }
-  /** An attribute holding the numeric code of one of our string values. */
+  /**
+   * An attribute holding the numeric code of one of our string values.
+   * `absent` is what the game means when the attribute is missing, which is not
+   * always the same as the value a freshly placed component starts with.
+   */
   | {
       readonly form: 'attributeEnum'
       readonly name: string
       readonly values: Readonly<Record<string, number>>
+      readonly absent?: string
     }
   /** A child element `<name text="…" value="…"/>`, the game's number property. */
   | { readonly form: 'numberElement'; readonly name: string }

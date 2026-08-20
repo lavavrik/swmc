@@ -538,6 +538,14 @@
   font-size: 12px;
 }
 
+.screen-preview.touchable {
+  cursor: crosshair;
+}
+
+.monitor-hint {
+  margin-top: 6px;
+}
+
 .screen-preview {
   display: block;
   image-rendering: pixelated;

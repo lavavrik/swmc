@@ -1,10 +1,12 @@
 /**
  * One component card.
  *
- * The game draws a component as a small square with a glyph and its ports on
- * the edges — no text, because at one game unit wide there is no room for any.
- * This does the same, and puts the name underneath when names are switched on,
- * so a graph reads the way it does in the editor it came from.
+ * The game puts a small glyph in the corner and the component's name and
+ * settings beside it, all inside a card one game unit wide. This does the same,
+ * with one difference: the text is drawn at a fixed size on screen rather than
+ * scaling with the workspace, so zooming in does not inflate it. What the zoom
+ * changes is how much fits — far out a card is its glyph alone, closer in the
+ * name appears, closer still its settings.
  *
  * Drawn entirely in SVG — no `foreignObject` — so a graph of a thousand
  * components stays cheap to render and hit-test.
@@ -13,14 +15,15 @@ import { memo } from 'react'
 import { signalColor } from '@/ui/signals'
 import type { ComponentDef } from '@/library/types'
 import type { GraphNode, PortKind } from '@/model/types'
-import { CARD, cardLayout, nodeOrigin, portPosition, portsOf, type CardLayout } from './layout'
+import { CARD, cardDetail, cardLayout, nodeOrigin, portPosition, portsOf } from './layout'
+import type { CardLayout } from './layout'
 import { CategoryIcon } from './CategoryIcon'
 
 interface Props {
   node: GraphNode
   def: ComponentDef
   selected: boolean
-  /** Whether to draw the component's name under its card. */
+  /** Whether to draw the component's name and settings on the card at all. */
   showNames?: boolean | undefined
   /** Current zoom, so text keeps the same size on screen at any zoom. */
   scale: number
@@ -47,18 +50,21 @@ function PortDots({
       {portsOf(layout, kind).map((port, index) => {
         const { x, y } = portPosition(layout, kind, index)
         const faded = dim && compatible ? !compatible(kind, index) : false
+        // Inputs are rings and outputs are solid, so which end of a wire is
+        // which reads at a glance
+        const colour = signalColor(port.signal)
         return (
           <circle
             key={`${kind}${index}`}
-            className="port"
+            className={`port port-${kind}`}
             data-port-kind={kind}
             data-port-index={index}
             cx={x}
             cy={y}
             r={CARD.portRadius}
-            fill={signalColor(port.signal)}
-            stroke="var(--port-ring)"
-            strokeWidth={2}
+            fill={kind === 'in' ? 'var(--card)' : colour}
+            stroke={colour}
+            strokeWidth={kind === 'in' ? 3 : 1.5}
             opacity={faded ? 0.25 : 1}
           >
             <title>{`${port.label} (${port.signal})`}</title>
@@ -69,15 +75,30 @@ function PortDots({
   )
 }
 
-/** Everything about a component, for the hover tooltip. */
-function tooltipFor(node: GraphNode, def: ComponentDef): string {
-  const lines = [def.name, def.description]
+/** The settings worth showing on the card, as the game lists them. */
+function detailLines(node: GraphNode, def: ComponentDef): string[] {
+  const lines: string[] = []
   for (const property of def.properties) {
     const value = node.properties[property.key]
     if (value === undefined || value === '') continue
-    lines.push(`${property.label}: ${String(value)}`)
+    // A script is far too long to sit on a card; its editor is a click away
+    if (property.kind === 'text' && String(value).length > 24) continue
+    lines.push(`${property.label.toLowerCase()}: ${String(value)}`)
   }
-  return lines.join('\n')
+  return lines
+}
+
+/** Everything about a component, for the hover tooltip. */
+function tooltipFor(node: GraphNode, def: ComponentDef): string {
+  return [def.name, def.description, ...detailLines(node, def)].join('\n')
+}
+
+/** Clips text to the pixels available, since the type does not shrink. */
+function fit(text: string, pixels: number, size: number): string {
+  const perCharacter = size * 0.55
+  const room = Math.floor(pixels / perCharacter)
+  if (room <= 1) return ''
+  return text.length > room ? `${text.slice(0, room - 1)}…` : text
 }
 
 export const NodeView = memo(function NodeView({
@@ -98,7 +119,13 @@ export const NodeView = memo(function NodeView({
 
   const label = typeof node.properties.label === 'string' ? node.properties.label : ''
   const name = label.length > 0 ? label : def.name
-  const icon = Math.min(CARD.iconSize, height - 6)
+
+  // Text is measured in screen pixels, so the card's world size is converted
+  const detail = showNames ? cardDetail(width * scale) : 'icon'
+  const pad = CARD.padding / scale
+  const icon = CARD.iconSize / scale
+  const textLeft = detail === 'icon' ? 0 : pad * 2 + icon
+  const room = (width - textLeft - pad) * scale
 
   return (
     <g className="node" data-node-id={node.id} transform={`translate(${x} ${y})`}>
@@ -116,22 +143,41 @@ export const NodeView = memo(function NodeView({
 
       <CategoryIcon
         category={def.category}
-        x={(width - icon) / 2}
-        y={(height - icon) / 2}
+        x={detail === 'icon' ? (width - icon) / 2 : pad}
+        y={detail === 'icon' ? (height - icon) / 2 : pad}
         size={icon}
       />
 
-      {showNames && (
+      {detail !== 'icon' && (
         <text
-          className="node-name"
-          x={width / 2}
-          y={height + (CARD.labelSize + 3) / scale}
-          fontSize={CARD.labelSize / scale}
-          textAnchor="middle"
+          className="node-title"
+          x={textLeft}
+          y={pad + CARD.titleSize / scale}
+          fontSize={CARD.titleSize / scale}
+          fill="var(--card-title)"
         >
-          {name.length > 22 ? `${name.slice(0, 21)}…` : name}
+          {fit(name, room, CARD.titleSize)}
         </text>
       )}
+
+      {detail === 'full' &&
+        detailLines(node, def).map((line, index) => {
+          const top = pad + (CARD.titleSize + 4 + index * CARD.detailLeading) / scale
+          // Stop before running off the bottom of the card
+          if (top + CARD.detailSize / scale > height) return null
+          return (
+            <text
+              key={index}
+              className="node-detail"
+              x={textLeft}
+              y={top + CARD.detailSize / scale}
+              fontSize={CARD.detailSize / scale}
+              fill="var(--card-detail)"
+            >
+              {fit(line, room, CARD.detailSize)}
+            </text>
+          )
+        })}
 
       <PortDots layout={layout} kind="in" dim={dimPorts} compatible={compatiblePort} />
       <PortDots layout={layout} kind="out" dim={dimPorts} compatible={compatiblePort} />

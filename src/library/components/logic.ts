@@ -222,7 +222,14 @@ export const logicComponents: ComponentDef[] = [
         key: 'mode',
         label: 'Trigger',
         default: 'offToOn',
-        xml: { form: 'attributeEnum', name: 'm', values: { onToOff: 0, offToOn: 1, either: 2 } },
+        // A saved pulse with no mode attribute is on-to-off, even though a
+        // freshly placed one starts the other way round
+        xml: {
+          form: 'attributeEnum',
+          name: 'm',
+          values: { onToOff: 0, offToOn: 1, either: 2 },
+          absent: 'onToOff',
+        },
         options: [
           { value: 'offToOn', label: 'Off to on' },
           { value: 'onToOff', label: 'On to off' },
