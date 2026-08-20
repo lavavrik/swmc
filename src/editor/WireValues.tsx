@@ -41,9 +41,9 @@ export function WireValues({ doc, offsetFor, scale }: Props) {
           <text
             key={wire.id}
             className="wire-value"
-            x={at.x + offset.x + STUB + 4}
-            y={at.y + offset.y - 5}
-            fontSize={Math.min(11, 9 / scale + 4)}
+            x={at.x + offset.x + (STUB + 4) / scale}
+            y={at.y + offset.y - 5 / scale}
+            fontSize={11 / scale}
           >
             {text}
           </text>

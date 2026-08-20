@@ -14,6 +14,8 @@ interface Props {
   from: Point
   to: Point
   signal: SignalType
+  /** Current zoom, so the wire keeps the same weight on screen at any zoom. */
+  scale: number
   faded?: boolean
 }
 
@@ -23,7 +25,7 @@ const ARROW = 'M -5 -5 L 6 0 L -5 5 Z'
 export const WIRE_WIDTH = 4
 export const WIRE_CASING_WIDTH = WIRE_WIDTH + 3
 
-export const WireView = memo(function WireView({ from, to, signal, faded = false }: Props) {
+export const WireView = memo(function WireView({ from, to, signal, scale, faded = false }: Props) {
   const path = wirePath(from, to)
   const colour = signalColor(signal)
 
@@ -34,6 +36,7 @@ export const WireView = memo(function WireView({ from, to, signal, faded = false
         d={path.d}
         fill="none"
         strokeWidth={WIRE_CASING_WIDTH}
+        vectorEffect="non-scaling-stroke"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
@@ -42,6 +45,7 @@ export const WireView = memo(function WireView({ from, to, signal, faded = false
         fill="none"
         stroke={colour}
         strokeWidth={WIRE_WIDTH}
+        vectorEffect="non-scaling-stroke"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
@@ -51,7 +55,9 @@ export const WireView = memo(function WireView({ from, to, signal, faded = false
           className="wire-arrow"
           d={ARROW}
           fill={colour}
-          transform={`translate(${arrow.x} ${arrow.y}) rotate(${(arrow.angle * 180) / Math.PI})`}
+          transform={`translate(${arrow.x} ${arrow.y}) rotate(${
+            (arrow.angle * 180) / Math.PI
+          }) scale(${1 / scale})`}
         />
       ))}
     </g>

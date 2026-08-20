@@ -29,13 +29,36 @@ function channelPorts(properties: NodeProperties, signal: SignalType): PortDef[]
   return Array.from({ length: count }, (_, i) => ({ label: `Channel ${start + i}`, signal }))
 }
 
-const channelProperty = {
+/**
+ * The same setting, under two different attribute names: a read stores it as
+ * `i`, a write as `offset`. Both are the channel number less one.
+ */
+const readChannelProperty = {
   kind: 'number',
   key: 'channel',
   label: 'Start channel',
   default: 1,
+  xml: { form: 'attributeNumber', name: 'i', offset: 1 },
+} as const
+
+const writeChannelProperty = {
+  ...readChannelProperty,
   xml: { form: 'attributeNumber', name: 'offset', offset: 1 },
 } as const
+
+/**
+ * The start channel comes from a wire rather than the property when the channel
+ * is set to 0 — an offset of -1 in a saved file. The port only exists in that
+ * case, which is why these components are a quarter unit shorter when the
+ * channel is set here.
+ */
+const takesChannelFromInput = (properties: NodeProperties): boolean =>
+  prop(properties, 'channel', 1) <= 0
+
+const leadingPorts = (properties: NodeProperties): PortDef[] =>
+  takesChannelFromInput(properties)
+    ? [composite('Composite'), num('Start channel')]
+    : [composite('Composite')]
 
 const countProperty = {
   kind: 'number',
@@ -64,15 +87,14 @@ function compositeRead(id: string, swType: number, name: string, signal: 'onoff'
     category: 'composite',
     name,
     description: `Reads one ${kind} channel out of a composite signal.`,
-    inputs: [composite('Composite'), num('Start channel')],
+    inputs: (properties) => leadingPorts(properties),
     outputs: [{ label: 'Value', signal }],
-    properties: [channelProperty],
+    properties: [readChannelProperty],
     eval: ({ inputs, properties }) => {
       const value = asComposite(inputs[0])
-      // A wired start channel overrides the property, as in the game
-      const channel = clampChannel(
-        inputs[1] === undefined ? startChannel(properties) : asNumber(inputs[1]),
-      )
+      const channel = takesChannelFromInput(properties)
+        ? clampChannel(asNumber(inputs[1]))
+        : startChannel(properties)
       const source = signal === 'onoff' ? value.bools : value.numbers
       return { outputs: [source[channel - 1] ?? (signal === 'onoff' ? false : 0)] }
     },
@@ -93,29 +115,25 @@ function compositeWrite(
     category: 'composite',
     name,
     description: `Writes ${kind} values into channels of a composite signal.`,
-    inputs: (properties) => [
-      composite('Composite'),
-      num('Start channel'),
-      ...channelPorts(properties, signal),
-    ],
+    inputs: (properties) => [...leadingPorts(properties), ...channelPorts(properties, signal)],
     outputs: [composite('Composite')],
-    properties: [channelProperty, countProperty],
+    properties: [writeChannelProperty, countProperty],
     deprecated,
     xml: {
       // The composite and start-channel inputs are named; channels are numbered
       inputNames: (properties) => [
-        'c',
-        'off',
+        ...(takesChannelFromInput(properties) ? ['c', 'off'] : ['c']),
         ...channelPorts(properties, signal).map((_, i) => String(i + 1)),
       ],
     },
     eval: ({ inputs, properties }) => {
       const base = asComposite(inputs[0])
-      const start = clampChannel(
-        inputs[1] === undefined ? startChannel(properties) : asNumber(inputs[1]),
-      )
+      const lead = leadingPorts(properties).length
+      const start = takesChannelFromInput(properties)
+        ? clampChannel(asNumber(inputs[1]))
+        : startChannel(properties)
       const values = channelPorts(properties, signal).map((_, i) =>
-        signal === 'onoff' ? asBool(inputs[i + 2]) : asNumber(inputs[i + 2]),
+        signal === 'onoff' ? asBool(inputs[i + lead]) : asNumber(inputs[i + lead]),
       )
       const written: CompositeValue =
         signal === 'onoff'

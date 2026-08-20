@@ -33,9 +33,10 @@ export const CARD = {
   portSpacing: GRID_PX,
   portTop: GRID_PX,
   portRadius: 5,
-  /** Size of the glyph in the middle of the card. */
-  iconScale: 0.5,
-  labelSize: 9,
+  /** The glyph is the same size on every card, whatever the card's height. */
+  iconSize: 24,
+  /** Name label size, in screen pixels — it does not grow with the zoom. */
+  labelSize: 11,
 } as const
 
 export interface CardLayout {

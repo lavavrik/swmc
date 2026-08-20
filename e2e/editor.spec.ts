@@ -352,3 +352,31 @@ test('configures the microcontroller pins', async ({ page }) => {
   await expect(editor.locator('.pin-edit-row')).toHaveCount(1)
   await expect(nodes(page)).toHaveCount(1)
 })
+
+test('keeps wires and labels the same size while zooming', async ({ page }) => {
+  await place(page, 'Constant Number')
+  const labelHeight = () =>
+    page
+      .locator('.node-name')
+      .first()
+      .evaluate((text) => text.getBoundingClientRect().height)
+
+  await place(page, 'Absolute Value')
+  await drag(page, await centre(nodes(page).nth(1)), { x: 640, y: 300 })
+  const source = nodes(page).first().locator('[data-port-kind="out"]')
+  const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+  await drag(page, await centre(source), await centre(target))
+
+  const beforeLabel = await labelHeight()
+  const beforeCard = await nodes(page).first().boundingBox()
+
+  await page.mouse.move(400, 250)
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -120)
+
+  // The graph is bigger, but its labels are not
+  expect((await nodes(page).first().boundingBox())!.width).toBeGreaterThan(beforeCard!.width * 1.5)
+  expect(await labelHeight()).toBeCloseTo(beforeLabel, 0)
+
+  // Wire weight is held by the stroke not scaling with the canvas
+  await expect(page.locator('.wire path').first()).toHaveCSS('vector-effect', 'non-scaling-stroke')
+})

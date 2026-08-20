@@ -41,7 +41,7 @@ describe('card layout', () => {
     const oneChannel = cardLayout(write, { channel: 1, count: 1 }).height / GAME_UNIT
     const fourChannels = cardLayout(write, { channel: 1, count: 4 }).height / GAME_UNIT
     expect(fourChannels - oneChannel).toBe(0.75)
-    expect(fourChannels).toBe(cardHeightUnits(6))
+    expect(fourChannels).toBe(cardHeightUnits(5))
   })
 
   it('puts inputs on the left edge and outputs on the right edge', () => {

@@ -169,7 +169,7 @@ describe('ticking', () => {
     const value = g.add('const.number', { value: 42 })
     const write = g.add('composite.writeNumber', { channel: 7, count: 1 })
     const read = g.add('composite.readNumber', { channel: 7 })
-    g.wire(value, 0, write, 2)
+    g.wire(value, 0, write, 1)
     g.wire(write, 0, read, 0)
 
     const sim = new Simulation(g.doc)

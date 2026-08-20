@@ -237,6 +237,15 @@ which is why the game draws a glyph and nothing else, and why this does too:
 names go underneath when they are switched on, the full detail is a hover away,
 and an imported microcontroller lays out exactly as it did in the game.
 
+A composite read or write only has a start-channel port when its channel is set
+to 0, meaning "take it from the wire" — that is why the game's cards are a
+quarter unit shorter than a naive count of their ports suggests.
+
+Wires and text are drawn at a constant size on screen rather than scaling with
+the canvas: zooming in shows more of the graph's detail, not fatter wires and
+bigger letters. Strokes use `non-scaling-stroke` and type is divided by the
+current zoom.
+
 Node cards are SVG, not HTML-in-`foreignObject`, keeping DOM node counts low. A graph of ~1000 components
 must stay interactive; if profiling shows otherwise, nodes outside the viewport
 are culled before any other optimisation is considered.
@@ -367,7 +376,9 @@ microcontroller saved by the game. That confirmed the position scale and the
 upward y axis, and corrected two things: a `<c>` element with no `type`
 attribute means type 0, the NOT component, because the game omits the default;
 and a channel offset of `-1` means the start channel comes from the component's
-`off` input rather than from its property. Attributes the editor does not model
+`off` input rather than from its property, in which case — and only then — the
+component has a port for it. The same setting is also stored under two
+different attribute names: `i` on a read, `offset` on a write. Attributes the editor does not model
 — the 16×16 icon, the group's `data` type — ride along untouched.
 
 The project library stores documents in IndexedDB (id, name, thumbnail,

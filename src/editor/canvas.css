@@ -46,6 +46,7 @@
   stroke: rgba(8, 32, 38, 0.55);
   stroke-width: 1.5px;
   paint-order: stroke;
+  vector-effect: non-scaling-stroke;
 }
 
 .wire-value {

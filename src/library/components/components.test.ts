@@ -318,14 +318,17 @@ describe('composite', () => {
     expect(run('composite.readOnoff', [composite({ bools })], { channel: 1 })).toEqual([false])
   })
 
-  it('lets a wired start channel override the property', () => {
+  it('takes the start channel from a wire when the channel is set to 0', () => {
     const numbers = Array.from({ length: 32 }, (_, i) => i)
-    expect(run('composite.readNumber', [composite({ numbers }), 3], { channel: 1 })).toEqual([2])
+    // With a channel set, there is no start-channel port at all
+    expect(resolvePorts(def('composite.readNumber'), 'in', { channel: 1 })).toHaveLength(1)
+    expect(run('composite.readNumber', [composite({ numbers }), 3], { channel: 0 })).toEqual([2])
+    expect(resolvePorts(def('composite.readNumber'), 'in', { channel: 0 })).toHaveLength(2)
   })
 
   it('writes channels without disturbing the rest of the signal', () => {
     const numbers = Array.from({ length: 32 }, () => 9)
-    const [written] = run('composite.writeNumber', [composite({ numbers }), undefined, 1, 2], {
+    const [written] = run('composite.writeNumber', [composite({ numbers }), 1, 2], {
       channel: 5,
       count: 2,
     })
@@ -337,19 +340,21 @@ describe('composite', () => {
 
   it('exposes one input port per channel it writes', () => {
     const write = def('composite.writeOnoff')
-    // composite + start channel + one port per channel
-    expect(resolvePorts(write, 'in', { channel: 1, count: 4 })).toHaveLength(6)
-    expect(resolvePorts(write, 'in', { channel: 1, count: 1 })).toHaveLength(3)
+    // composite + one port per channel; the start channel is a property here
+    expect(resolvePorts(write, 'in', { channel: 1, count: 4 })).toHaveLength(5)
+    expect(resolvePorts(write, 'in', { channel: 1, count: 1 })).toHaveLength(2)
+    // and a port of its own when it comes from a wire instead
+    expect(resolvePorts(write, 'in', { channel: 0, count: 1 })).toHaveLength(3)
   })
 
   it('never addresses a channel past 32', () => {
-    // composite + start channel + channels 31 and 32 only
+    // composite + channels 31 and 32 only
     expect(
       resolvePorts(def('composite.writeNumber'), 'in', { channel: 31, count: 8 }),
-    ).toHaveLength(4)
+    ).toHaveLength(3)
     expect(
       resolvePorts(def('composite.writeNumber'), 'in', { channel: 32, count: 8 }),
-    ).toHaveLength(3)
+    ).toHaveLength(2)
   })
 
   it('switches between two composite signals', () => {

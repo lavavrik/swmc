@@ -22,6 +22,8 @@ interface Props {
   selected: boolean
   /** Whether to draw the component's name under its card. */
   showNames?: boolean | undefined
+  /** Current zoom, so text keeps the same size on screen at any zoom. */
+  scale: number
   /** Live drag offset in world pixels, applied without touching the document. */
   offset?: { x: number; y: number } | undefined
   /** Ports that should be dimmed because the wire being dragged cannot reach them. */
@@ -83,6 +85,7 @@ export const NodeView = memo(function NodeView({
   def,
   selected,
   showNames = false,
+  scale,
   offset,
   dimPorts = false,
   compatiblePort,
@@ -95,7 +98,7 @@ export const NodeView = memo(function NodeView({
 
   const label = typeof node.properties.label === 'string' ? node.properties.label : ''
   const name = label.length > 0 ? label : def.name
-  const icon = Math.round(Math.min(width, height) * CARD.iconScale)
+  const icon = Math.min(CARD.iconSize, height - 6)
 
   return (
     <g className="node" data-node-id={node.id} transform={`translate(${x} ${y})`}>
@@ -122,8 +125,8 @@ export const NodeView = memo(function NodeView({
         <text
           className="node-name"
           x={width / 2}
-          y={height + CARD.labelSize + 2}
-          fontSize={CARD.labelSize}
+          y={height + (CARD.labelSize + 3) / scale}
+          fontSize={CARD.labelSize / scale}
           textAnchor="middle"
         >
           {name.length > 22 ? `${name.slice(0, 21)}…` : name}

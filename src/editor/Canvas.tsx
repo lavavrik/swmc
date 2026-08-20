@@ -199,7 +199,9 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
                 ? cardLayout(def, source.properties).outputs[wire.from.index]?.signal
                 : undefined
             if (!from || !to || !signal) return null
-            return <WireView key={wire.id} from={from} to={to} signal={signal} />
+            return (
+              <WireView key={wire.id} from={from} to={to} signal={signal} scale={viewport.scale} />
+            )
           })}
         </g>
 
@@ -214,6 +216,7 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
                 def={def}
                 selected={selectionSet.has(node.id)}
                 showNames={showNames}
+                scale={viewport.scale}
                 offset={offsetFor(node.id)}
                 dimPorts={wiring !== null}
                 compatiblePort={
@@ -235,7 +238,9 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
         <WireValues doc={doc} offsetFor={offsetFor} scale={viewport.scale} />
 
         <g className="layer-overlay" pointerEvents="none">
-          {wiring && <PendingWire doc={doc} wiring={wiring} offsetFor={offsetFor} />}
+          {wiring && (
+            <PendingWire doc={doc} wiring={wiring} offsetFor={offsetFor} scale={viewport.scale} />
+          )}
           {interaction.kind === 'marquee' && (
             <rect
               x={Math.min(interaction.startWorld.x, interaction.currentWorld.x)}
@@ -259,6 +264,7 @@ function PendingWire({
   doc,
   wiring,
   offsetFor,
+  scale,
 }: {
   doc: Microcontroller
   wiring: Extract<
@@ -266,6 +272,7 @@ function PendingWire({
     { kind: 'draggingWire' }
   >
   offsetFor: (id: NodeId) => Point
+  scale: number
 }) {
   const anchor = portWorld(doc, wiring.origin, offsetFor)
   if (!anchor) return null
@@ -278,7 +285,7 @@ function PendingWire({
   if (!signal) return null
   const [from, to] =
     wiring.origin.kind === 'out' ? [anchor, wiring.cursorWorld] : [wiring.cursorWorld, anchor]
-  return <WireView from={from} to={to} signal={signal} faded />
+  return <WireView from={from} to={to} signal={signal} scale={scale} faded />
 }
 
 /**

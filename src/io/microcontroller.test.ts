@@ -140,8 +140,8 @@ describe('round trips', () => {
         librarySchema,
         source.doc,
         { node: source.id, kind: 'out', index: 0 },
-        // channel 5 is the third channel port, which follows composite and start channel
-        { node: write.id, kind: 'in', index: 4 },
+        // channel 5 is the third channel port, which follows the composite input
+        { node: write.id, kind: 'in', index: 3 },
       ),
     )
     const xml = serializeMicrocontroller(wired.doc)
@@ -150,7 +150,7 @@ describe('round trips', () => {
     expect(xml).toContain('<in3')
 
     const reloaded = unwrap(parseMicrocontroller(xml))
-    expect(reloaded.wires[0]?.to.index).toBe(4)
+    expect(reloaded.wires[0]?.to.index).toBe(3)
     expect(
       reloaded.nodes.find((n) => n.type === 'composite.writeNumber')?.properties,
     ).toMatchObject({ channel: 3, count: 4 })
@@ -188,7 +188,7 @@ describe('a microcontroller saved by the game', () => {
         .filter((w) => w.to.node === 'c12')
         .map((w) => w.to.index)
         .sort(),
-    ).toEqual([0, 2, 3])
+    ).toEqual([0, 1, 2])
   })
 
   it('reads channel offsets, including the one that means "from the wire"', () => {
