@@ -21,6 +21,14 @@
   filter: drop-shadow(0 1px 2px var(--card-shadow));
 }
 
+/* Names sit under the cards, so they need to read against the workspace */
+.node-name {
+  fill: #0d2f36;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 3px;
+}
+
 .port {
   cursor: crosshair;
 }

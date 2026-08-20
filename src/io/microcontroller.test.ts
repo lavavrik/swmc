@@ -156,3 +156,76 @@ describe('round trips', () => {
     ).toMatchObject({ channel: 3, count: 4 })
   })
 })
+
+describe('a microcontroller saved by the game', () => {
+  const doc = parse('thermostat-v3')
+
+  it('reads its metadata and pins', () => {
+    expect(doc.meta).toMatchObject({ name: 'Thermostat V3', width: 2, length: 4 })
+    expect(doc.ioOrder).toHaveLength(8)
+    const first = doc.nodes.find((n) => n.id === doc.ioOrder[0])
+    expect(first?.type).toBe('io.in.composite')
+    expect(first?.properties.label).toBe('Dispaly')
+  })
+
+  it('reads every component, with nothing unrecognised', () => {
+    expect(doc.nodes).toHaveLength(51)
+    expect(doc.nodes.filter((n) => n.type === 'unknown.component')).toEqual([])
+  })
+
+  it('understands a <c> with no type attribute as a NOT', () => {
+    // The game omits type="0"; the file has three of them
+    expect(doc.nodes.filter((n) => n.type === 'logic.not')).toHaveLength(2)
+  })
+
+  it('reads the wires, including the named composite inputs', () => {
+    expect(doc.wires).toHaveLength(64)
+    // `inc` and `inoff` are the composite and start-channel inputs
+    const write = doc.nodes.find((n) => n.id === 'c12')
+    expect(write?.type).toBe('composite.writeNumber')
+    expect(
+      doc.wires
+        .filter((w) => w.to.node === 'c12')
+        .map((w) => w.to.index)
+        .sort(),
+    ).toEqual([0, 2, 3])
+  })
+
+  it('reads channel offsets, including the one that means "from the wire"', () => {
+    expect(doc.nodes.find((n) => n.id === 'c12')?.properties).toMatchObject({
+      channel: 7,
+      count: 2,
+    })
+    // offset="-1" decodes to channel 0: the start channel comes from the input
+    expect(doc.nodes.find((n) => n.id === 'c55')?.properties.channel).toBe(0)
+  })
+
+  it('reads a script and its properties', () => {
+    const script = doc.nodes.find((n) => n.type === 'data.luaScript')
+    expect(String(script?.properties.script)).toContain('function onDraw()')
+    const slider = doc.nodes.find((n) => n.properties.name === 'Default Temp (c)')
+    expect(slider?.properties).toMatchObject({ min: -50, max: 50, value: 16, increment: 1 })
+  })
+
+  it('round-trips without losing anything it understood', () => {
+    const again = unwrap(parseMicrocontroller(serializeMicrocontroller(doc)))
+    expect(again.nodes).toEqual(doc.nodes)
+    expect(again.wires.map((w) => ({ from: w.from, to: w.to }))).toEqual(
+      doc.wires.map((w) => ({ from: w.from, to: w.to })),
+    )
+    expect(again.ioOrder).toEqual(doc.ioOrder)
+    expect(again.meta).toEqual(doc.meta)
+  })
+
+  it('keeps the icon the game stored on it', () => {
+    expect(serializeMicrocontroller(doc)).toContain('sym1="960"')
+  })
+})
+
+describe('attributes this editor does not model', () => {
+  it('carries the group data attribute through a round trip', () => {
+    const doc = parse('thermostat-v3')
+    expect(doc.meta.groupData).toEqual({ type: '1236352852' })
+    expect(serializeMicrocontroller(doc)).toContain('type="1236352852"')
+  })
+})

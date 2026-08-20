@@ -34,7 +34,7 @@ Non-goals (explicitly out of scope, possibly later):
 | Question | Decision |
 |---|---|
 | Purpose | Faithful editor first, simulation second — but the tick engine lands in phase 1 because the Lua live-run needs it |
-| Format source of truth | Public wiki + open-source community parsers; **no local sample files yet** |
+| Format source of truth | Public wiki and open-source community parsers, since confirmed against a microcontroller saved by the game |
 | Component coverage | The full library — 60 microcontroller component types, all categories |
 | Graph engine | Custom SVG renderer — no React Flow, no canvas immediate mode |
 | Lua editor | Monaco + full Stormworks API intellisense + wasmoon Lua execution + screen preview |
@@ -229,8 +229,15 @@ One SVG element covers the workspace. Layers, back to front:
    lines, and port dots on the left and right edges.
 4. Overlay — marquee rectangle, the wire currently being dragged, snap hints.
 
-Node cards are SVG, not HTML-in-`foreignObject`: text is measured once per
-definition and cached, keeping DOM node counts low. A graph of ~1000 components
+Cards use the game's own measurements: a component is **one game unit wide**,
+and `0.25 × (ports + 1)` units tall — a rule that reproduces every height the
+community library records, from a half-unit composite read to a composite write
+that grows a quarter unit per channel. At that size there is no room for text,
+which is why the game draws a glyph and nothing else, and why this does too:
+names go underneath when they are switched on, the full detail is a hover away,
+and an imported microcontroller lays out exactly as it did in the game.
+
+Node cards are SVG, not HTML-in-`foreignObject`, keeping DOM node counts low. A graph of ~1000 components
 must stay interactive; if profiling shows otherwise, nodes outside the viewport
 are culled before any other optimisation is considered.
 
@@ -355,9 +362,13 @@ Firefox refuse the latter.
   round-trip: parsing, serializing and parsing again yields the same document,
   and attributes the editor does not model survive verbatim.
 
-Because the schema is derived from public sources rather than samples, the
-first real `.xml` file dropped in is expected to produce corrections. That work
-is confined to `schema.ts` and the `swType` fields in the registry.
+The schema was derived from public sources and then checked against a
+microcontroller saved by the game. That confirmed the position scale and the
+upward y axis, and corrected two things: a `<c>` element with no `type`
+attribute means type 0, the NOT component, because the game omits the default;
+and a channel offset of `-1` means the start channel comes from the component's
+`off` input rather than from its property. Attributes the editor does not model
+— the 16×16 icon, the group's `data` type — ride along untouched.
 
 The project library stores documents in IndexedDB (id, name, thumbnail,
 updated-at, document). Import accepts file picker and drag-drop; export
@@ -417,7 +428,10 @@ interaction tests.
 | 4 | Tick engine | Done |
 | 5 | Lua subsystem | Done |
 
-Two assumptions still await a real save file to confirm, and both are isolated
-as promised: the position scale and y direction in `io/schema.ts`, and the
+A microcontroller saved by the game is now a fixture, and it round-trips: all
+51 components, 64 wires, the script, the icon. It confirmed the position scale
+and y direction, and corrected the missing-`type` default.
+
+One assumption still awaits confirmation, isolated as promised: the
 metres-per-pixel meaning of the map zoom in `lua/prelude.ts`. The evaluation
 order within a tick (§8) is likewise confined to `sim/plan.ts`.

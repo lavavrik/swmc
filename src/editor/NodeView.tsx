@@ -1,9 +1,13 @@
 /**
  * One component card.
  *
+ * The game draws a component as a small square with a glyph and its ports on
+ * the edges — no text, because at one game unit wide there is no room for any.
+ * This does the same, and puts the name underneath when names are switched on,
+ * so a graph reads the way it does in the editor it came from.
+ *
  * Drawn entirely in SVG — no `foreignObject` — so a graph of a thousand
- * components stays cheap to render and hit-test. Everything on the card comes
- * from the component definition, so no component needs its own view code.
+ * components stays cheap to render and hit-test.
  */
 import { memo } from 'react'
 import { signalColor } from '@/ui/signals'
@@ -16,6 +20,8 @@ interface Props {
   node: GraphNode
   def: ComponentDef
   selected: boolean
+  /** Whether to draw the component's name under its card. */
+  showNames?: boolean | undefined
   /** Live drag offset in world pixels, applied without touching the document. */
   offset?: { x: number; y: number } | undefined
   /** Ports that should be dimmed because the wire being dragged cannot reach them. */
@@ -50,7 +56,7 @@ function PortDots({
             r={CARD.portRadius}
             fill={signalColor(port.signal)}
             stroke="var(--port-ring)"
-            strokeWidth={2.5}
+            strokeWidth={2}
             opacity={faded ? 0.25 : 1}
           >
             <title>{`${port.label} (${port.signal})`}</title>
@@ -61,10 +67,22 @@ function PortDots({
   )
 }
 
+/** Everything about a component, for the hover tooltip. */
+function tooltipFor(node: GraphNode, def: ComponentDef): string {
+  const lines = [def.name, def.description]
+  for (const property of def.properties) {
+    const value = node.properties[property.key]
+    if (value === undefined || value === '') continue
+    lines.push(`${property.label}: ${String(value)}`)
+  }
+  return lines.join('\n')
+}
+
 export const NodeView = memo(function NodeView({
   node,
   def,
   selected,
+  showNames = false,
   offset,
   dimPorts = false,
   compatiblePort,
@@ -76,7 +94,8 @@ export const NodeView = memo(function NodeView({
   const y = origin.y + (offset?.y ?? 0)
 
   const label = typeof node.properties.label === 'string' ? node.properties.label : ''
-  const title = label.length > 0 ? label : def.name
+  const name = label.length > 0 ? label : def.name
+  const icon = Math.round(Math.min(width, height) * CARD.iconScale)
 
   return (
     <g className="node" data-node-id={node.id} transform={`translate(${x} ${y})`}>
@@ -88,44 +107,31 @@ export const NodeView = memo(function NodeView({
         fill="var(--card)"
         stroke={selected ? 'var(--card-selected)' : 'var(--card-border)'}
         strokeWidth={selected ? 2.5 : 1}
+      >
+        <title>{tooltipFor(node, def)}</title>
+      </rect>
+
+      <CategoryIcon
+        category={def.category}
+        x={(width - icon) / 2}
+        y={(height - icon) / 2}
+        size={icon}
       />
-      <CategoryIcon category={def.category} x={6} y={6} />
-      <text className="node-title" x={26} y={17} fontSize={CARD.titleSize} fill="var(--card-title)">
-        {title}
-      </text>
-      <NodeDetails def={def} node={node} />
+
+      {showNames && (
+        <text
+          className="node-name"
+          x={width / 2}
+          y={height + CARD.labelSize + 2}
+          fontSize={CARD.labelSize}
+          textAnchor="middle"
+        >
+          {name.length > 22 ? `${name.slice(0, 21)}…` : name}
+        </text>
+      )}
+
       <PortDots layout={layout} kind="in" dim={dimPorts} compatible={compatiblePort} />
       <PortDots layout={layout} kind="out" dim={dimPorts} compatible={compatiblePort} />
     </g>
   )
 })
-
-/** The grey lines under the title, mirroring the game's "type:" / "desc:" rows. */
-function NodeDetails({ def, node }: { def: ComponentDef; node: GraphNode }) {
-  const lines: string[] = []
-  for (const property of def.properties) {
-    const value = node.properties[property.key]
-    if (value === undefined || value === '') continue
-    lines.push(`${property.label.toLowerCase()}: ${String(value)}`)
-  }
-  if (lines.length === 0) lines.push(def.description)
-
-  return (
-    <>
-      {lines.slice(0, 3).map((line, i) => (
-        <text
-          key={i}
-          className="node-detail"
-          x={26}
-          y={CARD.headerHeight + 5 + i * CARD.detailLineHeight}
-          fontSize={CARD.detailSize}
-          fill="var(--card-detail)"
-        >
-          {line.length > CARD.detailCharacters
-            ? `${line.slice(0, CARD.detailCharacters - 1)}…`
-            : line}
-        </text>
-      ))}
-    </>
-  )
-}

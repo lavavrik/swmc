@@ -74,6 +74,8 @@ export interface MicrocontrollerMeta {
    * notably `sym0`…`sym15`, the 16×16 icon. Preserved verbatim.
    */
   readonly extra?: Readonly<Record<string, string>>
+  /** Attributes of the group's `<data>` element, likewise preserved. */
+  readonly groupData?: Readonly<Record<string, string>>
 }
 
 /**

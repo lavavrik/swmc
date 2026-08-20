@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { getComponent, librarySchema } from '@/library/registry'
 import { isConnectable } from '@/model/queries'
 import type { Microcontroller, NodeId, Point, PortId, PortKind } from '@/model/types'
-import { GRID_PX, cardLayout, portWorldPosition } from './layout'
+import { GRID_PER_UNIT, GRID_PX, cardLayout, portWorldPosition } from './layout'
 import { NodeView } from './NodeView'
 import { WireValues } from './WireValues'
 import { WireView } from './WireView'
@@ -56,7 +56,7 @@ function portWorld(
   return { x: base.x + offset.x, y: base.y + offset.y }
 }
 
-export function Canvas() {
+export function Canvas({ showNames = false }: { showNames?: boolean }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const spaceRef = useRef(false)
 
@@ -213,6 +213,7 @@ export function Canvas() {
                 node={node}
                 def={def}
                 selected={selectionSet.has(node.id)}
+                showNames={showNames}
                 offset={offsetFor(node.id)}
                 dimPorts={wiring !== null}
                 compatiblePort={
@@ -286,7 +287,8 @@ function PendingWire({
  */
 function GridBackground({ viewport }: { viewport: Viewport }) {
   const cell = GRID_PX * viewport.scale
-  const major = cell * 8
+  // A heavier line every game unit, which is every four quarter-unit cells
+  const major = cell * GRID_PER_UNIT
   return (
     <>
       <defs>

@@ -65,7 +65,7 @@ export function Toolbar({
       <RoundButton icon="preview3d" title="3D preview — not yet implemented" disabled />
       <RoundButton
         icon="tooltips"
-        title={showTooltips ? 'Hide component descriptions' : 'Show component descriptions'}
+        title={showTooltips ? 'Hide component names' : 'Show component names'}
         onClick={onToggleTooltips}
       />
       <span className="toolbar-gap" />

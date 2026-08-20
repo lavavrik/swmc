@@ -162,7 +162,8 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
   for (const c of componentElements) {
     const object = firstChild(c, 'object')
     if (!object) continue
-    const swType = attrNumber(c, 'type', -1)
+    // The game omits `type` when it is 0, which is the NOT component
+    const swType = attrNumber(c, 'type', 0)
     const componentId = attrNumber(object, 'id', 0)
     maxComponentId = Math.max(maxComponentId, componentId)
     const id = nodeIdFor(componentId)
@@ -236,6 +237,7 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
     })
   }
 
+  const groupData = firstChild(group, 'data')?.attrs ?? {}
   const extra: Record<string, string> = {}
   for (const [key, value] of Object.entries(root.attrs)) {
     if (!KNOWN_ROOT_ATTRIBUTES.has(key)) extra[key] = value
@@ -248,6 +250,7 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
       width: attrNumber(root, 'width', 1),
       length: attrNumber(root, 'length', 1),
       ...(Object.keys(extra).length > 0 ? { extra } : {}),
+      ...(Object.keys(groupData).length > 0 ? { groupData } : {}),
     },
     nodes: nodes.map((n) => byId.get(n.id) ?? n),
     wires,
@@ -368,7 +371,7 @@ export function serializeMicrocontroller(doc: Microcontroller): string {
     [
       nodesElement,
       node('group', {}, [
-        node('data', {}, [node('inputs'), node('outputs')]),
+        node('data', { ...(doc.meta.groupData ?? {}) }, [node('inputs'), node('outputs')]),
         node('components', {}, componentElements),
         node('components_bridge', {}, bridgeElements),
         node('groups'),

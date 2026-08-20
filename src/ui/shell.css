@@ -274,8 +274,7 @@
   color: var(--chrome-text-dim);
 }
 
-.no-tooltips .picker-item-desc,
-.no-tooltips .node-detail {
+.no-tooltips .picker-item-desc {
   display: none;
 }
 

@@ -1,11 +1,14 @@
 /**
  * Geometry of a component card.
  *
- * A card's size comes from its definition and its property values — port counts
- * and the number of detail lines shown — so no component needs bespoke layout
- * code. Because some components change shape with their settings, layout is
- * resolved per node into a `CardLayout` and memoised on the shape that actually
- * matters, not on the definition object.
+ * The game's own measurements, so an imported microcontroller looks the way it
+ * looks in the editor it came from: a component is **one game unit wide**, and
+ * `0.25 × (ports + 1)` units tall — a rule that reproduces every height the
+ * community library records, from a 0.5-unit composite read to a composite
+ * write that grows a quarter unit per channel.
+ *
+ * Everything here is in world pixels; the conversions are `GRID_PX` (a quarter
+ * unit, which is what the game snaps to) and `GAME_UNIT`.
  */
 import { defaultProperties } from '@/library/defaults'
 import { resolvePorts } from '@/library/ports'
@@ -14,25 +17,25 @@ import type { NodeProperties } from '@/model/schema'
 import type { Point, PortKind } from '@/model/types'
 import type { Bounds } from './viewport'
 
-/** World pixels per grid unit. Node positions in the document are grid units. */
+/** World pixels per grid unit. A grid unit is a quarter of a game unit. */
 export const GRID_PX = 16
 
-/** Card metrics, chosen to match the proportions of the in-game cards. */
+/** Grid units per game unit — the game places components in quarter steps. */
+export const GRID_PER_UNIT = 4
+
+/** World pixels per game unit. */
+export const GAME_UNIT = GRID_PX * GRID_PER_UNIT
+
 export const CARD = {
-  width: 11 * GRID_PX,
-  headerHeight: 24,
-  /** Vertical gap between adjacent ports. */
-  portSpacing: 24,
-  /** Distance from the top of the card to the first port. */
-  portTop: 36,
-  bottomPadding: 10,
-  detailLineHeight: 12,
-  portRadius: 6,
-  /** Type sizes, in world pixels. */
-  titleSize: 12,
-  detailSize: 9,
-  /** Roughly how many detail characters fit across a card at that size. */
-  detailCharacters: 30,
+  /** A component is one game unit wide, whatever it does. */
+  width: GAME_UNIT,
+  /** Ports sit a quarter unit apart, starting a quarter unit down. */
+  portSpacing: GRID_PX,
+  portTop: GRID_PX,
+  portRadius: 5,
+  /** Size of the glyph in the middle of the card. */
+  iconScale: 0.5,
+  labelSize: 9,
 } as const
 
 export interface CardLayout {
@@ -40,39 +43,33 @@ export interface CardLayout {
   readonly height: number
   readonly inputs: readonly PortDef[]
   readonly outputs: readonly PortDef[]
-  /** Grey detail lines drawn under the title. */
-  readonly detailLines: number
 }
 
 const cache = new Map<string, CardLayout>()
 
-/** Number of grey detail lines drawn under the title, as the game shows them. */
-function detailLineCount(def: ComponentDef): number {
-  if (def.category === 'io') return 3
-  return def.properties.length > 0 ? 2 : 1
+/**
+ * Height in game units: a quarter unit per port row, plus a quarter unit of
+ * card around them.
+ */
+export function cardHeightUnits(portCount: number): number {
+  return 0.25 * (Math.max(1, portCount) + 1)
 }
 
 export function cardLayout(def: ComponentDef, properties: NodeProperties): CardLayout {
   const inputs = resolvePorts(def, 'in', properties)
   const outputs = resolvePorts(def, 'out', properties)
-  const detailLines = detailLineCount(def)
 
-  // Only the port counts and line count affect geometry, so that is the key
-  const key = `${def.id}:${inputs.length}:${outputs.length}:${detailLines}`
+  // Only the port counts affect geometry, so that is the key
+  const key = `${def.id}:${inputs.length}:${outputs.length}`
   const cached = cache.get(key)
   if (cached) return { ...cached, inputs, outputs }
 
-  const portCount = Math.max(inputs.length, outputs.length)
-  const portsHeight = CARD.portTop + Math.max(0, portCount - 1) * CARD.portSpacing
-  const textHeight = CARD.headerHeight + detailLines * CARD.detailLineHeight
-  const raw = Math.max(portsHeight, textHeight) + CARD.bottomPadding
-
+  const ports = Math.max(inputs.length, outputs.length)
   const layout: CardLayout = {
     inputs,
     outputs,
-    detailLines,
-    width: def.size ? def.size.w * GRID_PX : CARD.width,
-    height: def.size ? def.size.h * GRID_PX : Math.ceil(raw / GRID_PX) * GRID_PX,
+    width: def.size ? def.size.w * GAME_UNIT : CARD.width,
+    height: def.size ? def.size.h * GAME_UNIT : cardHeightUnits(ports) * GAME_UNIT,
   }
   cache.set(key, layout)
   return layout

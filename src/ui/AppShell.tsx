@@ -64,7 +64,7 @@ export function AppShell() {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => void onDrop(e)}
       >
-        <Canvas />
+        <Canvas showNames={showTooltips} />
         {pinsOpen && <PinEditor onClose={() => setPinsOpen(false)} />}
         <PropertyPanel />
         <PinPanel />

@@ -18,16 +18,28 @@ const GLYPHS: Record<Category, string> = {
   io: 'M2 7h6m0 0-2-2m2 2-2 2M10 3v8',
 }
 
-export function CategoryIcon({ category, x, y }: { category: Category; x: number; y: number }) {
+export function CategoryIcon({
+  category,
+  x,
+  y,
+  size = 14,
+}: {
+  category: Category
+  x: number
+  y: number
+  size?: number
+}) {
+  // The glyphs are drawn on a 14-unit grid, so scale from there
+  const scale = size / 14
   return (
-    <g transform={`translate(${x} ${y})`} pointerEvents="none">
-      <rect width={14} height={14} rx={2} fill="#e7ecee" />
+    <g transform={`translate(${x} ${y}) scale(${scale})`} pointerEvents="none">
+      <rect width={14} height={14} rx={2} fill="#dfe6e9" />
       <path
         d={GLYPHS[category]}
         transform="translate(0.5 0.5) scale(0.95)"
         fill="none"
-        stroke="#59666c"
-        strokeWidth={1.4}
+        stroke="#4a575c"
+        strokeWidth={1.5}
         strokeLinecap="round"
       />
     </g>

@@ -82,11 +82,9 @@ export function bridgeType(direction: 'in' | 'out', signal: SignalType): number 
 }
 
 /**
- * ASSUMPTION: the game positions components in 0.25 steps, and this editor
- * works in whole grid units, so one game unit is four grid units. The y axis is
- * flipped because the game measures upwards and screen space measures down.
- *
- * Both are recorded here so a real file can correct them in one place.
+ * The game positions components in 0.25 steps and measures y upwards, so one
+ * game unit is four grid units here and the y axis is flipped into screen
+ * space. Both were confirmed against a saved microcontroller.
  */
 export const POSITION_SCALE = 4
 
@@ -112,3 +110,9 @@ export const KNOWN_ROOT_ATTRIBUTES = new Set([
 
 /** The component type used when a file names one this editor does not know. */
 export const UNKNOWN_COMPONENT = 'unknown.component'
+
+/**
+ * A channel offset of -1 means the component takes its start channel from its
+ * `off` input rather than from the property, which decodes to channel 0.
+ */
+export const CHANNEL_FROM_INPUT = 0
