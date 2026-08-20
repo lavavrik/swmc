@@ -161,6 +161,7 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
   }, [locate])
 
   const dragging = interaction.kind === 'draggingNodes' ? interaction : null
+  const wiring = interaction.kind === 'draggingWire' ? interaction : null
   const draggingIds = useMemo(() => new Set(dragging?.nodes ?? []), [dragging])
   const offsetFor = useCallback(
     (id: NodeId): Point =>
@@ -170,7 +171,6 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
     [dragging, draggingIds],
   )
 
-  const wiring = interaction.kind === 'draggingWire' ? interaction : null
   const selectionSet = useMemo(() => new Set(selection), [selection])
 
   return (
@@ -185,6 +185,8 @@ export function Canvas({ showNames = false }: { showNames?: boolean }) {
       <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}>
         <g className="layer-wires">
           {doc.wires.map((wire) => {
+            // The wire being carried is drawn following the cursor instead
+            if (wiring?.detaching === wire.id) return null
             const from = portWorld(doc, wire.from, offsetFor)
             const to = portWorld(doc, wire.to, offsetFor)
             const source = doc.nodes.find((n) => n.id === wire.from.node)

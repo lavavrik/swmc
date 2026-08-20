@@ -424,3 +424,57 @@ test('a script sees the monitor as a touchscreen', async ({ page }) => {
   await page.mouse.up()
   await expect.poll(() => pixelAt(target.x, target.y), { timeout: 15_000 }).toBe('0,0,0')
 })
+
+test('picks a wire up by its input end and drops it elsewhere', async ({ page }) => {
+  await place(page, 'Constant Number')
+  await place(page, 'Add')
+  await drag(page, await centre(nodes(page).nth(1)), { x: 640, y: 240 })
+
+  const source = nodes(page).first().locator('[data-port-kind="out"]')
+  const firstInput = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+  const secondInput = nodes(page).nth(1).locator('[data-port-kind="in"]').nth(1)
+  await drag(page, await centre(source), await centre(firstInput))
+  await expect(page.locator('.wire')).toHaveCount(1)
+
+  // Dragging from the input carries that wire rather than starting another
+  await drag(page, await centre(firstInput), await centre(secondInput))
+  await expect(page.locator('.wire')).toHaveCount(1)
+
+  // and it now ends on the second input, so the first is free again
+  await drag(page, await centre(source), await centre(firstInput))
+  await expect(page.locator('.wire')).toHaveCount(2)
+
+  // Dropping a carried wire over empty space takes it off
+  await drag(page, await centre(secondInput), { x: 400, y: 420 })
+  await expect(page.locator('.wire')).toHaveCount(1)
+
+  await page.keyboard.press('Control+z')
+  await expect(page.locator('.wire')).toHaveCount(2)
+})
+
+test('highlights a wire when the pointer is over it', async ({ page }) => {
+  await place(page, 'Constant Number')
+  await place(page, 'Absolute Value')
+  await drag(page, await centre(nodes(page).nth(1)), { x: 660, y: 300 })
+  const source = nodes(page).first().locator('[data-port-kind="out"]')
+  const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+  await drag(page, await centre(source), await centre(target))
+
+  await expect(page.locator('.wire')).toHaveCount(1)
+  const core = page.locator('.wire-core').first()
+  const width = () => core.evaluate((path) => getComputedStyle(path).strokeWidth)
+  const resting = await width()
+
+  // The middle of a diagonal wire is not the middle of its bounding box
+  const onTheWire = await page.evaluate(() => {
+    const path = document.querySelector('.wire-target') as SVGPathElement
+    const point = path.getPointAtLength(path.getTotalLength() / 2)
+    const screen = point.matrixTransform(path.getScreenCTM()!)
+    return { x: screen.x, y: screen.y }
+  })
+  await page.mouse.move(onTheWire.x, onTheWire.y)
+  await expect.poll(width).not.toBe(resting)
+
+  await page.mouse.move(20, 400)
+  await expect.poll(width).toBe(resting)
+})

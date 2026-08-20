@@ -30,7 +30,10 @@ export const WireView = memo(function WireView({ from, to, signal, scale, faded 
   const colour = signalColor(signal)
 
   return (
-    <g className="wire" opacity={faded ? 0.5 : 1} pointerEvents="none">
+    <g className="wire" opacity={faded ? 0.5 : 1}>
+      {/* A fat invisible path, so a wire is easy to point at without having to
+          hit its two-pixel core exactly */}
+      <path className="wire-target" d={path.d} fill="none" strokeWidth={14} />
       <path
         className="wire-casing"
         d={path.d}
@@ -41,6 +44,7 @@ export const WireView = memo(function WireView({ from, to, signal, scale, faded 
         strokeLinecap="round"
       />
       <path
+        className="wire-core"
         d={path.d}
         fill="none"
         stroke={colour}
@@ -66,7 +70,10 @@ export const WireView = memo(function WireView({ from, to, signal, scale, faded 
         {path.arrows.map((arrow, i) => (
           <path
             key={i}
-            className="wire-arrow"
+            // The set snaps back a spacing at the end of each period. The one
+            // arrow with nothing behind it fades in as it enters, so what the
+            // eye follows is a continuous march rather than a blink.
+            className={`wire-arrow${i === 0 ? (path.arrows.length === 1 ? ' solo' : ' leading') : ''}`}
             d={ARROW}
             fill={colour}
             transform={`translate(${arrow.x} ${arrow.y}) rotate(${

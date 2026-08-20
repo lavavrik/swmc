@@ -54,9 +54,11 @@ const arrowCount = (length: number): number => Math.max(1, Math.round(length / A
 /**
  * Evenly spaced arrowheads along the middle segment, always at least one.
  *
- * One extra sits a full spacing before the start: the whole set is animated
- * forward by exactly one spacing and then snaps back, and the leading arrow is
- * what makes that repeat seamless instead of leaving a gap.
+ * They start at the segment's beginning and stop one place short of its end,
+ * because the whole set is animated forward by exactly one spacing: the last
+ * arrow finishes where the segment does and none of them ever travels past it.
+ * Keeping that within the geometry is what stops arrows drifting off the ends
+ * of a wire, whichever way it runs.
  */
 function arrowsAlong(a: Point, b: Point): ArrowPlacement[] {
   const dx = b.x - a.x
@@ -64,9 +66,8 @@ function arrowsAlong(a: Point, b: Point): ArrowPlacement[] {
   const length = Math.hypot(dx, dy)
   const angle = Math.atan2(dy, dx)
   const count = arrowCount(length)
-  const step = 1 / count
-  return Array.from({ length: count + 1 }, (_, i) => {
-    const t = (i - 0.5) * step
+  return Array.from({ length: count }, (_, i) => {
+    const t = i / count
     return { x: a.x + dx * t, y: a.y + dy * t, angle }
   })
 }

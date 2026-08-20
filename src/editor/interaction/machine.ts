@@ -13,7 +13,7 @@
  */
 import { GRID_PX } from '../layout'
 import { boundsFromCorners, type Bounds } from '../viewport'
-import type { NodeId, Point, PortId } from '@/model/types'
+import type { NodeId, Point, PortId, WireId } from '@/model/types'
 
 export type HitTarget =
   | { readonly kind: 'canvas' }
@@ -57,6 +57,12 @@ export type InteractionState =
       readonly origin: PortId
       readonly cursorWorld: Point
       readonly hover: PortId | null
+      /**
+       * The wire being carried, when the drag began on an input that already
+       * had one. Dropping it somewhere moves that wire rather than making
+       * another; dropping it nowhere takes it off.
+       */
+      readonly detaching: WireId | null
     }
   | {
       readonly kind: 'marquee'
@@ -72,11 +78,15 @@ export type Intent =
   | { readonly type: 'selectIn'; readonly bounds: Bounds; readonly additive: boolean }
   | { readonly type: 'moveNodes'; readonly ids: readonly NodeId[]; readonly gridDelta: Point }
   | { readonly type: 'connect'; readonly from: PortId; readonly to: PortId }
+  | { readonly type: 'moveWireEnd'; readonly wire: WireId; readonly to: PortId }
+  | { readonly type: 'disconnect'; readonly wire: WireId }
 
 export interface InteractionContext {
   readonly selection: readonly NodeId[]
   /** Whether a wire between these two ports would be accepted. */
   canConnect(from: PortId, to: PortId): boolean
+  /** The wire ending at this input, if it has one. */
+  wireInto(port: PortId): { readonly id: WireId; readonly from: PortId } | undefined
 }
 
 export interface Transition {
@@ -95,6 +105,12 @@ const snapToGrid = (from: Point, to: Point): Point => ({
   x: Math.round((to.x - from.x) / GRID_PX),
   y: Math.round((to.y - from.y) / GRID_PX),
 })
+
+/** Whether dropping here would put a carried wire back where it started. */
+function sameEnd(to: PortId, wire: WireId, ctx: InteractionContext): boolean {
+  const existing = ctx.wireInto(to)
+  return existing?.id === wire
+}
 
 /** Puts a pair of ports into wire order, or null if they cannot form a wire. */
 function orient(a: PortId, b: PortId): { from: PortId; to: PortId } | null {
@@ -130,13 +146,19 @@ function onPointerDown(
   if (event.button !== 0) return stay(IDLE)
 
   switch (event.target.kind) {
-    case 'port':
+    case 'port': {
+      const port = event.target.port
+      // Starting on an input that already has a wire picks that wire up by its
+      // end, rather than beginning a second one the input could not take
+      const existing = port.kind === 'in' ? ctx.wireInto(port) : undefined
       return stay({
         kind: 'draggingWire',
-        origin: event.target.port,
+        origin: existing ? existing.from : port,
         cursorWorld: event.world,
         hover: null,
+        detaching: existing?.id ?? null,
       })
+    }
 
     case 'node': {
       const id = event.target.id
@@ -214,9 +236,20 @@ function onPointerUp(
     }
 
     case 'draggingWire': {
-      if (event.hover.kind !== 'port') return stay(IDLE)
-      const oriented = orient(state.origin, event.hover.port)
-      if (!oriented || !ctx.canConnect(oriented.from, oriented.to)) return stay(IDLE)
+      const dropped = event.hover.kind === 'port' ? event.hover.port : null
+      const oriented = dropped ? orient(state.origin, dropped) : null
+      const lands = oriented !== null && ctx.canConnect(oriented.from, oriented.to)
+
+      if (state.detaching !== null) {
+        // Put back where it came from, moved to a new input, or taken off
+        if (dropped && oriented && sameEnd(oriented.to, state.detaching, ctx)) return stay(IDLE)
+        if (lands && oriented) {
+          return stay(IDLE, [{ type: 'moveWireEnd', wire: state.detaching, to: oriented.to }])
+        }
+        return stay(IDLE, [{ type: 'disconnect', wire: state.detaching }])
+      }
+
+      if (!lands || !oriented) return stay(IDLE)
       return stay(IDLE, [{ type: 'connect', from: oriented.from, to: oriented.to }])
     }
 

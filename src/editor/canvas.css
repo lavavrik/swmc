@@ -26,6 +26,41 @@
 }
 
 /*
+ * Wires answer to the pointer only along their length, and only through the
+ * wide invisible path — everything else on a wire stays out of the way of the
+ * marquee and of the components underneath.
+ */
+.wire path {
+  pointer-events: none;
+}
+
+/*
+ * Only wires the document holds answer to the pointer. The one that follows the
+ * cursor while a connection is being dragged must not, or it would sit under
+ * the pointer and swallow the drop.
+ */
+.layer-wires .wire path.wire-target {
+  stroke: transparent;
+  pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.wire:hover .wire-core {
+  stroke-width: 7;
+}
+
+.wire:hover .wire-casing {
+  stroke: rgba(8, 32, 38, 0.85);
+  stroke-width: 11;
+}
+
+.wire:hover .wire-arrow {
+  transform-box: fill-box;
+  transform-origin: center;
+  scale: 1.25;
+}
+
+/*
  * The casing behind every wire. Kept in CSS so the whole scheme is one place to
  * adjust, and drawn in a translucent near-black that darkens the workspace
  * without turning into a hard black line.
@@ -45,13 +80,48 @@
   }
 }
 
+/* The arrow entering the wire, and the lone arrow on a wire too short for two */
+@keyframes arrow-enter {
+  from {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+
+@keyframes arrow-solo {
+  0% {
+    opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 .wire-flow {
   animation: wire-flow 1.6s linear infinite;
 }
 
+/* Kept in step with the march by sharing its duration and timing */
+.wire-arrow.leading {
+  animation: arrow-enter 1.6s linear infinite;
+}
+
+.wire-arrow.solo {
+  animation: arrow-solo 1.6s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .wire-flow {
+  .wire-flow,
+  .wire-arrow.leading,
+  .wire-arrow.solo {
     animation: none;
+    opacity: 1;
   }
 }
 

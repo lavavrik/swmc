@@ -17,6 +17,7 @@ import {
   extractSubgraph,
   insertSubgraph,
   moveNodes as moveNodesOp,
+  moveWireEnd as moveWireEndOp,
   removeNodes as removeNodesOp,
   reorderIoNodes as reorderIoNodesOp,
   pruneDanglingWires,
@@ -25,7 +26,7 @@ import {
   setProperty as setPropertyOp,
   type Subgraph,
 } from '@/model/ops'
-import { isConnectable } from '@/model/queries'
+import { incomingWire, isConnectable } from '@/model/queries'
 import type {
   ComponentTypeId,
   Microcontroller,
@@ -74,6 +75,8 @@ export interface EditorState {
   duplicateSelection(): void
   moveNodes(ids: readonly NodeId[], gridDelta: Point): void
   connect(from: PortId, to: PortId): void
+  /** Moves a wire's finishing end, as dragging it off one input onto another does. */
+  moveWireEnd(wire: WireId, to: PortId): void
   disconnect(wireId: WireId): void
   /** `coalesce` false starts a fresh undo step rather than folding into the last. */
   setProperty(id: NodeId, key: string, value: PropertyValue, coalesce?: boolean): void
@@ -199,6 +202,13 @@ export const useEditorStore = create<EditorState>((set, get) => {
       })
     },
 
+    moveWireEnd(wire, to) {
+      edit('move wire', (doc) => {
+        const result = moveWireEndOp(librarySchema, doc, wire, to)
+        return result.ok ? result.value : { error: result.error }
+      })
+    },
+
     disconnect(wireId) {
       edit('disconnect', (doc) => disconnectOp(doc, wireId))
     },
@@ -307,6 +317,10 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const { state, intents } = reduce(interaction, event, {
         selection,
         canConnect: (from, to) => isConnectable(librarySchema, doc, from, to),
+        wireInto: (port) => {
+          const wire = incomingWire(doc, port)
+          return wire ? { id: wire.id, from: wire.from } : undefined
+        },
       })
       set({ interaction: state })
       for (const intent of intents) {
@@ -328,6 +342,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
             break
           case 'connect':
             get().connect(intent.from, intent.to)
+            break
+          case 'moveWireEnd':
+            get().moveWireEnd(intent.wire, intent.to)
+            break
+          case 'disconnect':
+            get().disconnect(intent.wire)
             break
         }
       }

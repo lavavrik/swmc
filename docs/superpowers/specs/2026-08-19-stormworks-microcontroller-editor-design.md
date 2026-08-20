@@ -243,7 +243,15 @@ settings. The full detail is always a hover away.
 
 Inputs are drawn as rings and outputs as solid dots, so which end of a wire is
 which reads without following it, and the arrows along a wire march in the
-direction the signal flows.
+direction the signal flows. The arrows start at the beginning of the wire's
+middle run and stop one place short of its end, because the whole set animates
+forward by exactly one spacing — keeping them on the wire is a property of the
+geometry rather than something clipping has to enforce.
+
+A wire lights up under the pointer, through a wide invisible path that makes it
+easy to point at. Only wires the document holds carry that path: the one
+following the cursor mid-drag must stay inert, or it sits under the pointer and
+swallows its own drop.
 
 A composite read or write only has a start-channel port when its channel is set
 to 0, meaning "take it from the wire" — that is why the game's cards are a

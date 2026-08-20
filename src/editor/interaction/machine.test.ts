@@ -3,9 +3,15 @@ import { GRID_PX } from '../layout'
 import { IDLE, reduce, type InteractionContext, type InteractionEvent } from './machine'
 import type { PortId } from '@/model/types'
 
-const ctx = (selection: string[] = [], canConnect = true): InteractionContext => ({
+/** `wires` maps `node:index` to the wire ending there, as the store's does. */
+const ctx = (
+  selection: string[] = [],
+  canConnect = true,
+  wires: Record<string, { id: string; from: PortId }> = {},
+): InteractionContext => ({
   selection,
   canConnect: () => canConnect,
+  wireInto: (port) => wires[`${port.node}:${port.index}`],
 })
 
 const down = (e: Partial<InteractionEvent & { type: 'pointerDown' }> = {}): InteractionEvent => ({
@@ -146,5 +152,56 @@ describe('dragging wires', () => {
       ctx(),
     )
     expect(b.state).toMatchObject({ hover: inp('c2') })
+  })
+})
+
+describe('detaching a wire', () => {
+  const carried = { id: 'w1', from: out('c1') }
+  // The wire ends on c2's first input, and nothing is on c3
+  const held = (canConnect = true) => ctx([], canConnect, { 'c2:0': carried })
+
+  it('picks up the wire when the drag starts on a connected input', () => {
+    const r = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), held())
+    expect(r.state).toMatchObject({
+      kind: 'draggingWire',
+      // Anchored at the far end, so it follows the cursor from its source
+      origin: carried.from,
+      detaching: 'w1',
+    })
+  })
+
+  it('moves it to whatever input it is dropped on', () => {
+    const a = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), held())
+    const b = reduce(a.state, up({ kind: 'port', port: inp('c3') } as never), held())
+    expect(b.intents).toEqual([{ type: 'moveWireEnd', wire: 'w1', to: inp('c3') }])
+  })
+
+  it('takes it off when dropped over nothing', () => {
+    const a = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), held())
+    expect(reduce(a.state, up(), held()).intents).toEqual([{ type: 'disconnect', wire: 'w1' }])
+  })
+
+  it('takes it off when dropped somewhere it cannot go', () => {
+    const a = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), held(false))
+    const b = reduce(a.state, up({ kind: 'port', port: inp('c3') } as never), held(false))
+    expect(b.intents).toEqual([{ type: 'disconnect', wire: 'w1' }])
+  })
+
+  it('leaves it alone when put back where it came from', () => {
+    const a = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), held())
+    const b = reduce(a.state, up({ kind: 'port', port: inp('c2') } as never), held())
+    expect(b.intents).toEqual([])
+  })
+
+  it('keeps it attached when the drag is abandoned', () => {
+    const a = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), held())
+    const b = reduce(a.state, { type: 'escape' }, held())
+    expect(b.state).toEqual(IDLE)
+    expect(b.intents).toEqual([])
+  })
+
+  it('starts a new wire from an input with nothing on it', () => {
+    const r = reduce(IDLE, down({ target: { kind: 'port', port: inp('c2') } }), ctx())
+    expect(r.state).toMatchObject({ kind: 'draggingWire', origin: inp('c2'), detaching: null })
   })
 })

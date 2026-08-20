@@ -21,16 +21,30 @@ describe('wire geometry', () => {
     expect(path.arrows.length).toBeGreaterThan(1)
     expect(path.arrows[0]?.angle).toBeCloseTo(0)
     expect(path.direction).toEqual({ x: 1, y: 0 })
-    // The leading arrow sits behind the start; the rest are on the wire
-    expect(path.arrows.slice(1).every((a) => a.x > 0 && a.x < 300)).toBe(true)
+    expect(path.arrowSpacing).toBeCloseTo(ARROW_SPACING, -1)
   })
 
-  it('leads with one arrow a whole spacing behind, so the march repeats cleanly', () => {
-    const path = wirePath({ x: 0, y: 0 }, { x: 300, y: 0 })
-    const [first, second] = path.arrows
-    expect(second!.x - first!.x).toBeCloseTo(path.arrowSpacing, 5)
-    expect(path.arrowSpacing).toBeCloseTo(ARROW_SPACING, -1)
-    expect(first!.x).toBeLessThan(STUB)
+  it('leaves room to travel one spacing without passing the end', () => {
+    // The arrows animate forward by exactly one spacing, so the last one has to
+    // start a spacing short of the segment's end or it would leave the wire
+    for (const [to, label] of [
+      [{ x: 300, y: 0 }, 'rightwards'],
+      [{ x: -300, y: 40 }, 'leftwards'],
+      [{ x: 26, y: 0 }, 'shorter than one arrow spacing'],
+    ] as const) {
+      const path = wirePath({ x: 0, y: 0 }, to)
+      const start = path.points[1]!
+      const end = path.points[2]!
+      const along = (p: { x: number; y: number }) =>
+        (p.x - start.x) * path.direction.x + (p.y - start.y) * path.direction.y
+      const segment = along(end)
+
+      for (const arrow of path.arrows) {
+        const travelled = along(arrow) + path.arrowSpacing
+        expect(along(arrow), label).toBeGreaterThanOrEqual(0)
+        expect(travelled, label).toBeLessThanOrEqual(segment + 0.001)
+      }
+    }
   })
 
   it('spaces arrows out along a long wire', () => {

@@ -175,6 +175,40 @@ export function connect(
   })
 }
 
+/**
+ * Moves a wire's finishing end to another input, which is what dragging a wire
+ * off the port it lands on and dropping it somewhere else amounts to. Doing it
+ * as one operation keeps it a single undo step, and keeps the wire's identity.
+ */
+export function moveWireEnd(
+  schema: GraphSchema,
+  doc: Microcontroller,
+  wireId: WireId,
+  to: PortId,
+): Result<Microcontroller> {
+  const wire = doc.wires.find((w) => w.id === wireId)
+  if (!wire) return err(`no such wire: ${wireId}`)
+  if (to.kind !== 'in') return err('a wire must end at an input')
+  if (wire.from.node === to.node) return err('a component cannot be wired to itself')
+
+  const source = doc.nodes.find((n) => n.id === wire.from.node)
+  const target = doc.nodes.find((n) => n.id === to.node)
+  if (!source) return err(`no such component: ${wire.from.node}`)
+  if (!target) return err(`no such component: ${to.node}`)
+
+  const fromSignal = schema.portSignal(source.type, source.properties, 'out', wire.from.index)
+  const toSignal = schema.portSignal(target.type, target.properties, 'in', to.index)
+  if (!toSignal) return err(`input ${to.index} does not exist on ${target.type}`)
+  if (fromSignal !== toSignal) return err(`cannot wire ${fromSignal} to ${toSignal}`)
+
+  return ok({
+    ...doc,
+    wires: doc.wires
+      .filter((w) => w.id === wireId || !samePort(w.to, to))
+      .map((w) => (w.id === wireId ? { ...w, to } : w)),
+  })
+}
+
 export function disconnect(doc: Microcontroller, wireId: WireId): Microcontroller {
   return { ...doc, wires: doc.wires.filter((w) => w.id !== wireId) }
 }

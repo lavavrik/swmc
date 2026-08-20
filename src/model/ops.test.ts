@@ -10,6 +10,7 @@ import {
   disconnect,
   disconnectPort,
   moveNodes,
+  moveWireEnd,
   pruneDanglingWires,
   removeNodes,
   reorderIoNodes,
@@ -344,5 +345,67 @@ describe('setNodeType', () => {
     const [doc, a] = place(createEmpty(), 'add')
     expect(setNodeType(testSchema, doc, a, 'nope').ok).toBe(false)
     expect(setNodeType(testSchema, doc, 'missing', 'add').ok).toBe(false)
+  })
+})
+
+describe('moveWireEnd', () => {
+  /** A constant feeding the first input of an add, plus a spare add. */
+  function fixture() {
+    const [d1, source] = place(createEmpty(), 'constant')
+    const [d2, first] = place(d1, 'add')
+    const [d3, second] = place(d2, 'add')
+    const { doc, wireId } = unwrap(
+      connect(
+        testSchema,
+        d3,
+        { node: source, kind: 'out', index: 0 },
+        { node: first, kind: 'in', index: 0 },
+      ),
+    )
+    return { doc, wireId, source, first, second }
+  }
+
+  it('moves the end to another input, keeping the wire', () => {
+    const { doc, wireId, second } = fixture()
+    const moved = unwrap(
+      moveWireEnd(testSchema, doc, wireId, { node: second, kind: 'in', index: 1 }),
+    )
+    expect(moved.wires).toHaveLength(1)
+    expect(moved.wires[0]?.id).toBe(wireId)
+    expect(moved.wires[0]?.to).toMatchObject({ node: second, index: 1 })
+  })
+
+  it('replaces whatever was already on the input it lands on', () => {
+    const { doc, wireId, source, second } = fixture()
+    const { doc: crowded } = unwrap(
+      connect(
+        testSchema,
+        doc,
+        { node: source, kind: 'out', index: 0 },
+        { node: second, kind: 'in', index: 0 },
+      ),
+    )
+    const moved = unwrap(
+      moveWireEnd(testSchema, crowded, wireId, { node: second, kind: 'in', index: 0 }),
+    )
+    expect(moved.wires).toHaveLength(1)
+    expect(moved.wires[0]?.id).toBe(wireId)
+  })
+
+  it('refuses a mismatched signal, an output, or its own source', () => {
+    const { doc, wireId, source, second } = fixture()
+    const [withNot, not] = place(doc, 'not')
+    expect(moveWireEnd(testSchema, withNot, wireId, { node: not, kind: 'in', index: 0 }).ok).toBe(
+      false,
+    )
+    expect(moveWireEnd(testSchema, doc, wireId, { node: second, kind: 'out', index: 0 }).ok).toBe(
+      false,
+    )
+    expect(moveWireEnd(testSchema, doc, wireId, { node: source, kind: 'in', index: 0 }).ok).toBe(
+      false,
+    )
+    expect(moveWireEnd(testSchema, doc, 'missing', { node: second, kind: 'in', index: 0 }).ok).toBe(
+      false,
+    )
   })
 })
