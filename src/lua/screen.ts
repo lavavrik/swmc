@@ -1,158 +1,115 @@
-/** Rasterising the display list a script drew. */
+/**
+ * Turning the display list a script drew into monitor pixels.
+ *
+ * The work happens in `Raster`, which paints whole pixels with no smoothing —
+ * a monitor in the game is 32 pixels across and looks it. This file only maps
+ * the commands onto it and hands the result to a canvas.
+ */
 import type { DrawCommand, Rgba } from '@/library/video'
+import { Raster } from './raster'
 
 export type { DrawCommand, Rgba } from '@/library/video'
 export { MONITORS } from '@/library/video'
+export { TEXT_ADVANCE, TEXT_LINE_HEIGHT, wrapText } from './raster'
 
-const css = (c: Rgba) => `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a / 255})`
+const WHITE: Rgba = { r: 255, g: 255, b: 255, a: 255 }
+const BLACK: Rgba = { r: 0, g: 0, b: 0, a: 255 }
+/** The map is not modelled; this stands in for where it would be drawn. */
+const MAP_STAND_IN: Rgba = { r: 40, g: 90, b: 120, a: 160 }
 
-/** Character cell of the game's built-in font. */
-export const FONT = { width: 5, height: 5, spacing: 1 } as const
+export interface ScreenSize {
+  readonly width: number
+  readonly height: number
+}
 
-/**
- * Replays a display list onto a canvas at one canvas pixel per screen pixel.
- * The caller scales the canvas up; drawing stays crisp because the context is
- * left un-smoothed.
- */
-export function renderScreen(
-  ctx: CanvasRenderingContext2D,
-  commands: readonly DrawCommand[],
-  size: { width: number; height: number },
-): void {
-  ctx.imageSmoothingEnabled = false
-  ctx.clearRect(0, 0, size.width, size.height)
-  ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, size.width, size.height)
+/** Replays a display list onto a fresh raster. */
+export function rasterise(commands: readonly DrawCommand[], size: ScreenSize): Raster {
+  const raster = new Raster(size.width, size.height)
+  raster.clear(BLACK)
 
-  let colour: Rgba = { r: 255, g: 255, b: 255, a: 255 }
-  ctx.lineWidth = 1
-
-  const stroke = () => {
-    ctx.strokeStyle = css(colour)
-    ctx.stroke()
-  }
-  const fill = () => {
-    ctx.fillStyle = css(colour)
-    ctx.fill()
-  }
-  // Shapes sit on half-pixel boundaries so a 1px stroke lands on one pixel row
-  const half = (v: number) => Math.floor(v) + 0.5
-
+  let colour: Rgba = WHITE
   for (const command of commands) {
     switch (command.op) {
       case 'color':
         colour = command
         break
       case 'clear':
-        ctx.fillStyle = css(colour)
-        ctx.fillRect(0, 0, size.width, size.height)
+        raster.clear(colour)
         break
       case 'line':
-        ctx.beginPath()
-        ctx.moveTo(half(command.x1), half(command.y1))
-        ctx.lineTo(half(command.x2), half(command.y2))
-        stroke()
+        raster.line(command.x1, command.y1, command.x2, command.y2, colour)
         break
       case 'circle':
+        raster.circle(command.x, command.y, command.r, colour)
+        break
       case 'circleF':
-        ctx.beginPath()
-        ctx.arc(half(command.x), half(command.y), Math.abs(command.r), 0, Math.PI * 2)
-        if (command.op === 'circleF') fill()
-        else stroke()
+        raster.fillCircle(command.x, command.y, command.r, colour)
         break
       case 'rect':
-        ctx.beginPath()
-        ctx.rect(half(command.x), half(command.y), command.w - 1, command.h - 1)
-        stroke()
+        raster.strokeRect(command.x, command.y, command.w, command.h, colour)
         break
       case 'rectF':
-        ctx.fillStyle = css(colour)
-        ctx.fillRect(Math.floor(command.x), Math.floor(command.y), command.w, command.h)
+        raster.fillRect(command.x, command.y, command.w, command.h, colour)
         break
       case 'triangle':
+        raster.triangle(
+          command.x1,
+          command.y1,
+          command.x2,
+          command.y2,
+          command.x3,
+          command.y3,
+          colour,
+        )
+        break
       case 'triangleF':
-        ctx.beginPath()
-        ctx.moveTo(half(command.x1), half(command.y1))
-        ctx.lineTo(half(command.x2), half(command.y2))
-        ctx.lineTo(half(command.x3), half(command.y3))
-        ctx.closePath()
-        if (command.op === 'triangleF') fill()
-        else stroke()
+        raster.fillTriangle(
+          command.x1,
+          command.y1,
+          command.x2,
+          command.y2,
+          command.x3,
+          command.y3,
+          colour,
+        )
         break
       case 'text':
-        drawText(ctx, colour, command.x, command.y, command.text)
+        raster.text(command.x, command.y, command.text, colour)
         break
       case 'textBox':
-        drawTextBox(ctx, colour, command)
+        raster.textBox(
+          command.x,
+          command.y,
+          command.w,
+          command.h,
+          command.text,
+          command.ha,
+          command.va,
+          colour,
+        )
         break
       case 'map':
-        // The world map is not modelled; show where it would be drawn
-        ctx.fillStyle = 'rgba(40, 90, 120, 0.6)'
-        ctx.fillRect(0, 0, size.width, size.height)
+        raster.clear(MAP_STAND_IN)
         break
       case 'mapColor':
         break
     }
   }
+
+  return raster
 }
 
-function drawText(
+/**
+ * Draws a display list onto a canvas at one canvas pixel per monitor pixel. The
+ * caller scales the canvas up in CSS, which keeps the pixels square and hard.
+ */
+export function renderScreen(
   ctx: CanvasRenderingContext2D,
-  colour: Rgba,
-  x: number,
-  y: number,
-  text: string,
+  commands: readonly DrawCommand[],
+  size: ScreenSize,
 ): void {
-  ctx.fillStyle = css(colour)
-  ctx.font = `${FONT.height + 1}px monospace`
-  ctx.textBaseline = 'top'
-  ctx.fillText(text, Math.floor(x), Math.floor(y))
-}
-
-/** Wraps text to the box width and aligns it, as the game's drawTextBox does. */
-function drawTextBox(
-  ctx: CanvasRenderingContext2D,
-  colour: Rgba,
-  command: Extract<DrawCommand, { op: 'textBox' }>,
-): void {
-  const perLine = Math.max(1, Math.floor(command.w / (FONT.width + FONT.spacing)))
-  const lines = wrapText(command.text, perLine)
-  const lineHeight = FONT.height + FONT.spacing
-  const blockHeight = lines.length * lineHeight
-
-  const top =
-    command.va > 0
-      ? command.y + command.h - blockHeight
-      : command.va < 0
-        ? command.y
-        : command.y + (command.h - blockHeight) / 2
-
-  lines.forEach((line, i) => {
-    const lineWidth = line.length * (FONT.width + FONT.spacing)
-    const left =
-      command.ha > 0
-        ? command.x + command.w - lineWidth
-        : command.ha < 0
-          ? command.x
-          : command.x + (command.w - lineWidth) / 2
-    drawText(ctx, colour, left, top + i * lineHeight, line)
-  })
-}
-
-export function wrapText(text: string, perLine: number): string[] {
-  const lines: string[] = []
-  for (const paragraph of text.split('\n')) {
-    let line = ''
-    for (const word of paragraph.split(' ')) {
-      const candidate = line === '' ? word : `${line} ${word}`
-      if (candidate.length <= perLine) {
-        line = candidate
-      } else {
-        if (line !== '') lines.push(line)
-        line = word
-      }
-    }
-    lines.push(line)
-  }
-  return lines
+  const raster = rasterise(commands, size)
+  const image = ctx.createImageData(raster.width, raster.height)
+  image.data.set(raster.data)
+  ctx.putImageData(image, 0, 0)
 }

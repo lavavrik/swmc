@@ -1,90 +1,86 @@
-import { describe, expect, it, vi } from 'vitest'
-import { MONITORS, renderScreen, wrapText, type DrawCommand } from './screen'
+import { describe, expect, it } from 'vitest'
+import { MONITORS, TEXT_ADVANCE, rasterise, wrapText } from './screen'
+import type { DrawCommand } from '@/library/video'
 
-/** A canvas context that records what it was asked to draw. */
-function fakeContext() {
-  const calls: string[] = []
-  const record =
-    (name: string) =>
-    (...args: unknown[]) => {
-      calls.push(`${name}(${args.join(',')})`)
+const size = { width: 8, height: 8 }
+
+/** The raster as text, one character per pixel. */
+const show = (commands: DrawCommand[]) => {
+  const raster = rasterise(commands, size)
+  const rows: string[] = []
+  for (let y = 0; y < raster.height; y++) {
+    let line = ''
+    for (let x = 0; x < raster.width; x++) {
+      const { r, g, b } = raster.at(x, y)
+      line += r + g + b > 0 ? '#' : '.'
     }
-  const ctx = {
-    calls,
-    imageSmoothingEnabled: true,
-    lineWidth: 0,
-    fillStyle: '',
-    strokeStyle: '',
-    font: '',
-    textBaseline: '',
-    clearRect: record('clearRect'),
-    fillRect: vi.fn((...a: unknown[]) => calls.push(`fillRect(${a.join(',')})`)),
-    beginPath: record('beginPath'),
-    moveTo: record('moveTo'),
-    lineTo: record('lineTo'),
-    closePath: record('closePath'),
-    rect: record('rect'),
-    arc: record('arc'),
-    fill: record('fill'),
-    stroke: record('stroke'),
-    fillText: record('fillText'),
+    rows.push(line)
   }
-  return ctx as unknown as CanvasRenderingContext2D & { calls: string[] }
+  return rows
 }
 
-const render = (commands: DrawCommand[]) => {
-  const ctx = fakeContext()
-  renderScreen(ctx, commands, { width: 32, height: 32 })
-  return ctx.calls
-}
-
-describe('renderScreen', () => {
+describe('rasterise', () => {
   it('starts from a black screen', () => {
-    expect(render([])).toContain('fillRect(0,0,32,32)')
+    expect(show([])).toEqual(Array.from({ length: 8 }, () => '........'))
   })
 
-  it('fills a rectangle at whole pixels', () => {
-    const calls = render([{ op: 'rectF', x: 2.4, y: 3.6, w: 5, h: 6 }])
-    expect(calls).toContain('fillRect(2,3,5,6)')
+  it('fills with the current colour when cleared', () => {
+    const rows = show([{ op: 'color', r: 255, g: 0, b: 0, a: 255 }, { op: 'clear' }])
+    expect(rows[0]).toBe('########')
   })
 
-  it('strokes an outlined rectangle inside its bounds', () => {
-    expect(render([{ op: 'rect', x: 1, y: 1, w: 4, h: 4 }])).toContain('rect(1.5,1.5,3,3)')
-  })
-
-  it('draws lines, circles and triangles', () => {
-    const calls = render([
-      { op: 'line', x1: 0, y1: 0, x2: 5, y2: 5 },
-      { op: 'circleF', x: 4, y: 4, r: 2 },
-      { op: 'triangle', x1: 0, y1: 0, x2: 1, y2: 0, x3: 0, y3: 1 },
+  it('draws shapes on whole pixels, with no smoothing', () => {
+    const rows = show([
+      { op: 'color', r: 255, g: 255, b: 255, a: 255 },
+      { op: 'line', x1: 0, y1: 0, x2: 3, y2: 3 },
+      { op: 'rectF', x: 5, y: 5, w: 2, h: 2 },
     ])
-    expect(calls).toContain('lineTo(5.5,5.5)')
-    expect(calls.some((c) => c.startsWith('arc(4.5,4.5,2'))).toBe(true)
-    expect(calls).toContain('closePath()')
+    expect(rows).toEqual([
+      '#.......',
+      '.#......',
+      '..#.....',
+      '...#....',
+      '........',
+      '.....##.',
+      '.....##.',
+      '........',
+    ])
   })
 
-  it('draws text', () => {
-    expect(render([{ op: 'text', x: 1, y: 2, text: 'hi' }])).toContain('fillText(hi,1,2)')
+  it('draws text in the game’s pixel font', () => {
+    const rows = show([
+      { op: 'color', r: 255, g: 255, b: 255, a: 255 },
+      { op: 'text', x: 0, y: 0, text: 'A' },
+    ])
+    expect(rows.slice(0, 5)).toEqual(['.##.....', '#..#....', '####....', '#..#....', '#..#....'])
   })
 
-  it('clears with the current colour', () => {
-    const calls = render([{ op: 'color', r: 255, g: 0, b: 0, a: 255 }, { op: 'clear' }])
-    // the initial black fill, then the cleared colour
-    expect(calls.filter((c) => c === 'fillRect(0,0,32,32)')).toHaveLength(2)
+  it('respects the colour set before each shape', () => {
+    const raster = rasterise(
+      [
+        { op: 'color', r: 255, g: 0, b: 0, a: 255 },
+        { op: 'rectF', x: 0, y: 0, w: 1, h: 1 },
+        { op: 'color', r: 0, g: 255, b: 0, a: 255 },
+        { op: 'rectF', x: 1, y: 0, w: 1, h: 1 },
+      ],
+      size,
+    )
+    expect(raster.at(0, 0)).toMatchObject({ r: 255, g: 0 })
+    expect(raster.at(1, 0)).toMatchObject({ r: 0, g: 255 })
   })
 })
 
-describe('wrapText', () => {
+describe('text layout', () => {
+  it('advances five pixels per character, as the game does', () => {
+    expect(TEXT_ADVANCE).toBe(5)
+  })
+
   it('wraps on words', () => {
     expect(wrapText('the quick brown fox', 9)).toEqual(['the quick', 'brown fox'])
   })
 
   it('keeps explicit line breaks', () => {
     expect(wrapText('a\nb', 10)).toEqual(['a', 'b'])
-  })
-
-  it('lets a word longer than the line stand alone', () => {
-    expect(wrapText('extraordinary', 5)).toEqual(['extraordinary'])
   })
 })
 

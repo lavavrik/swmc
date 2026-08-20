@@ -329,6 +329,14 @@ the outputs produced by the last completed tick.
   video signal carries — routed through switchboxes and output pins unchanged
   and rasterised only where it is looked at, so one frame can be drawn at any
   monitor's size.
+- **Rasterising:** a monitor is 32 pixels across at its smallest, so drawing
+  goes through a hand-written rasteriser rather than a canvas: Bresenham lines,
+  a midpoint circle shared between outline and fill, scanline triangles, and
+  the game's own bitmap font. Nothing is smoothed — a diagonal is a staircase
+  on a real monitor and it should be one here. The font is extracted from a
+  local installation of the game by `scripts/extract-tiny-font.mjs`, which
+  reads the BMFont pair the game ships and writes out one bitmask per glyph
+  row.
 - **Monitors:** the game has no monitor component inside a microcontroller —
   a monitor is a block on the vehicle — so a monitor here is an instrument
   rather than a component. It attaches to any port carrying video (double-click
