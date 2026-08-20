@@ -280,12 +280,30 @@ test('minifies a script and shows both size limits', async ({ page }) => {
   const before = await sizeOf()
 
   await page.getByRole('button', { name: 'Minify' }).click()
-  await expect(page.locator('.lua-note')).toContainText('saving')
+  const minified = page.locator('.minified')
+  await expect(minified).toBeVisible()
+  await expect(minified.locator('.minified-summary')).toContainText('smaller')
+  await expect(minified.locator('.minified-code')).toContainText('function onTick()')
+  // Names are shortened, so the original ones are gone from the result
+  await expect(minified.locator('.minified-code')).not.toContainText('raw')
+
+  // Showing it leaves the script alone
+  expect(await sizeOf()).toBe(before)
+
+  await minified.getByRole('button', { name: 'Replace script' }).click()
+  await expect(page.locator('.minified')).toHaveCount(0)
   expect(await sizeOf()).toBeLessThan(before!)
 
   // The script still runs after being minified
   await page.getByRole('button', { name: 'Run simulation' }).click()
   await expect(page.locator('.lua-error')).toHaveCount(0)
+
+  // and replacing it is one undo away
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Close' }).click()
+  await page.keyboard.press('Control+z')
+  await nodes(page).first().dblclick()
+  expect(await sizeOf()).toBe(before)
 })
 
 test('watches a video signal on a monitor', async ({ page }) => {

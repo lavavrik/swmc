@@ -367,8 +367,20 @@ the outputs produced by the last completed tick.
   game and 8192 with the Space DLC — warning at each rather than blocking, so a
   script that needs the DLC is visible as such.
 - **Minifying:** a lexer drops comments and unnecessary spacing, keeping the
-  line breaks that carry meaning. It does not rename locals, which would risk
-  changing behaviour for a smaller further saving.
+  line breaks that carry meaning, and shortens the names. Renaming without a
+  parser is safe because it is bijective and global — every occurrence of a
+  name becomes the same new one, so whatever the scoping was, it survives.
+  What is left alone is everything that is not a variable: reserved words, the
+  standard library, the game's API, the callbacks it calls by name, fields
+  after a dot or colon, and the keys of a table constructor. A script that
+  could reach a name as a string, through `_G` or `load`, is not renamed at
+  all, and says so. Every renameable name takes a fresh one from the pool
+  rather than keeping a short original, because a kept name leaves the pool
+  free to hand the same one to something else.
+  The result is shown beside the script rather than replacing it; replacing is
+  a separate, undoable choice. On the thermostat that ships as a test fixture
+  it is a 38% saving, verified by running both versions tick for tick and
+  requiring identical outputs and drawing.
 - **Safety:** a per-tick instruction budget aborts runaway scripts; a worker
   crash surfaces as an error banner on the node rather than killing the app.
 

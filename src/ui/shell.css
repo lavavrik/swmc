@@ -498,6 +498,39 @@
   opacity: 0.7;
 }
 
+.minified-summary {
+  flex: 1;
+  font-size: 12px;
+  color: var(--chrome-text-dim);
+}
+
+.minified-summary strong {
+  color: var(--chrome-text);
+}
+
+.minified-code {
+  margin: 0;
+  padding: 14px 18px;
+  overflow: auto;
+  max-height: 50vh;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--chrome-text);
+  background: #15191b;
+  user-select: text;
+}
+
+.dialog-note {
+  margin: 0;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--chrome-border);
+  color: #ffc46b;
+  font-size: 12px;
+}
+
 .lua-note {
   font-size: 12px;
   color: var(--chrome-text-dim);

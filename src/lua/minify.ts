@@ -1,10 +1,18 @@
 /**
  * Squeezing a Lua script down to fit the game's character limit.
  *
- * This is a lexer, not a parser: it drops comments and emits the remaining
- * tokens with a separator only where one is needed to keep them apart. That is
- * enough for the bulk of the saving and cannot change what the script does —
- * unlike renaming locals, which is deliberately not attempted.
+ * This is a lexer, not a parser. It drops comments, emits the remaining tokens
+ * with a separator only where one is needed to keep them apart, and shortens
+ * the names.
+ *
+ * Renaming without a parser is safe because it is *bijective and global*: every
+ * occurrence of a name becomes the same new name, so whatever the original
+ * scoping was — shadowing, locals in different functions sharing a name — it
+ * survives untouched. What must be left alone is everything that is not a
+ * variable: reserved words, the standard library and the game's API, the
+ * callbacks the game calls by name, field names after a dot or colon, and the
+ * keys of a table constructor. A script that could reach a name as a string,
+ * through `_G` or `load`, is not renamed at all.
  *
  * A script that does not tokenize (an unterminated string, say) is returned
  * unchanged with the reason, rather than being mangled.
@@ -14,16 +22,125 @@ type TokenKind = 'name' | 'number' | 'string' | 'symbol'
 
 interface Token {
   readonly kind: TokenKind
-  readonly text: string
+  text: string
   /** Whether a line break preceded this token in the original. */
   readonly newlineBefore: boolean
+  /** True for a name that is a key rather than a variable, so must not change. */
+  readonly fixed?: boolean
 }
 
 export interface MinifyResult {
   readonly code: string
   readonly before: number
   readonly after: number
+  /** How many names were shortened. */
+  readonly renamed: number
+  /** Why renaming was held back, when it was. */
+  readonly note: string | null
   readonly error: string | null
+}
+
+/** Words Lua reserves, which are never names. */
+const RESERVED = new Set([
+  'and',
+  'break',
+  'do',
+  'else',
+  'elseif',
+  'end',
+  'false',
+  'for',
+  'function',
+  'goto',
+  'if',
+  'in',
+  'local',
+  'nil',
+  'not',
+  'or',
+  'repeat',
+  'return',
+  'then',
+  'true',
+  'until',
+  'while',
+])
+
+/** The standard library, the game's API, and the callbacks the game calls. */
+const PROTECTED = new Set([
+  // standard library
+  'assert',
+  'collectgarbage',
+  'dofile',
+  'error',
+  'getmetatable',
+  'ipairs',
+  'load',
+  'loadstring',
+  'next',
+  'pairs',
+  'pcall',
+  'print',
+  'rawequal',
+  'rawget',
+  'rawlen',
+  'rawset',
+  'require',
+  'select',
+  'setmetatable',
+  'tonumber',
+  'tostring',
+  'type',
+  'unpack',
+  'xpcall',
+  'bit32',
+  'coroutine',
+  'debug',
+  'io',
+  'math',
+  'os',
+  'string',
+  'table',
+  'utf8',
+  '_G',
+  '_ENV',
+  '_VERSION',
+  // the game's API
+  'input',
+  'output',
+  'property',
+  'screen',
+  'map',
+  'async',
+  // what the game calls
+  'onTick',
+  'onDraw',
+  'httpReply',
+])
+
+/** Names that let a script reach a variable as a string, which renaming breaks. */
+const REFLECTIVE = ['_G', '_ENV', 'load', 'loadstring', 'getfenv', 'setfenv', 'require']
+
+const NAME_CHARACTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+/** Short names in order, skipping any that mean something already. */
+function* shortNames(): Generator<string> {
+  const lengths = [1, 2, 3]
+  for (const length of lengths) {
+    const indices = Array.from({ length }, () => 0)
+    for (;;) {
+      const name = indices.map((i) => NAME_CHARACTERS[i]).join('')
+      if (!RESERVED.has(name) && !PROTECTED.has(name)) yield name
+      let position = length - 1
+      while (position >= 0) {
+        indices[position] = (indices[position] as number) + 1
+        if ((indices[position] as number) < NAME_CHARACTERS.length) break
+        indices[position] = 0
+        position--
+      }
+      if (position < 0) break
+    }
+  }
 }
 
 const NAME_START = /[A-Za-z_]/
@@ -103,6 +220,8 @@ function readQuoted(source: string, at: number): { end: number; text: string } {
 
 function tokenize(source: string): Token[] {
   const tokens: Token[] = []
+  /** Which brackets are open, so a name inside `{ }` can be seen as a key. */
+  const brackets: string[] = []
   let i = 0
   let newline = false
 
@@ -136,6 +255,13 @@ function tokenize(source: string): Token[] {
       newline = false
     }
 
+    /** Marks a token as a key rather than a variable. */
+    const markFixed = (fromEnd = 0) => {
+      const index = tokens.length - 1 - fromEnd
+      const token = tokens[index]
+      if (token) tokens[index] = { ...token, fixed: true }
+    }
+
     if (ch === '"' || ch === "'") {
       const quoted = readQuoted(source, i)
       push('string', quoted.text)
@@ -153,7 +279,12 @@ function tokenize(source: string): Token[] {
     if (NAME_START.test(ch)) {
       const start = i
       while (i < source.length && NAME_PART.test(source[i] as string)) i++
+      const previous = tokens[tokens.length - 1]
+      // A name straight after a dot or a colon is a field, not a variable
+      const isField =
+        previous?.kind === 'symbol' && (previous.text === '.' || previous.text === ':')
       push('name', source.slice(start, i))
+      if (isField) markFixed()
       continue
     }
 
@@ -170,6 +301,18 @@ function tokenize(source: string): Token[] {
 
     const symbol = SYMBOLS.find((s) => source.startsWith(s, i))
     if (!symbol) throw new LexError(`unexpected character '${ch}'`)
+
+    // `{ name = ... }` is a table key, which is a string and not a variable
+    if (symbol === '=' && brackets[brackets.length - 1] === '{') {
+      const previous = tokens[tokens.length - 1]
+      const before = tokens[tokens.length - 2]
+      const opensTheEntry =
+        before === undefined || (before.kind === 'symbol' && '{,;'.includes(before.text))
+      if (previous?.kind === 'name' && opensTheEntry) markFixed()
+    }
+    if ('([{'.includes(symbol)) brackets.push(symbol)
+    if (')]}'.includes(symbol)) brackets.pop()
+
     push('symbol', symbol)
     i += symbol.length
     continue
@@ -192,6 +335,57 @@ function needsSpace(left: Token, right: Token): boolean {
   return SYMBOLS.some((s) => s.length > 1 && joined.startsWith(s)) || joined.startsWith('--')
 }
 
+/**
+ * Gives every name that is really a variable a short one. Returns how many were
+ * changed, and why none were when that is the case.
+ */
+function rename(tokens: Token[]): { renamed: number; note: string | null } {
+  const reachedAsStrings = tokens.find(
+    (t) => t.kind === 'name' && !t.fixed && REFLECTIVE.includes(t.text),
+  )
+  if (reachedAsStrings) {
+    return {
+      renamed: 0,
+      note: `names left alone: the script uses ${reachedAsStrings.text}, which can reach them as strings`,
+    }
+  }
+
+  const renameable = (token: Token) =>
+    token.kind === 'name' &&
+    token.fixed !== true &&
+    !RESERVED.has(token.text) &&
+    !PROTECTED.has(token.text)
+
+  // Shortest names to whatever is used most, so the commonest name costs least.
+  // Ties go to whichever appeared first, which keeps the result predictable.
+  const uses = new Map<string, { count: number; first: number }>()
+  tokens.forEach((token, index) => {
+    if (!renameable(token)) return
+    const seen = uses.get(token.text)
+    if (seen) seen.count++
+    else uses.set(token.text, { count: 1, first: index })
+  })
+  const order = [...uses.entries()].sort(([, a], [, b]) => b.count - a.count || a.first - b.first)
+
+  // Every renameable name takes a fresh one from the pool. Keeping a name that
+  // was already short would be tempting, but the pool would then be free to
+  // hand that same name to something else — two variables, one name.
+  const names = shortNames()
+  const mapping = new Map<string, string>()
+  for (const [name] of order) {
+    const next = names.next()
+    if (next.done === true) break
+    mapping.set(name, next.value)
+  }
+
+  for (const token of tokens) {
+    if (!renameable(token)) continue
+    const replacement = mapping.get(token.text)
+    if (replacement !== undefined) token.text = replacement
+  }
+  return { renamed: [...mapping].filter(([from, to]) => from !== to).length, note: null }
+}
+
 export function minifyLua(source: string): MinifyResult {
   const before = source.length
   let tokens: Token[]
@@ -202,9 +396,13 @@ export function minifyLua(source: string): MinifyResult {
       code: source,
       before,
       after: before,
+      renamed: 0,
+      note: null,
       error: error instanceof Error ? error.message : String(error),
     }
   }
+
+  const { renamed, note } = rename(tokens)
 
   let out = ''
   tokens.forEach((token, index) => {
@@ -218,5 +416,5 @@ export function minifyLua(source: string): MinifyResult {
     out += token.text
   })
 
-  return { code: out, before, after: out.length, error: null }
+  return { code: out, before, after: out.length, renamed, note, error: null }
 }

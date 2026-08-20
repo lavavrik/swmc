@@ -9,13 +9,14 @@ import Editor from '@monaco-editor/react'
 import { useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
 import { SCRIPT_LIMITS } from '@/lua/api'
-import { minifyLua } from '@/lua/minify'
+import { minifyLua, type MinifyResult } from '@/lua/minify'
 import { frameFor, setMonitorTouch, setWatched } from '@/lua/runner'
 import { MONITORS } from '@/library/video'
 import { useLuaStore } from '@/lua/store'
 import { useSimulationStore } from '@/sim/store'
 import type { NodeId } from '@/model/types'
 import { configureMonaco } from './monaco'
+import { MinifiedScript } from './MinifiedScript'
 import { ScreenPreview } from './ScreenPreview'
 
 configureMonaco()
@@ -32,6 +33,7 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
 
   const [monitor, setMonitor] = useState(0)
   const [note, setNote] = useState<string | null>(null)
+  const [minified, setMinified] = useState<MinifyResult | null>(null)
   const [touching, setTouching] = useState(false)
   const size = MONITORS[monitor] ?? MONITORS[0]
 
@@ -54,9 +56,8 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
       setNote(`Could not minify: ${result.error}`)
       return
     }
-    const saved = result.before - result.after
-    setNote(saved > 0 ? `Minified, saving ${saved} characters` : 'Already as small as it gets')
-    if (saved > 0) setProperty(node, 'script', result.code, false)
+    setNote(null)
+    setMinified(result)
   }
 
   const overBase = script.length > SCRIPT_LIMITS.base
@@ -154,6 +155,17 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
       </div>
 
       {error && <p className="lua-error">{error}</p>}
+
+      {minified && (
+        <MinifiedScript
+          result={minified}
+          onReplace={() => {
+            setProperty(node, 'script', minified.code, false)
+            setMinified(null)
+          }}
+          onClose={() => setMinified(null)}
+        />
+      )}
     </div>
   )
 }
