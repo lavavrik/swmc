@@ -17,7 +17,7 @@ import type { ComponentDef } from '@/library/types'
 import type { GraphNode, PortKind } from '@/model/types'
 import { CARD, cardDetail, cardLayout, nodeOrigin, portPosition, portsOf } from './layout'
 import type { CardLayout } from './layout'
-import { CategoryIcon } from './CategoryIcon'
+import { ComponentIcon } from './CategoryIcon'
 
 interface Props {
   node: GraphNode
@@ -123,8 +123,9 @@ export const NodeView = memo(function NodeView({
   // Text is measured in screen pixels, so the card's world size is converted
   const detail = showNames ? cardDetail(width * scale) : 'icon'
   const pad = CARD.padding / scale
-  const icon = CARD.iconSize / scale
-  const textLeft = detail === 'icon' ? 0 : pad * 2 + icon
+  // The glyph shrinks with the card so it always clears the top and bottom
+  const icon = Math.min(CARD.iconSize / scale, height - pad * 2)
+  const textLeft = detail === 'icon' ? 0 : pad + icon + pad * 0.7
   const room = (width - textLeft - pad) * scale
 
   return (
@@ -141,7 +142,8 @@ export const NodeView = memo(function NodeView({
         <title>{tooltipFor(node, def)}</title>
       </rect>
 
-      <CategoryIcon
+      <ComponentIcon
+        type={def.id}
         category={def.category}
         x={detail === 'icon' ? (width - icon) / 2 : pad}
         y={detail === 'icon' ? (height - icon) / 2 : pad}
@@ -152,7 +154,7 @@ export const NodeView = memo(function NodeView({
         <text
           className="node-title"
           x={textLeft}
-          y={pad + CARD.titleSize / scale}
+          y={pad + (CARD.titleSize * 0.85) / scale}
           fontSize={CARD.titleSize / scale}
           fill="var(--card-title)"
         >
@@ -162,9 +164,9 @@ export const NodeView = memo(function NodeView({
 
       {detail === 'full' &&
         detailLines(node, def).map((line, index) => {
-          const top = pad + (CARD.titleSize + 4 + index * CARD.detailLeading) / scale
+          const top = pad + (CARD.titleSize + 5 + index * CARD.detailLeading) / scale
           // Stop before running off the bottom of the card
-          if (top + CARD.detailSize / scale > height) return null
+          if (top + (CARD.detailSize + CARD.padding) / scale > height) return null
           return (
             <text
               key={index}

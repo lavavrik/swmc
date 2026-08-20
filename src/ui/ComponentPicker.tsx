@@ -1,5 +1,6 @@
 /** The component menu: categorised, searchable, places into the centre of the view. */
 import { useMemo, useState } from 'react'
+import { ComponentIcon } from '@/editor/CategoryIcon'
 import { componentsByCategory } from '@/library/registry'
 import { useEditorStore } from '@/editor/store'
 import { screenToWorld } from '@/editor/viewport'
@@ -69,6 +70,16 @@ export function ComponentPicker({ onClose }: { onClose: () => void }) {
                   title={component.description}
                   onClick={() => place(component.id)}
                 >
+                  {/* The same glyph the component wears on the workspace */}
+                  <svg className="picker-item-icon" width={22} height={22} viewBox="0 0 22 22">
+                    <ComponentIcon
+                      type={component.id}
+                      category={component.category}
+                      x={0}
+                      y={0}
+                      size={22}
+                    />
+                  </svg>
                   <span className="picker-item-name">{component.name}</span>
                   <span className="picker-item-desc">{component.description}</span>
                 </button>

@@ -235,7 +235,11 @@ community library records, from a half-unit composite read to a composite write
 that grows a quarter unit per channel. Those measurements belong to the
 component rather than to any view, so they live in `library/geometry.ts`, which
 the canvas turns into pixels and the codec needs for the position conversion. The game puts a small glyph in the corner of a card and the component's name
-and settings beside it, and so does this — with one difference: the text is
+and settings beside it, and so does this. Every component has its own glyph,
+drawn as stroked paths on a 24-unit grid rather than copied from the game's
+artwork: paths stay sharp at any zoom, where a 32-pixel bitmap would not, and
+nothing of the game's is redistributed. A component with no glyph of its own —
+one from a newer version of the game — falls back to its category's — with one difference: the text is
 drawn at a fixed size on screen rather than scaling with the workspace, so
 zooming in does not inflate it. What the zoom changes is how much fits. Far out
 a card is its glyph alone; closer in the name appears; closer still its

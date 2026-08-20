@@ -1,47 +1,46 @@
 /**
- * The small dark glyph in a card's top-left corner.
+ * The glyph in the corner of a component's card.
  *
- * The game uses a bespoke icon per component; these are simple category-level
- * stand-ins drawn as paths so they scale with the canvas and cost one element.
+ * Each component has its own, drawn as stroked paths on a 24-unit grid so it
+ * stays sharp at any zoom; the plate behind it is the light square the game
+ * puts its icons on.
  */
 import type { Category } from '@/library/types'
+import type { ComponentTypeId } from '@/model/types'
+import { GLYPH_SIZE, glyphFor } from './componentIcons'
 
-const GLYPHS: Record<Category, string> = {
-  arithmetic: 'M2 7h10M7 2v10',
-  logic: 'M3 2h4a5 5 0 0 1 0 10H3z',
-  comparison: 'M3 4h8M3 9h8',
-  composite: 'M2 3h4v4H2zM8 7h4v4H8z',
-  video: 'M2 3h10v8H2zM5 5l4 2-4 2z',
-  audio: 'M3 5v4h2l3 3V2L5 5z',
-  data: 'M2 3h10v8H2zM2 6h10',
-  property: 'M3 3h8v3H3zM3 8h8v3H3z',
-  io: 'M2 7h6m0 0-2-2m2 2-2 2M10 3v8',
-}
-
-export function CategoryIcon({
-  category,
-  x,
-  y,
-  size = 14,
-}: {
+interface Props {
+  type: ComponentTypeId
   category: Category
   x: number
   y: number
-  size?: number
-}) {
-  // The glyphs are drawn on a 14-unit grid, so scale from there
-  const scale = size / 14
+  size: number
+}
+
+export function ComponentIcon({ type, category, x, y, size }: Props) {
+  const glyph = glyphFor(type, category)
+  const scale = size / GLYPH_SIZE
+  // The glyph is inset a little, leaving the plate visible around it
+  const inset = GLYPH_SIZE * 0.1
+
   return (
     <g transform={`translate(${x} ${y}) scale(${scale})`} pointerEvents="none">
-      <rect width={14} height={14} rx={2} fill="#dfe6e9" />
-      <path
-        d={GLYPHS[category]}
-        transform="translate(0.5 0.5) scale(0.95)"
+      <rect width={GLYPH_SIZE} height={GLYPH_SIZE} rx={3} fill="#dfe6e9" />
+      <g
+        transform={`translate(${inset} ${inset}) scale(${(GLYPH_SIZE - inset * 2) / GLYPH_SIZE})`}
         fill="none"
-        stroke="#4a575c"
-        strokeWidth={1.5}
+        stroke="#41504f"
+        strokeWidth={1.9}
         strokeLinecap="round"
-      />
+        strokeLinejoin="round"
+      >
+        {glyph.stroke?.map((d, i) => (
+          <path key={`s${i}`} d={d} />
+        ))}
+        {glyph.fill?.map((d, i) => (
+          <path key={`f${i}`} d={d} fill="#41504f" stroke="none" />
+        ))}
+      </g>
     </g>
   )
 }

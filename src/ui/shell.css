@@ -249,7 +249,11 @@
 }
 
 .picker-item {
-  display: block;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  align-items: center;
   width: 100%;
   padding: 8px 18px;
   border: none;
@@ -261,6 +265,10 @@
 
 .picker-item:hover {
   background: var(--chrome-raised);
+}
+
+.picker-item-icon {
+  grid-row: 1 / span 2;
 }
 
 .picker-item-name {
@@ -276,6 +284,10 @@
 
 .no-tooltips .picker-item-desc {
   display: none;
+}
+
+.no-tooltips .picker-item {
+  grid-template-rows: auto;
 }
 
 .picker-empty {

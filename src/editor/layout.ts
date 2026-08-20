@@ -36,8 +36,11 @@ export const CARD = {
   portRadius: 4,
   /** The glyph is the same size on every card, whatever the card's height. */
   iconSize: 14,
-  /** Padding inside a card. */
-  padding: 4,
+  /**
+   * Breathing room inside a card, in screen pixels, so the glyph and the text
+   * sit clear of the edges instead of against them.
+   */
+  padding: 7,
   /** Type sizes, in screen pixels — they do not grow with the zoom. */
   titleSize: 11,
   detailSize: 9,
