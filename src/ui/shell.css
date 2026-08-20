@@ -542,3 +542,91 @@
   width: 100%;
   margin-top: 12px;
 }
+
+/* ---------- monitor instrument ---------- */
+
+.monitor-panel {
+  top: auto;
+  bottom: 16px;
+  left: 16px;
+  right: auto;
+  width: auto;
+  max-width: 340px;
+}
+
+.monitor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.monitor-header h2 {
+  flex: 1;
+}
+
+.monitor-panel .lua-monitor {
+  margin: 10px 0;
+}
+
+.text-button.tiny {
+  margin-left: auto;
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+/* ---------- pin editor ---------- */
+
+.pin-editor {
+  left: 16px;
+  right: auto;
+  width: 300px;
+}
+
+.pin-edit-row {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #333d42;
+}
+
+.pin-edit-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pin-edit-head select {
+  flex: 1;
+  min-width: 0;
+}
+
+.pin-edit-face {
+  display: flex;
+  gap: 10px;
+}
+
+.pin-edit-face label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--chrome-text-dim);
+}
+
+.pin-edit-face input {
+  width: 64px;
+}
+
+.pin-edit-add {
+  margin-top: 14px;
+}
+
+.pin-edit-add select {
+  width: 100%;
+}
+
+.text-button.tiny:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

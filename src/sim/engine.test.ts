@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { librarySchema } from '@/library/registry'
+import { setLuaTickHook } from '@/library/hooks'
 import { addIoNode, addNode, connect, createEmpty } from '@/model/ops'
 import { expect as unwrap } from '@/model/result'
 import type { Microcontroller, NodeId, PropertyValue } from '@/model/types'
@@ -174,5 +175,58 @@ describe('ticking', () => {
     const sim = new Simulation(g.doc)
     sim.step()
     expect(sim.outputValue({ node: read, kind: 'out', index: 0 })).toBe(42)
+  })
+})
+
+describe('video', () => {
+  it('carries a frame from a script through a switchbox to an output pin', () => {
+    const g = new Graph()
+    const script = g.add('data.luaScript')
+    const box = g.add('av.videoSwitchbox')
+    const on = g.add('const.on')
+    const pin = g.pin('io.out.video')
+    g.wire(script, 1, box, 0)
+    g.wire(on, 0, box, 2)
+    g.wire(box, 0, pin, 0)
+
+    // Stand in for the interpreter: every tick the script draws one rectangle
+    setLuaTickHook(() => ({
+      output: { numbers: [], bools: [] },
+      frame: {
+        kind: 'video',
+        width: 32,
+        height: 32,
+        commands: [{ op: 'rectF', x: 0, y: 0, w: 8, h: 8 }],
+      },
+    }))
+    try {
+      const sim = new Simulation(g.doc)
+      sim.step()
+      const frame = sim.getOutput(pin)
+      expect(frame).toMatchObject({ kind: 'video', width: 32 })
+      expect((frame as unknown as { commands: unknown[] }).commands).toHaveLength(1)
+    } finally {
+      setLuaTickHook(null)
+    }
+  })
+
+  it('passes the video input through when no monitor is watching', () => {
+    const g = new Graph()
+    const source = g.pin('io.in.video')
+    const script = g.add('data.luaScript')
+    const pin = g.pin('io.out.video')
+    g.wire(source, 0, script, 1)
+    g.wire(script, 1, pin, 0)
+
+    setLuaTickHook(() => ({ output: { numbers: [], bools: [] }, frame: null }))
+    try {
+      const sim = new Simulation(g.doc)
+      const incoming = { kind: 'video', width: 64, height: 32, commands: [] } as const
+      sim.setInput(source, incoming)
+      sim.step()
+      expect(sim.getOutput(pin)).toEqual(incoming)
+    } finally {
+      setLuaTickHook(null)
+    }
   })
 })

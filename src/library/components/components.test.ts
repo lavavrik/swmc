@@ -382,8 +382,15 @@ describe('properties and tooltips', () => {
 
 describe('video, audio and lua', () => {
   it('switches video and audio channels', () => {
-    const on = { kind: 'video', source: 'a' } as const
-    const off = { kind: 'video', source: 'b' } as const
+    const frame = (text: string) =>
+      ({
+        kind: 'video',
+        width: 32,
+        height: 32,
+        commands: [{ op: 'text', x: 0, y: 0, text }],
+      }) as const
+    const on = frame('on')
+    const off = frame('off')
     expect(run('av.videoSwitchbox', [on, off, true])).toEqual([on])
     expect(run('av.audioSwitchbox', [on, off, false])).toEqual([off])
   })

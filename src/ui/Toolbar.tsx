@@ -20,12 +20,14 @@ function RoundButton({ icon, title, onClick, disabled = false }: ButtonProps) {
 
 export function Toolbar({
   onOpenPicker,
+  onOpenPins,
   onOpenProjects,
   onSaveProject,
   showTooltips,
   onToggleTooltips,
 }: {
   onOpenPicker: () => void
+  onOpenPins: () => void
   onOpenProjects: () => void
   onSaveProject: () => void
   showTooltips: boolean
@@ -52,6 +54,7 @@ export function Toolbar({
       <RoundButton icon="confirm" title="Confirm (not yet implemented)" disabled />
       <span className="toolbar-gap" />
       <RoundButton icon="new" title="Add component" onClick={onOpenPicker} />
+      <RoundButton icon="pins" title="Microcontroller pins" onClick={onOpenPins} />
       <RoundButton icon="open" title="Open or import a microcontroller" onClick={onOpenProjects} />
       <RoundButton
         icon="save"

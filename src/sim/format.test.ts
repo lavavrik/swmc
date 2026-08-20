@@ -24,7 +24,7 @@ describe('formatSignal', () => {
   })
 
   it('names video and audio channels', () => {
-    expect(formatSignal({ kind: 'video', source: null })).toBe('video')
+    expect(formatSignal({ kind: 'video', commands: [], width: 32, height: 32 })).toBe('video')
     expect(formatSignal({ kind: 'audio', left: 0, right: 0 })).toBe('audio')
   })
 })

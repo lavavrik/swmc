@@ -38,7 +38,9 @@ export const luaComponents: ComponentDef[] = [
         input,
         properties,
       })
-      return { outputs: [outcome ? outcome.output : input, inputs[1]] }
+      // With no monitor watching, the script does not draw and the video input
+      // passes through, exactly as an unattached script behaves in the game
+      return { outputs: [outcome ? outcome.output : input, outcome?.frame ?? inputs[1]] }
     },
   }),
 ]

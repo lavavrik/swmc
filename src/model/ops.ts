@@ -213,6 +213,29 @@ export function setMeta(doc: Microcontroller, meta: Partial<MicrocontrollerMeta>
 const clampSize = (n: number): number => Math.min(6, Math.max(1, Math.round(n)))
 
 /**
+ * Changes a component's type in place, keeping its position and any properties
+ * the new type shares. Wires that no longer have a port to land on are dropped
+ * — changing a pin from a number to an on/off cannot keep its connections.
+ */
+export function setNodeType(
+  schema: GraphSchema,
+  doc: Microcontroller,
+  id: NodeId,
+  type: ComponentTypeId,
+): Result<Microcontroller> {
+  if (!schema.has(type)) return err(`unknown component type: ${type}`)
+  const node = doc.nodes.find((n) => n.id === id)
+  if (!node) return err(`no such component: ${id}`)
+  if (node.type === type) return ok(doc)
+
+  const retyped: Microcontroller = {
+    ...doc,
+    nodes: doc.nodes.map((n) => (n.id === id ? { ...n, type } : n)),
+  }
+  return ok(pruneDanglingWires(schema, retyped))
+}
+
+/**
  * Drops wires that no longer have a port to land on. Needed because some
  * components change shape with their properties — shrinking a Composite Write's
  * channel count takes its last inputs away with it.

@@ -129,9 +129,23 @@ export function Canvas() {
 
   const onDoubleClick = (e: React.MouseEvent) => {
     const target = hitTarget(e.target instanceof Element ? e.target : null)
+    const store = useEditorStore.getState()
+
+    // A video port opens a monitor on whatever it is carrying
+    if (target.kind === 'port') {
+      const node = store.doc.nodes.find((n) => n.id === target.port.node)
+      const def = node && getComponent(node.type)
+      const ports = node && def ? cardLayout(def, node.properties) : null
+      const port = ports
+        ? (target.port.kind === 'in' ? ports.inputs : ports.outputs)[target.port.index]
+        : undefined
+      if (port?.signal === 'video') store.watchVideo(target.port)
+      return
+    }
+
     if (target.kind !== 'node') return
-    const node = useEditorStore.getState().doc.nodes.find((n) => n.id === target.id)
-    if (node?.type === 'data.luaScript') useEditorStore.getState().openScript(node.id)
+    const node = store.doc.nodes.find((n) => n.id === target.id)
+    if (node?.type === 'data.luaScript') store.openScript(node.id)
   }
 
   const onWheel = (e: React.WheelEvent) => {

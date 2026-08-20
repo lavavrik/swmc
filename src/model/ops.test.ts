@@ -14,6 +14,7 @@ import {
   removeNodes,
   reorderIoNodes,
   setMeta,
+  setNodeType,
   setProperty,
 } from './ops'
 import type { Microcontroller, NodeId } from './types'
@@ -304,5 +305,44 @@ describe('pruneDanglingWires', () => {
     })
     expect(pruneDanglingWires(shrunk, doc).wires).toHaveLength(0)
     expect(pruneDanglingWires(testSchema, doc).wires).toHaveLength(1)
+  })
+})
+
+describe('setNodeType', () => {
+  it('changes the type, keeping wires the new type still has ports for', () => {
+    const [d1, a] = place(createEmpty(), 'constant')
+    const [d2, b] = place(d1, 'add')
+    const { doc } = unwrap(
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 0 },
+      ),
+    )
+    const retyped = unwrap(setNodeType(testSchema, doc, b, 'io.out.number'))
+    expect(retyped.nodes.find((n) => n.id === b)?.type).toBe('io.out.number')
+    expect(retyped.wires).toHaveLength(1)
+  })
+
+  it('drops wires the new type cannot carry', () => {
+    const [d1, a] = place(createEmpty(), 'constant')
+    const [d2, b] = place(d1, 'add')
+    const { doc } = unwrap(
+      connect(
+        testSchema,
+        d2,
+        { node: a, kind: 'out', index: 0 },
+        { node: b, kind: 'in', index: 1 },
+      ),
+    )
+    // 'not' has a single input, so the wire into input 2 has nowhere to land
+    expect(unwrap(setNodeType(testSchema, doc, b, 'not')).wires).toHaveLength(0)
+  })
+
+  it('refuses an unknown type or an unknown component', () => {
+    const [doc, a] = place(createEmpty(), 'add')
+    expect(setNodeType(testSchema, doc, a, 'nope').ok).toBe(false)
+    expect(setNodeType(testSchema, doc, 'missing', 'add').ok).toBe(false)
   })
 })

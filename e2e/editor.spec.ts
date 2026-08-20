@@ -245,3 +245,68 @@ test('minifies a script and shows both size limits', async ({ page }) => {
   await page.getByRole('button', { name: 'Run simulation' }).click()
   await expect(page.locator('.lua-error')).toHaveCount(0)
 })
+
+test('watches a video signal on a monitor', async ({ page }) => {
+  await place(page, 'Lua Script')
+  await page.getByRole('button', { name: 'Edit script' }).click()
+  await typeScript(
+    page,
+    'function onDraw() screen.setColor(0,255,0) screen.drawRectF(0,0,screen.getWidth(),screen.getHeight()) end',
+  )
+  await page.getByRole('button', { name: 'Close' }).click()
+
+  await place(page, 'video output')
+  await drag(page, await centre(nodes(page).nth(1)), { x: 720, y: 320 })
+
+  // The script's video output is its second output port
+  const videoOut = nodes(page).first().locator('[data-port-kind="out"]').nth(1)
+  const pinIn = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+  await drag(page, await centre(videoOut), await centre(pinIn))
+
+  // Attach the monitor from the pin's property panel
+  await nodes(page).nth(1).click()
+  await page.getByRole('button', { name: 'Monitor' }).click()
+  await expect(page.locator('.monitor-panel')).toBeVisible()
+
+  await page.getByTitle('Run the simulation').click()
+  await expect
+    .poll(
+      async () =>
+        page.locator('.monitor-panel canvas').evaluate((canvas) => {
+          const ctx = (canvas as HTMLCanvasElement).getContext('2d')
+          const pixel = ctx?.getImageData(16, 16, 1, 1).data
+          return pixel ? [pixel[0], pixel[1], pixel[2]].join(',') : ''
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe('0,255,0')
+
+  await page.getByRole('button', { name: 'Detach' }).click()
+  await expect(page.locator('.monitor-panel')).toHaveCount(0)
+})
+
+test('configures the microcontroller pins', async ({ page }) => {
+  await page.getByTitle('Microcontroller pins').click()
+  const editor = page.locator('.pin-editor')
+  await expect(editor).toContainText('No pins yet')
+
+  await editor.locator('.pin-edit-add select').selectOption('io.in.number')
+  await editor.locator('.pin-edit-add select').selectOption('io.out.onoff')
+  await expect(editor.locator('.pin-edit-row')).toHaveCount(2)
+
+  // Naming a pin renames it on the canvas too
+  await editor.locator('.pin-edit-name').first().fill('Throttle')
+  await expect(nodes(page).first()).toContainText('Throttle')
+
+  // Changing the type swaps the component underneath
+  await editor.locator('.pin-edit-head select').first().selectOption('io.in.composite')
+  await expect(editor.locator('.pin-edit-head select').first()).toHaveValue('io.in.composite')
+
+  // Reordering moves it down the list
+  await editor.locator('.pin-edit-row').first().getByTitle('Move down').click()
+  await expect(editor.locator('.pin-edit-name').nth(1)).toHaveValue('Throttle')
+
+  await editor.locator('.pin-edit-row').first().getByTitle('Remove').click()
+  await expect(editor.locator('.pin-edit-row')).toHaveCount(1)
+  await expect(nodes(page)).toHaveCount(1)
+})

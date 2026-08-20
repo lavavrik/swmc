@@ -1,51 +1,8 @@
-/** The display list a script produces, and how it is drawn. */
+/** Rasterising the display list a script drew. */
+import type { DrawCommand, Rgba } from '@/library/video'
 
-export interface Rgba {
-  r: number
-  g: number
-  b: number
-  a: number
-}
-
-export type DrawCommand =
-  | ({ op: 'color' } & Rgba)
-  | { op: 'clear' }
-  | { op: 'line'; x1: number; y1: number; x2: number; y2: number }
-  | { op: 'circle' | 'circleF'; x: number; y: number; r: number }
-  | { op: 'rect' | 'rectF'; x: number; y: number; w: number; h: number }
-  | {
-      op: 'triangle' | 'triangleF'
-      x1: number
-      y1: number
-      x2: number
-      y2: number
-      x3: number
-      y3: number
-    }
-  | { op: 'text'; x: number; y: number; text: string }
-  | {
-      op: 'textBox'
-      x: number
-      y: number
-      w: number
-      h: number
-      text: string
-      ha: number
-      va: number
-    }
-  | { op: 'map'; x: number; y: number; zoom: number }
-  | ({ op: 'mapColor'; which: string } & Rgba)
-
-/** Monitor sizes the game offers, in blocks and in pixels. */
-export const MONITORS = [
-  { label: '1×1', width: 32, height: 32 },
-  { label: '2×1', width: 64, height: 32 },
-  { label: '2×2', width: 64, height: 64 },
-  { label: '3×2', width: 96, height: 64 },
-  { label: '3×3', width: 96, height: 96 },
-  { label: '5×3', width: 160, height: 96 },
-  { label: '9×5', width: 288, height: 160 },
-] as const
+export type { DrawCommand, Rgba } from '@/library/video'
+export { MONITORS } from '@/library/video'
 
 const css = (c: Rgba) => `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a / 255})`
 

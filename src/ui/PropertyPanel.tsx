@@ -72,6 +72,7 @@ export function PropertyPanel() {
   const node = useEditorStore((s) => s.doc.nodes.find((n) => n.id === s.selection[0]))
   const setProperty = useEditorStore((s) => s.setProperty)
   const openScript = useEditorStore((s) => s.openScript)
+  const watchVideo = useEditorStore((s) => s.watchVideo)
 
   if (selection.length === 0) return null
   if (selection.length > 1) {
@@ -113,8 +114,16 @@ export function PropertyPanel() {
         </div>
       )}
 
-      <PortList title="Inputs" ports={resolvePorts(def, 'in', node.properties)} />
-      <PortList title="Outputs" ports={resolvePorts(def, 'out', node.properties)} />
+      <PortList
+        title="Inputs"
+        ports={resolvePorts(def, 'in', node.properties)}
+        onWatch={(index) => watchVideo({ node: node.id, kind: 'in', index })}
+      />
+      <PortList
+        title="Outputs"
+        ports={resolvePorts(def, 'out', node.properties)}
+        onWatch={(index) => watchVideo({ node: node.id, kind: 'out', index })}
+      />
     </aside>
   )
 }
@@ -122,9 +131,11 @@ export function PropertyPanel() {
 function PortList({
   title,
   ports,
+  onWatch,
 }: {
   title: string
   ports: readonly { label: string; signal: keyof typeof SIGNAL_LABELS }[]
+  onWatch: (index: number) => void
 }) {
   if (ports.length === 0) return null
   return (
@@ -135,7 +146,17 @@ function PortList({
           <li key={i}>
             <span className="port-swatch" style={{ background: signalColor(port.signal) }} />
             {port.label}
-            <em>{SIGNAL_LABELS[port.signal]}</em>
+            {port.signal === 'video' ? (
+              <button
+                className="text-button tiny"
+                title="Watch this signal on a monitor"
+                onClick={() => onWatch(i)}
+              >
+                Monitor
+              </button>
+            ) : (
+              <em>{SIGNAL_LABELS[port.signal]}</em>
+            )}
           </li>
         ))}
       </ul>

@@ -13,23 +13,44 @@ import { setLuaTickHook, type LuaTickRequest } from '@/library/hooks'
 import type { CompositeValue } from '@/library/types'
 import type { NodeId } from '@/model/types'
 import { LuaRuntime } from './runtime'
-import type { DrawCommand } from './screen'
+import type { MonitorSize, VideoFrame } from '@/library/video'
 import { useLuaStore } from './store'
 
 const runtimes = new Map<NodeId, LuaRuntime>()
 const starting = new Set<NodeId>()
-/** The most recent display list per node, read imperatively by the preview. */
-const drawing = new Map<NodeId, readonly DrawCommand[]>()
+/** The most recent frame per node, read imperatively by the previews. */
+const frames = new Map<NodeId, VideoFrame>()
 
-/** Which node's script should draw, and at what size. */
-let drawTarget: { node: NodeId; width: number; height: number } | null = null
+/**
+ * The monitor each script is drawing for. A script only runs `onDraw` while
+ * something is watching it — the script editor, or a monitor probe attached
+ * somewhere its video output reaches — which is how the game behaves too, and
+ * keeps unwatched scripts cheap.
+ */
+const watchers = new Map<string, Map<NodeId, MonitorSize>>()
 
-export function setDrawTarget(target: typeof drawTarget): void {
-  drawTarget = target
+/**
+ * Registers what one watcher is looking at. Watchers are named so that the
+ * script editor and the monitor probe can each declare their own set without
+ * treading on the other.
+ */
+export function setWatched(watcher: string, sizes: ReadonlyMap<NodeId, MonitorSize>): void {
+  if (sizes.size === 0) watchers.delete(watcher)
+  else watchers.set(watcher, new Map(sizes))
 }
 
-export function drawCommandsFor(node: NodeId): readonly DrawCommand[] {
-  return drawing.get(node) ?? []
+/** The largest size any watcher wants from this node, if any. */
+function sizeFor(node: NodeId): MonitorSize | null {
+  let best: MonitorSize | null = null
+  for (const sizes of watchers.values()) {
+    const size = sizes.get(node)
+    if (size && (!best || size.width * size.height > best.width * best.height)) best = size
+  }
+  return best
+}
+
+export function frameFor(node: NodeId): VideoFrame | null {
+  return frames.get(node) ?? null
 }
 
 function toComposite(numbers: readonly number[], bools: readonly boolean[]): CompositeValue {
@@ -43,16 +64,25 @@ function tick(request: LuaTickRequest) {
     return null
   }
 
-  const target = drawTarget?.node === request.nodeId ? drawTarget : null
-  if (target) runtime.setScreenSize(target.width, target.height)
-  const draw = target !== null
+  const size = sizeFor(request.nodeId)
+  if (size) runtime.setScreenSize(size.width, size.height)
 
   const loadError = runtime.setScript(request.script)
-  const result = runtime.tick(request.input, request.properties, draw)
+  const result = runtime.tick(request.input, request.properties, size !== null)
   useLuaStore.getState().reportError(request.nodeId, loadError ?? result.error)
-  if (draw) drawing.set(request.nodeId, result.commands)
 
-  return { output: toComposite(result.outputs.numbers, result.outputs.bools) }
+  let frame: VideoFrame | null = null
+  if (size) {
+    frame = {
+      kind: 'video',
+      commands: result.commands,
+      width: size.width,
+      height: size.height,
+    }
+    frames.set(request.nodeId, frame)
+  }
+
+  return { output: toComposite(result.outputs.numbers, result.outputs.bools), frame }
 }
 
 function start(node: NodeId): void {
@@ -78,5 +108,5 @@ export function installLuaRunner(): void {
 export function disposeLuaRuntime(node: NodeId): void {
   runtimes.get(node)?.close()
   runtimes.delete(node)
-  drawing.delete(node)
+  frames.delete(node)
 }

@@ -8,6 +8,7 @@
  */
 import type { NodeId, PropertyValue } from '@/model/types'
 import type { CompositeValue } from './types'
+import type { VideoFrame } from './video'
 
 export interface LuaTickRequest {
   readonly nodeId: NodeId
@@ -18,6 +19,8 @@ export interface LuaTickRequest {
 
 export interface LuaTickOutcome {
   readonly output: CompositeValue
+  /** What the script drew this tick, or null when no monitor is watching it. */
+  readonly frame: VideoFrame | null
 }
 
 /** Returns null when no interpreter is available yet. */

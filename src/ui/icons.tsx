@@ -19,6 +19,7 @@ export type IconName =
   | 'plus'
   | 'minus'
   | 'components'
+  | 'pins'
 
 const PATHS: Record<IconName, string> = {
   close: 'M7 7l10 10M17 7L7 17',
@@ -37,6 +38,7 @@ const PATHS: Record<IconName, string> = {
   plus: 'M12 5v14M5 12h14',
   minus: 'M5 12h14',
   components: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
+  pins: 'M6 5h12v14H6zM3 8h3M3 12h3M3 16h3M18 8h3M18 12h3M18 16h3',
 }
 
 export function Icon({ name, size = 24 }: { name: IconName; size?: number }) {

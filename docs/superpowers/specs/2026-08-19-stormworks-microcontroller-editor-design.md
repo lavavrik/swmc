@@ -24,8 +24,10 @@ Non-goals (explicitly out of scope, possibly later):
 - Multiplayer/collaborative editing, accounts, cloud storage, sharing links.
 - A backend of any kind. The app is a static SPA.
 - Physics simulation of the vehicle a microcontroller would be attached to.
-- Byte-exact reproduction of in-game audio/video DSP. Audio and video signals
-  are modelled as typed values and routed correctly, but not rendered as sound.
+- Byte-exact reproduction of in-game audio DSP. Audio signals are modelled as
+  typed values and routed correctly, but never played.
+- Camera feeds. A video signal carries what a script drew; nothing generates a
+  picture from the world.
 
 ## 2. Product decisions
 
@@ -301,9 +303,18 @@ the outputs produced by the last completed tick.
   `property.getNumber/getBool/getText`, the full `screen.*` drawing surface,
   `map.*`, `async.*`, and the game's table/string extensions. The shim is the
   single source of truth for both execution and intellisense.
-- **Screen:** `screen.*` calls are recorded as a display list and replayed onto
-  a canvas at the selected monitor size (1x1, 2x1, 3x2, 9x5 …), so the preview
-  matches in-game pixel dimensions.
+- **Screen:** `screen.*` calls are recorded as a display list, which is what a
+  video signal carries — routed through switchboxes and output pins unchanged
+  and rasterised only where it is looked at, so one frame can be drawn at any
+  monitor's size.
+- **Monitors:** the game has no monitor component inside a microcontroller —
+  a monitor is a block on the vehicle — so a monitor here is an instrument
+  rather than a component. It attaches to any port carrying video (double-click
+  the port, or use the property panel) and watches it without touching the
+  document, which keeps saved files unaffected by where it is pointed.
+  Attaching one tells the scripts upstream how big the screen is, which is what
+  `screen.getWidth()` answers, and a script with nothing watching it does not
+  run `onDraw` at all — as in the game.
 - **Limits:** the editor shows both script limits — 4096 characters in the base
   game and 8192 with the Space DLC — warning at each rather than blocking, so a
   script that needs the DLC is visible as such.
@@ -353,8 +364,10 @@ redo, copy, cut, paste), the teal gridded workspace, and a bottom bar with the
 microcontroller size controls and the component picker button.
 
 Panels: component picker (categorised, searchable), property inspector for the
-selection, I/O pin editor, simulation controls with the external input values,
-and the Lua editor opening as a full-height overlay over the workspace.
+selection, the microcontroller's pin editor (naming, ordering, signal type and
+face position, since these are what the vehicle sees rather than per-component
+settings), simulation controls with the external input values, the monitor
+instrument, and the Lua editor opening as a full-height overlay.
 
 Colours, fonts, and metrics live in one theme module as CSS custom properties,
 sourced from the screenshot, so the skin is adjustable in one file.

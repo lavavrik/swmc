@@ -10,8 +10,8 @@ import { useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
 import { SCRIPT_LIMITS } from '@/lua/api'
 import { minifyLua } from '@/lua/minify'
-import { setDrawTarget } from '@/lua/runner'
-import { MONITORS } from '@/lua/screen'
+import { frameFor, setWatched } from '@/lua/runner'
+import { MONITORS } from '@/library/video'
 import { useLuaStore } from '@/lua/store'
 import { useSimulationStore } from '@/sim/store'
 import type { NodeId } from '@/model/types'
@@ -34,11 +34,11 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
   const [note, setNote] = useState<string | null>(null)
   const size = MONITORS[monitor] ?? MONITORS[0]
 
-  // Only the script being edited draws, so the rest cost nothing
+  // Only the script being edited draws for this watcher, so the rest cost nothing
   useEffect(() => {
-    setDrawTarget({ node, width: size.width, height: size.height })
-    return () => setDrawTarget(null)
-  }, [node, size.width, size.height])
+    setWatched('editor', new Map([[node, size]]))
+    return () => setWatched('editor', new Map())
+  }, [node, size])
 
   // Past the base limit the script needs the Space DLC; past that it fits nowhere
   const minify = () => {
@@ -121,7 +121,7 @@ export function LuaEditor({ node, onClose }: { node: NodeId; onClose: () => void
             </select>
           </label>
           <ScreenPreview
-            node={node}
+            frame={() => frameFor(node)}
             width={size.width}
             height={size.height}
             scale={Math.max(1, Math.floor(288 / size.width))}

@@ -7,6 +7,7 @@
  * component means adding a definition and nothing else.
  */
 import type { NodeProperties } from '@/model/schema'
+import type { VideoFrame } from './video'
 import type { ComponentTypeId, NodeId, PropertyValue, SignalType } from '@/model/types'
 
 export type Category =
@@ -87,18 +88,16 @@ export interface CompositeValue {
   readonly bools: readonly boolean[]
 }
 
-/** Placeholder channel payloads. Filled in by the video/audio sub-projects. */
-export interface VideoValue {
-  readonly kind: 'video'
-  readonly source: string | null
-}
+export type { VideoFrame as VideoValue } from './video'
+
+/** Audio is still modelled as an opaque channel: routed, but never played. */
 export interface AudioValue {
   readonly kind: 'audio'
   readonly left: number
   readonly right: number
 }
 
-export type SignalValue = number | boolean | CompositeValue | VideoValue | AudioValue
+export type SignalValue = number | boolean | CompositeValue | VideoFrame | AudioValue
 
 export interface EvalArgs<S = unknown> {
   /** Which instance is being evaluated. Components that own an external

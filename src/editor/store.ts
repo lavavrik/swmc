@@ -18,8 +18,10 @@ import {
   insertSubgraph,
   moveNodes as moveNodesOp,
   removeNodes as removeNodesOp,
+  reorderIoNodes as reorderIoNodesOp,
   pruneDanglingWires,
   setMeta as setMetaOp,
+  setNodeType as setNodeTypeOp,
   setProperty as setPropertyOp,
   type Subgraph,
 } from '@/model/ops'
@@ -63,6 +65,8 @@ export interface EditorState {
   problem: string | null
   /** The Lua Script component whose editor is open, if any. */
   editingScript: NodeId | null
+  /** The port the monitor instrument is watching, if any. */
+  monitorPort: PortId | null
 
   // document edits
   addNodeAt(type: ComponentTypeId, world: Point): NodeId | null
@@ -74,6 +78,10 @@ export interface EditorState {
   /** `coalesce` false starts a fresh undo step rather than folding into the last. */
   setProperty(id: NodeId, key: string, value: PropertyValue, coalesce?: boolean): void
   setMeta(meta: Partial<MicrocontrollerMeta>): void
+  setNodeType(id: NodeId, type: ComponentTypeId): void
+  /** Adds one of the microcontroller's pins, placed clear of the others. */
+  addPin(type: ComponentTypeId): NodeId | null
+  reorderPins(order: readonly NodeId[]): void
 
   // clipboard
   copy(): void
@@ -97,6 +105,7 @@ export interface EditorState {
   undo(): void
   redo(): void
   openScript(id: NodeId | null): void
+  watchVideo(port: PortId | null): void
   /** Replaces the whole document, e.g. after an import. Clears history. */
   load(doc: Microcontroller): void
 }
@@ -138,6 +147,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     clipboard: null,
     problem: null,
     editingScript: null,
+    monitorPort: null,
 
     addNodeAt(type, world) {
       const def = getComponent(type)
@@ -204,6 +214,28 @@ export const useEditorStore = create<EditorState>((set, get) => {
         },
         { coalesce },
       )
+    },
+
+    setNodeType(id, type) {
+      edit('change type', (doc) => {
+        const result = setNodeTypeOp(librarySchema, doc, id, type)
+        return result.ok ? result.value : { error: result.error }
+      })
+    },
+
+    addPin(type) {
+      const { doc } = get()
+      // Stack new pins down the left of whatever is already there
+      const last = doc.ioOrder.length
+      const position = { x: 0, y: last * 5 * GRID_PX }
+      return get().addNodeAt(type, position)
+    },
+
+    reorderPins(order) {
+      edit('reorder pins', (doc) => {
+        const result = reorderIoNodesOp(doc, order)
+        return result.ok ? result.value : { error: result.error }
+      })
     },
 
     setMeta(meta) {
@@ -317,9 +349,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
       set({ editingScript: id })
     },
 
+    watchVideo(port) {
+      set({ monitorPort: port })
+    },
+
     load(doc) {
       set({
         editingScript: null,
+        monitorPort: null,
         doc,
         selection: [],
         history: emptyHistory<Microcontroller>(),
