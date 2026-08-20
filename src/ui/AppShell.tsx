@@ -1,5 +1,5 @@
 /** Application chrome: toolbar, workspace, side panel and status bar. */
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@/editor/Canvas'
 import { useEditorStore } from '@/editor/store'
 import { importFile } from '@/io/library'
@@ -7,6 +7,8 @@ import { ComponentPicker } from './ComponentPicker'
 import { LuaEditor } from './LuaEditor'
 import { MonitorPanel } from './MonitorPanel'
 import { PinEditor } from './PinEditor'
+import { GameFilesDialog } from './GameFilesDialog'
+import { restoreFolders } from './gameFilesStore'
 import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
 import { PinPanel } from './PinPanel'
 import { PropertyPanel } from './PropertyPanel'
@@ -25,6 +27,12 @@ export function AppShell() {
   const [dialog, setDialog] = useState<ProjectDialogMode | null>(null)
   const [showTooltips, setShowTooltips] = useState(true)
   const [pinsOpen, setPinsOpen] = useState(false)
+  const [gameFilesOpen, setGameFilesOpen] = useState(false)
+
+  // Folders chosen on an earlier visit are picked up quietly
+  useEffect(() => {
+    void restoreFolders()
+  }, [])
   const viewSize = useCallback(() => {
     const box = workspaceRef.current?.getBoundingClientRect()
     return { width: box?.width ?? window.innerWidth, height: box?.height ?? window.innerHeight }
@@ -53,6 +61,7 @@ export function AppShell() {
       <Toolbar
         onOpenPicker={() => setPickerOpen(true)}
         onOpenPins={() => setPinsOpen((open) => !open)}
+        onOpenGameFiles={() => setGameFilesOpen(true)}
         onOpenProjects={() => setDialog('open')}
         onSaveProject={() => setDialog('save')}
         showTooltips={showTooltips}
@@ -73,6 +82,7 @@ export function AppShell() {
       <StatusBar onOpenPicker={() => setPickerOpen(true)} />
       {pickerOpen && <ComponentPicker onClose={() => setPickerOpen(false)} />}
       {dialog && <ProjectDialog mode={dialog} onClose={() => setDialog(null)} />}
+      {gameFilesOpen && <GameFilesDialog onClose={() => setGameFilesOpen(false)} />}
       {editingScript && <LuaEditor node={editingScript} onClose={() => openScript(null)} />}
     </div>
   )

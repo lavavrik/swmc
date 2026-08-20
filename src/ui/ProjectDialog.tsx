@@ -15,6 +15,9 @@ import {
   saveProject,
   type ProjectSummary,
 } from '@/io/library'
+import { findDesigns, type FoundDesign } from '@/io/gameFiles'
+import { parseMicrocontroller } from '@/io/microcontroller'
+import { useGameFilesStore } from './gameFilesStore'
 
 export type ProjectDialogMode = 'open' | 'save'
 
@@ -26,6 +29,8 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
   const setMeta = useEditorStore((s) => s.setMeta)
 
   const [projects, setProjects] = useState<ProjectSummary[]>([])
+  const [designs, setDesigns] = useState<FoundDesign[] | null>(null)
+  const designsFolder = useGameFilesStore((s) => s.designs)
   const [name, setName] = useState(doc.meta.name)
   const [problem, setProblem] = useState<string | null>(null)
   const [dropping, setDropping] = useState(false)
@@ -35,6 +40,25 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
   }, [])
 
   useEffect(refresh, [refresh])
+
+  // Whatever the player's own folder holds, if they have pointed us at one
+  useEffect(() => {
+    if (mode !== 'open' || !designsFolder) return
+    findDesigns(designsFolder.folder).then(setDesigns, (error: unknown) =>
+      setProblem(String(error)),
+    )
+  }, [mode, designsFolder])
+
+  const openDesign = async (design: FoundDesign) => {
+    const text = await (await design.handle.getFile()).text()
+    const result = parseMicrocontroller(text)
+    if (!result.ok) {
+      setProblem(`${design.file}: ${result.error}`)
+      return
+    }
+    load(result.value)
+    onClose()
+  }
 
   const open = async (id: string) => {
     const result = await loadProject(id)
@@ -132,6 +156,26 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
         )}
 
         <div className="picker-groups">
+          {mode === 'open' && designsFolder && (
+            <>
+              <h3>In {designsFolder.name}</h3>
+              {designs === null && <p className="picker-empty">Looking…</p>}
+              {designs?.length === 0 && (
+                <p className="picker-empty">Nothing that looks like a microcontroller.</p>
+              )}
+              {designs?.map((design) => (
+                <button
+                  key={`${design.where}/${design.file}`}
+                  className="picker-item"
+                  onClick={() => void openDesign(design)}
+                >
+                  <span className="picker-item-name">{design.file}</span>
+                  <span className="picker-item-desc">{design.where || designsFolder.name}</span>
+                </button>
+              ))}
+            </>
+          )}
+
           <h3>Library</h3>
           {projects.length === 0 && <p className="picker-empty">Nothing saved yet.</p>}
           {projects.map((project) => (

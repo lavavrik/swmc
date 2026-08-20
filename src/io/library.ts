@@ -7,11 +7,8 @@
  */
 import type { Microcontroller } from '@/model/types'
 import { err, type Result } from '@/model/result'
+import { PROJECTS, transact } from './database'
 import { parseMicrocontroller, serializeMicrocontroller } from './microcontroller'
-
-const DATABASE = 'swmc'
-const STORE = 'projects'
-const VERSION = 1
 
 export interface ProjectSummary {
   readonly id: string
@@ -25,32 +22,6 @@ export interface StoredProject extends ProjectSummary {
   readonly xml: string
 }
 
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE, VERSION)
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' })
-    }
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('could not open the project library'))
-  })
-}
-
-function transact<T>(
-  mode: IDBTransactionMode,
-  run: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T> {
-  return openDatabase().then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const request = run(db.transaction(STORE, mode).objectStore(STORE))
-        request.onsuccess = () => resolve(request.result)
-        request.onerror = () => reject(request.error ?? new Error('project library request failed'))
-      }),
-  )
-}
-
 /** Ids are derived from the name so saving the same project twice replaces it. */
 export function projectId(name: string): string {
   const slug = name
@@ -61,7 +32,7 @@ export function projectId(name: string): string {
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
-  const all = await transact<StoredProject[]>('readonly', (store) => store.getAll())
+  const all = await transact<StoredProject[]>(PROJECTS, 'readonly', (store) => store.getAll())
   return all
     .map(({ id, name, updatedAt, componentCount }) => ({ id, name, updatedAt, componentCount }))
     .sort((a, b) => b.updatedAt - a.updatedAt)
@@ -75,18 +46,20 @@ export async function saveProject(doc: Microcontroller, now: number): Promise<St
     componentCount: doc.nodes.length,
     xml: serializeMicrocontroller(doc),
   }
-  await transact('readwrite', (store) => store.put(project))
+  await transact(PROJECTS, 'readwrite', (store) => store.put(project))
   return project
 }
 
 export async function loadProject(id: string): Promise<Result<Microcontroller>> {
-  const project = await transact<StoredProject | undefined>('readonly', (store) => store.get(id))
+  const project = await transact<StoredProject | undefined>(PROJECTS, 'readonly', (store) =>
+    store.get(id),
+  )
   if (!project) return err(`no saved project called ${id}`)
   return parseMicrocontroller(project.xml)
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  await transact('readwrite', (store) => store.delete(id))
+  await transact(PROJECTS, 'readwrite', (store) => store.delete(id))
 }
 
 /** Reads an imported file and parses it. */

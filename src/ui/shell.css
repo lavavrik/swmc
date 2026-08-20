@@ -248,6 +248,11 @@
   color: var(--chrome-text-dim);
 }
 
+/* Only the component menu has a glyph column; dialogs list plain rows */
+.dialog .picker-item {
+  display: block;
+}
+
 .picker-item {
   display: grid;
   grid-template-columns: 22px 1fr;
@@ -394,6 +399,47 @@
 
 .project-row .picker-item {
   flex: 1;
+}
+
+.folder-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.folder-row h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--chrome-text);
+}
+
+.folder-row code {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--chrome-raised);
+  font-size: 11px;
+}
+
+.folder-current {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #8fd3a6;
+}
+
+.folder-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.dialog-note.plain {
+  border-bottom: 1px solid var(--chrome-border);
+  color: var(--chrome-text-dim);
 }
 
 .dialog-problem {

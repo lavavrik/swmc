@@ -515,3 +515,17 @@ test.describe('with motion held still', () => {
     await expect.poll(width).toBe(resting)
   })
 })
+
+test('offers the player’s own Stormworks folders', async ({ page }) => {
+  await page.getByTitle('Your Stormworks files').click()
+  const dialog = page.locator('.dialog')
+  await expect(dialog).toContainText('Your Stormworks files')
+  await expect(dialog).toContainText('Game files')
+  await expect(dialog).toContainText('Microcontrollers')
+  // What it is for, and that nothing leaves the machine
+  await expect(dialog).toContainText('nothing is uploaded')
+  await expect(dialog).toContainText('bundled')
+
+  // Chromium has the picker, so the buttons are live
+  await expect(dialog.getByRole('button', { name: 'Choose…' }).first()).toBeEnabled()
+})

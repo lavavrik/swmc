@@ -22,7 +22,10 @@ Non-goals (explicitly out of scope, possibly later):
 
 - The vehicle editor, block placement, or anything outside a microcontroller.
 - Multiplayer/collaborative editing, accounts, cloud storage, sharing links.
-- A backend of any kind. The app is a static SPA.
+- A backend of any kind. The app is a static SPA. It can read a player's own
+  Stormworks folder, through the File System Access API, but only where the
+  browser implements it and only where the player points it — the files are
+  read in place and nothing leaves the machine.
 - Physics simulation of the vehicle a microcontroller would be attached to.
 - Byte-exact reproduction of in-game audio DSP. Audio signals are modelled as
   typed values and routed correctly, but never played.
@@ -390,6 +393,31 @@ the outputs produced by the last completed tick.
 
 Intellisense is generated from the same API description that the shim
 implements, so the two cannot drift.
+
+## 9a. Reading the player's own files (`src/io/gameFiles.ts`)
+
+A player who has the game has everything the app would otherwise have to ship:
+the monitor font, and their own microcontrollers. The File System Access API
+lets them hand over a folder — once, explicitly — and the app reads what it
+needs where it sits.
+
+Two folders are worth having, because they are in different places:
+
+- **Game data**, for assets. The player may pick the Stormworks folder, its
+  `rom` folder, or the macOS application bundle, so the app looks for `rom`
+  down each of those paths and confirms it by finding the font descriptor.
+- **Microcontrollers.** Their own live in `Stormworks/data/microprocessors`;
+  subscribed ones in `steamapps/workshop/content/573090/<id>/`, one folder per
+  item. Rather than teach the app both layouts, it scans a few levels down for
+  XML and lets the codec decide what is a microprocessor.
+
+Handles are kept in the same browser database as the project library — one
+module owns that schema, because opening a database at two versions fails, and
+only once both features are used in one session.
+
+Chromium implements the picker; Safari and Firefox do not. The bundled font is
+what everyone else gets, so this is an improvement where it is available rather
+than something the app depends on.
 
 ## 10. XML interop (`src/io/`)
 

@@ -8,11 +8,11 @@
  * diagonal is a staircase on a real monitor and it should be one here.
  */
 import type { Rgba } from '@/library/video'
-import { TINY_ADVANCE, TINY_GLYPHS, TINY_LINE_HEIGHT } from './tinyFont.generated'
+import { tinyFont } from './tinyFont'
 
 /** Pixels between the tops of consecutive lines of text. */
-export const TEXT_LINE_HEIGHT = TINY_LINE_HEIGHT + 1
-export const TEXT_ADVANCE = TINY_ADVANCE
+export const TEXT_LINE_HEIGHT = tinyFont().lineHeight + 1
+export const TEXT_ADVANCE = tinyFont().advance
 
 export class Raster {
   readonly width: number
@@ -201,9 +201,10 @@ export class Raster {
 
   /** Draws text in the game's bitmap font, one glyph every five pixels. */
   text(x: number, y: number, text: string, colour: Rgba): void {
+    const font = tinyFont()
     let cursor = Math.floor(x)
     for (const character of text) {
-      const glyph = TINY_GLYPHS[character.codePointAt(0) ?? 0]
+      const glyph = font.glyphs[character.codePointAt(0) ?? 0]
       if (glyph) {
         for (let row = 0; row < glyph.h; row++) {
           const bits = glyph.rows[row] ?? 0
@@ -214,7 +215,7 @@ export class Raster {
           }
         }
       }
-      cursor += TEXT_ADVANCE
+      cursor += font.advance
     }
   }
 

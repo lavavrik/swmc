@@ -8,7 +8,7 @@ export type IconName =
   | 'new'
   | 'open'
   | 'save'
-  | 'workshop'
+  | 'gamefiles'
   | 'preview3d'
   | 'tooltips'
   | 'undo'
@@ -27,7 +27,7 @@ const PATHS: Record<IconName, string> = {
   new: 'M12 6v12M6 12h12',
   open: 'M3 7h6l2 2h10v9H3z',
   save: 'M4 4h13l3 3v13H4zM8 4v6h8V4M8 14h8v6H8z',
-  workshop: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
+  gamefiles: 'M3 7h6l2 2h10v9H3zM8 13h8M12 11v4',
   preview3d: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 3v18M4 7.5l8 4.5 8-4.5',
   tooltips: 'M9 20h6M10 17h4a5 5 0 1 0-4 0z',
   undo: 'M9 8H5V4M5 8a8 8 0 1 1-1 6',

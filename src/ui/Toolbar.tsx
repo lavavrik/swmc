@@ -21,6 +21,7 @@ function RoundButton({ icon, title, onClick, disabled = false }: ButtonProps) {
 export function Toolbar({
   onOpenPicker,
   onOpenPins,
+  onOpenGameFiles,
   onOpenProjects,
   onSaveProject,
   showTooltips,
@@ -28,6 +29,7 @@ export function Toolbar({
 }: {
   onOpenPicker: () => void
   onOpenPins: () => void
+  onOpenGameFiles: () => void
   onOpenProjects: () => void
   onSaveProject: () => void
   showTooltips: boolean
@@ -61,7 +63,7 @@ export function Toolbar({
         title="Save or export this microcontroller"
         onClick={onSaveProject}
       />
-      <RoundButton icon="workshop" title="Steam Workshop — not applicable" disabled />
+      <RoundButton icon="gamefiles" title="Your Stormworks files" onClick={onOpenGameFiles} />
       <RoundButton icon="preview3d" title="3D preview — not yet implemented" disabled />
       <RoundButton
         icon="tooltips"
