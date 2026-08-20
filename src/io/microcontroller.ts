@@ -9,6 +9,7 @@
  */
 import { allComponents, getComponent } from '@/library/registry'
 import { defaultProperties } from '@/library/defaults'
+import { componentHeightUnits } from '@/library/geometry'
 import { resolvePorts } from '@/library/ports'
 import type { ComponentDef } from '@/library/types'
 import { err, ok, type Result } from '@/model/result'
@@ -78,9 +79,14 @@ function readInputs(object: XmlNode): ParsedInput[] {
     .filter((i) => i.componentId > 0)
 }
 
-function readPosition(object: XmlNode) {
+/** A saved position names the component's bottom edge, so its height is needed. */
+function readPosition(object: XmlNode, heightUnits: number) {
   const pos = firstChild(object, 'pos')
-  return gamePositionToGrid(pos ? attrNumber(pos, 'x') : 0, pos ? attrNumber(pos, 'y') : 0)
+  return gamePositionToGrid(
+    pos ? attrNumber(pos, 'x') : 0,
+    pos ? attrNumber(pos, 'y') : 0,
+    heightUnits,
+  )
 }
 
 /** Attributes of an element that no property of this component claims. */
@@ -107,6 +113,22 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
   const componentElements = childrenNamed(firstChild(group, 'components'), 'c')
   const bridgeElements = childrenNamed(firstChild(group, 'components_bridge'), 'c')
   const nodeElements = childrenNamed(firstChild(root, 'nodes'), 'n')
+
+  /**
+   * How many outputs each component is referred to as having. Only unrecognised
+   * components need this, and they need it before they are placed, because a
+   * component's height depends on its port count and its saved position is its
+   * bottom edge.
+   */
+  const referencedOutputs = new Map<number, number>()
+  for (const object of [...componentElements, ...bridgeElements].flatMap((c) =>
+    firstChild(c, 'object') ? [firstChild(c, 'object') as XmlNode] : [],
+  )) {
+    for (const input of readInputs(object)) {
+      const seen = referencedOutputs.get(input.componentId) ?? 0
+      referencedOutputs.set(input.componentId, Math.max(seen, input.nodeIndex + 1))
+    }
+  }
 
   const nodes: GraphNode[] = []
   const wires: Wire[] = []
@@ -138,7 +160,9 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
     nodes.push({
       id,
       type,
-      position: bridgeObject ? readPosition(bridgeObject) : { x: 0, y: 0 },
+      position: bridgeObject
+        ? readPosition(bridgeObject, def ? componentHeightUnits(def, {}) : 0)
+        : { x: 0, y: 0 },
       properties: {
         ...(def ? defaultProperties(def) : {}),
         label: nodeElement.attrs.label ?? '',
@@ -174,16 +198,19 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
       // Keep it, wires and all, so the file survives a round-trip
       const unknown = getComponent(UNKNOWN_COMPONENT)
       const inputCount = inputs.reduce((n, i) => Math.max(n, Number(i.name) || 0), 0)
+      const unknownProperties = {
+        swType,
+        inputCount,
+        outputCount: referencedOutputs.get(componentId) ?? 0,
+      }
       nodes.push({
         id,
         type: UNKNOWN_COMPONENT,
-        position: readPosition(object),
-        properties: {
-          ...(unknown ? defaultProperties(unknown) : {}),
-          swType,
-          inputCount,
-          outputCount: 0,
-        },
+        position: readPosition(
+          object,
+          unknown ? componentHeightUnits(unknown, unknownProperties) : 0,
+        ),
+        properties: { ...(unknown ? defaultProperties(unknown) : {}), ...unknownProperties },
         raw: unclaimedAttributes(object, new Set()),
       })
       inputNameLookup.set(
@@ -203,7 +230,7 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
     nodes.push({
       id,
       type: def.id,
-      position: readPosition(object),
+      position: readPosition(object, componentHeightUnits(def, properties)),
       properties,
       raw: unclaimedAttributes(object, propertyAttributeNames(def)),
     })
@@ -217,19 +244,7 @@ export function parseMicrocontroller(xml: string): Result<Microcontroller> {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   for (const pending of pendingWires) {
     const sourceId = nodeIdFor(pending.input.componentId)
-    const source = byId.get(sourceId)
-    if (!source) continue
-    // An unrecognised source needs enough outputs to carry this wire
-    if (source.type === UNKNOWN_COMPONENT) {
-      const needed = pending.input.nodeIndex + 1
-      const have = Number(source.properties.outputCount ?? 0)
-      if (needed > have) {
-        byId.set(sourceId, {
-          ...source,
-          properties: { ...source.properties, outputCount: needed },
-        })
-      }
-    }
+    if (!byId.has(sourceId)) continue
     wires.push({
       id: `w${++wireCounter}`,
       from: { node: sourceId, kind: 'out', index: pending.input.nodeIndex },
@@ -277,7 +292,12 @@ function inputElements(doc: Microcontroller, nodeId: NodeId, names: readonly str
 }
 
 const positionElement = (n: GraphNode): XmlNode => {
-  const pos = gridPositionToGame(n.position.x, n.position.y)
+  const def = getComponent(n.type)
+  const pos = gridPositionToGame(
+    n.position.x,
+    n.position.y,
+    def ? componentHeightUnits(def, n.properties) : 0,
+  )
   const attrs: Record<string, string> = {}
   if (pos.x !== 0) attrs.x = String(pos.x)
   if (pos.y !== 0) attrs.y = String(pos.y)

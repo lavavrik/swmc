@@ -232,7 +232,9 @@ One SVG element covers the workspace. Layers, back to front:
 Cards use the game's own measurements: a component is **one game unit wide**,
 and `0.25 × (ports + 1)` units tall — a rule that reproduces every height the
 community library records, from a half-unit composite read to a composite write
-that grows a quarter unit per channel. At that size there is no room for text,
+that grows a quarter unit per channel. Those measurements belong to the
+component rather than to any view, so they live in `library/geometry.ts`, which
+the canvas turns into pixels and the codec needs for the position conversion. At that size there is no room for text,
 which is why the game draws a glyph and nothing else, and why this does too:
 names go underneath when they are switched on, the full detail is a hover away,
 and an imported microcontroller lays out exactly as it did in the game.
@@ -373,12 +375,16 @@ Firefox refuse the latter.
 
 The schema was derived from public sources and then checked against a
 microcontroller saved by the game. That confirmed the position scale and the
-upward y axis, and corrected two things: a `<c>` element with no `type`
+upward y axis, and corrected several things: a `<c>` element with no `type`
 attribute means type 0, the NOT component, because the game omits the default;
 and a channel offset of `-1` means the start channel comes from the component's
 `off` input rather than from its property, in which case — and only then — the
 component has a port for it. The same setting is also stored under two
-different attribute names: `i` on a read, `offset` on a write. Attributes the editor does not model
+different attribute names: `i` on a read, `offset` on a write. And a saved
+position names a component's **bottom** edge, not its top — the natural origin
+for an axis that measures upwards — so converting one needs the component's
+height, without which a column of different-sized components drifts out of
+line. Attributes the editor does not model
 — the 16×16 icon, the group's `data` type — ride along untouched.
 
 The project library stores documents in IndexedDB (id, name, thumbnail,

@@ -11,6 +11,7 @@
  * unit, which is what the game snaps to) and `GAME_UNIT`.
  */
 import { defaultProperties } from '@/library/defaults'
+import { componentHeightUnits, componentWidthUnits, heightUnitsForPorts } from '@/library/geometry'
 import { resolvePorts } from '@/library/ports'
 import type { ComponentDef, PortDef } from '@/library/types'
 import type { NodeProperties } from '@/model/schema'
@@ -48,13 +49,8 @@ export interface CardLayout {
 
 const cache = new Map<string, CardLayout>()
 
-/**
- * Height in game units: a quarter unit per port row, plus a quarter unit of
- * card around them.
- */
-export function cardHeightUnits(portCount: number): number {
-  return 0.25 * (Math.max(1, portCount) + 1)
-}
+/** Height in game units, which is where the game's own sizing lives. */
+export const cardHeightUnits = heightUnitsForPorts
 
 export function cardLayout(def: ComponentDef, properties: NodeProperties): CardLayout {
   const inputs = resolvePorts(def, 'in', properties)
@@ -65,12 +61,11 @@ export function cardLayout(def: ComponentDef, properties: NodeProperties): CardL
   const cached = cache.get(key)
   if (cached) return { ...cached, inputs, outputs }
 
-  const ports = Math.max(inputs.length, outputs.length)
   const layout: CardLayout = {
     inputs,
     outputs,
-    width: def.size ? def.size.w * GAME_UNIT : CARD.width,
-    height: def.size ? def.size.h * GAME_UNIT : cardHeightUnits(ports) * GAME_UNIT,
+    width: componentWidthUnits(def) * GAME_UNIT,
+    height: componentHeightUnits(def, properties) * GAME_UNIT,
   }
   cache.set(key, layout)
   return layout

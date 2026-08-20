@@ -3,7 +3,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { expect as unwrap } from '@/model/result'
 import { addIoNode, addNode, connect, createEmpty, setProperty } from '@/model/ops'
-import { librarySchema } from '@/library/registry'
+import { getComponent, librarySchema } from '@/library/registry'
+import { componentHeightUnits } from '@/library/geometry'
+import { POSITION_SCALE } from './schema'
 import { parseMicrocontroller, serializeMicrocontroller } from './microcontroller'
 
 const fixture = (name: string) =>
@@ -45,11 +47,12 @@ describe('parsing', () => {
     expect(intoOutputPin?.from.node).toBe('c5')
   })
 
-  it('converts positions into grid units', () => {
+  it('converts positions into grid units, from the bottom edge the game stores', () => {
     const doc = parse('throttle')
     const clamp = doc.nodes.find((n) => n.type === 'arithmetic.clamp')
-    // x=1, y=-1 in the file, four grid units per game unit, y flipped
-    expect(clamp?.position).toEqual({ x: 4, y: 4 })
+    // x=1, y=-1 in the file: four grid units per game unit, y flipped, and the
+    // card's half-unit height taken off because the game measures its bottom
+    expect(clamp?.position).toEqual({ x: 4, y: 2 })
   })
 
   it('reports a file that is not a microprocessor', () => {
@@ -215,6 +218,25 @@ describe('a microcontroller saved by the game', () => {
     )
     expect(again.ioOrder).toEqual(doc.ioOrder)
     expect(again.meta).toEqual(doc.meta)
+  })
+
+  it('stacks components that touch in the game so they touch here', () => {
+    // In the game these three sit in a column with their edges meeting, which
+    // only works out if a saved position names the component's bottom edge
+    const stacked = ['c12', 'c41', 'c71'].map((id) => {
+      const node = doc.nodes.find((n) => n.id === id)
+      if (!node) throw new Error(id)
+      const def = getComponent(node.type)
+      if (!def) throw new Error(node.type)
+      const height = componentHeightUnits(def, node.properties) * POSITION_SCALE
+      return { id, top: node.position.y, bottom: node.position.y + height }
+    })
+
+    expect(stacked[0]?.bottom).toBe(stacked[1]?.top)
+    expect(stacked[1]?.bottom).toBe(stacked[2]?.top)
+    // and they are all in the same column
+    const column = doc.nodes.filter((n) => ['c12', 'c41', 'c71'].includes(n.id))
+    expect(new Set(column.map((n) => n.position.x)).size).toBe(1)
   })
 
   it('keeps the icon the game stored on it', () => {

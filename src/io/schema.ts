@@ -82,20 +82,25 @@ export function bridgeType(direction: 'in' | 'out', signal: SignalType): number 
 }
 
 /**
- * The game positions components in 0.25 steps and measures y upwards, so one
- * game unit is four grid units here and the y axis is flipped into screen
- * space. Both were confirmed against a saved microcontroller.
+ * The game positions components in 0.25 steps, so one game unit is four grid
+ * units here.
+ *
+ * It also measures y upwards from a component's **bottom** edge, while this
+ * editor measures downwards from the top — so converting a position needs the
+ * component's height, and a stack of different-sized components only lines up
+ * once that is accounted for. Confirmed against a saved microcontroller, where
+ * three stacked components share their edges exactly.
  */
 export const POSITION_SCALE = 4
 
-export const gamePositionToGrid = (x: number, y: number) => ({
+export const gamePositionToGrid = (x: number, y: number, heightUnits: number) => ({
   x: Math.round(x * POSITION_SCALE),
-  y: Math.round(-y * POSITION_SCALE),
+  y: Math.round(-(y + heightUnits) * POSITION_SCALE),
 })
 
-export const gridPositionToGame = (x: number, y: number) => ({
+export const gridPositionToGame = (x: number, y: number, heightUnits: number) => ({
   x: x / POSITION_SCALE,
-  y: -y / POSITION_SCALE,
+  y: -y / POSITION_SCALE - heightUnits,
 })
 
 /** Microprocessor attributes this editor understands; anything else is preserved. */
