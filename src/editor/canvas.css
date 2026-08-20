@@ -54,10 +54,13 @@
   stroke-width: 11;
 }
 
+/*
+ * The arrows are placed by a transform attribute, so hovering must not touch
+ * anything that moves them — `transform-box` or `scale` would shift each arrow
+ * off its wire. Weight and contrast carry the highlight instead.
+ */
 .wire:hover .wire-arrow {
-  transform-box: fill-box;
-  transform-origin: center;
-  scale: 1.25;
+  stroke-width: 2.5px;
 }
 
 /*

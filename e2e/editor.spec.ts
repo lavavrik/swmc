@@ -452,29 +452,48 @@ test('picks a wire up by its input end and drops it elsewhere', async ({ page })
   await expect(page.locator('.wire')).toHaveCount(2)
 })
 
-test('highlights a wire when the pointer is over it', async ({ page }) => {
-  await place(page, 'Constant Number')
-  await place(page, 'Absolute Value')
-  await drag(page, await centre(nodes(page).nth(1)), { x: 660, y: 300 })
-  const source = nodes(page).first().locator('[data-port-kind="out"]')
-  const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
-  await drag(page, await centre(source), await centre(target))
+// The arrows march continuously, so measuring where they sit needs the motion
+// held still — which also checks that holding it still works
+test.describe('with motion held still', () => {
+  test.use({ reducedMotion: 'reduce' })
 
-  await expect(page.locator('.wire')).toHaveCount(1)
-  const core = page.locator('.wire-core').first()
-  const width = () => core.evaluate((path) => getComputedStyle(path).strokeWidth)
-  const resting = await width()
+  test('highlights a wire when the pointer is over it', async ({ page }) => {
+    await place(page, 'Constant Number')
+    await place(page, 'Absolute Value')
+    await drag(page, await centre(nodes(page).nth(1)), { x: 660, y: 300 })
+    const source = nodes(page).first().locator('[data-port-kind="out"]')
+    const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
+    await drag(page, await centre(source), await centre(target))
 
-  // The middle of a diagonal wire is not the middle of its bounding box
-  const onTheWire = await page.evaluate(() => {
-    const path = document.querySelector('.wire-target') as SVGPathElement
-    const point = path.getPointAtLength(path.getTotalLength() / 2)
-    const screen = point.matrixTransform(path.getScreenCTM()!)
-    return { x: screen.x, y: screen.y }
+    await expect(page.locator('.wire')).toHaveCount(1)
+    const core = page.locator('.wire-core').first()
+    const width = () => core.evaluate((path) => getComputedStyle(path).strokeWidth)
+    const resting = await width()
+
+    // The middle of a diagonal wire is not the middle of its bounding box
+    const onTheWire = await page.evaluate(() => {
+      const path = document.querySelector('.wire-target') as SVGPathElement
+      const point = path.getPointAtLength(path.getTotalLength() / 2)
+      const screen = point.matrixTransform(path.getScreenCTM()!)
+      return { x: screen.x, y: screen.y }
+    })
+    // Where the arrows sit before the pointer goes anywhere near the wire
+    const arrowCentres = () =>
+      page.$$eval('.wire-arrow', (arrows) =>
+        arrows.map((a) => {
+          const box = a.getBoundingClientRect()
+          return `${Math.round(box.x + box.width / 2)},${Math.round(box.y + box.height / 2)}`
+        }),
+      )
+    const before = await arrowCentres()
+
+    await page.mouse.move(onTheWire.x, onTheWire.y)
+    await expect.poll(width).not.toBe(resting)
+
+    // Highlighting a wire must not move anything along it
+    expect(await arrowCentres()).toEqual(before)
+
+    await page.mouse.move(20, 400)
+    await expect.poll(width).toBe(resting)
   })
-  await page.mouse.move(onTheWire.x, onTheWire.y)
-  await expect.poll(width).not.toBe(resting)
-
-  await page.mouse.move(20, 400)
-  await expect.poll(width).toBe(resting)
 })
