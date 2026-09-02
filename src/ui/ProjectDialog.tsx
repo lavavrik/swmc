@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
+import { cloudLibrary } from '@/io/config'
 import {
   deleteProject,
   exportFile,
@@ -112,7 +113,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
               />
             </label>
             <button className="text-button primary" onClick={() => void save()}>
-              Save to library
+              {cloudLibrary() ? 'Save to cloud' : 'Save to library'}
             </button>
             <button
               className="text-button"
@@ -176,7 +177,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
             </>
           )}
 
-          <h3>Library</h3>
+          <h3>{cloudLibrary() ? 'Cloud library' : 'Library'}</h3>
           {projects.length === 0 && <p className="picker-empty">Nothing saved yet.</p>}
           {projects.map((project) => (
             <div key={project.id} className="project-row">

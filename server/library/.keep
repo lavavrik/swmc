@@ -1,0 +1,3 @@
+# Placeholder so /data/library exists before the first save.
+# The functions runner watches /data and rebuilds on changes there;
+# files in this subdirectory do not trigger that.

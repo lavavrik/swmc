@@ -1,9 +1,10 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { expect as unwrap } from '@/model/result'
 import { addNode, createEmpty } from '@/model/ops'
 import { librarySchema } from '@/library/registry'
 import { deleteProject, listProjects, loadProject, projectId, saveProject } from './library'
+import { serializeMicrocontroller } from './microcontroller'
 
 const sample = (name: string) => {
   const doc = createEmpty({ name })
@@ -57,5 +58,44 @@ describe('project library', () => {
   it('falls back to a usable id for a nameless project', () => {
     expect(projectId('')).toBe('untitled')
     expect(projectId('My Nice MC!')).toBe('my-nice-mc')
+  })
+})
+
+describe('cloud library', () => {
+  const fetchMock = vi.fn()
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example')
+    vi.stubEnv('VITE_API_TOKEN', 'secret')
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    fetchMock.mockReset()
+  })
+
+  it('saves by putting xml at the project id', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ id: 'autopilot', name: 'Autopilot', updatedAt: 9, componentCount: 1 }),
+        { status: 200 },
+      ),
+    )
+    const saved = await saveProject(sample('Autopilot'), 1000)
+    expect(saved.updatedAt).toBe(9)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.example/microcontrollers/autopilot')
+    expect(init.method).toBe('PUT')
+    expect(String(init.body)).toContain('<microprocessor')
+  })
+
+  it('loads by parsing the xml the function returns', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(serializeMicrocontroller(sample('Autopilot')), { status: 200 }),
+    )
+    const loaded = unwrap(await loadProject('autopilot'))
+    expect(loaded.meta.name).toBe('Autopilot')
   })
 })

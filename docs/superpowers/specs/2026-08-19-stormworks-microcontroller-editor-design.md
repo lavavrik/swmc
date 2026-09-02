@@ -21,11 +21,11 @@ microcontroller editor:
 Non-goals (explicitly out of scope, possibly later):
 
 - The vehicle editor, block placement, or anything outside a microcontroller.
-- Multiplayer/collaborative editing, accounts, cloud storage, sharing links.
-- A backend of any kind. The app is a static SPA. It can read a player's own
-  Stormworks folder, through the File System Access API, but only where the
-  browser implements it and only where the player points it — the files are
-  read in place and nothing leaves the machine.
+- Multiplayer/collaborative editing, accounts, sharing links.
+- A required backend. The app is still a static SPA, and the default library
+  is still IndexedDB. An optional cloudhost function can hold the same XML
+  (`server/`); connecting the game folder through the File System Access API
+  is unchanged — those files are read in place and nothing is uploaded.
 - Physics simulation of the vehicle a microcontroller would be attached to.
 - Byte-exact reproduction of in-game audio DSP. Audio signals are modelled as
   typed values and routed correctly, but never played.
@@ -41,7 +41,7 @@ Non-goals (explicitly out of scope, possibly later):
 | Component coverage | The full library — 60 microcontroller component types, all categories |
 | Graph engine | Custom SVG renderer — no React Flow, no canvas immediate mode |
 | Lua editor | Monaco + full Stormworks API intellisense + wasmoon Lua execution + screen preview |
-| Runtime | Browser SPA, local-only. IndexedDB project library, `.xml` import/export via file picker and drag-drop |
+| Runtime | Browser SPA. IndexedDB project library by default; optional cloudhost function stores the same XML. `.xml` import/export via file picker and drag-drop |
 | Simulation depth | Full graph tick engine at 60 Hz with 1-tick delay on feedback edges |
 | Visual target | Exact replica of the in-game skin (teal grid, white node cards, circular toolbar, coloured wires with arrowheads) |
 
