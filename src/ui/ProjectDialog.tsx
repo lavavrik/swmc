@@ -125,7 +125,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
               />
             </label>
             <button className="text-button primary" onClick={() => void save()}>
-              {cloudLibrary() ? 'Save to cloud' : 'Save to library'}
+              {cloudLibrary() ? 'Save to my library' : 'Save to library'}
             </button>
             <button
               className="text-button"

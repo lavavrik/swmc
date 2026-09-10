@@ -10,6 +10,7 @@ import { MonitorPanel } from './MonitorPanel'
 import { PinEditor } from './PinEditor'
 import { GameFilesDialog } from './GameFilesDialog'
 import { restoreFolders } from './gameFilesStore'
+import { AuthDialog } from './AuthDialog'
 import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
 import { PinPanel } from './PinPanel'
 import { PropertyPanel } from './PropertyPanel'
@@ -17,6 +18,8 @@ import { StatusBar } from './StatusBar'
 import { Toolbar } from './Toolbar'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useSimulationDriver } from '@/sim/useSimulationDriver'
+import { cloudLibrary } from '@/io/config'
+import { logout, me, type Account } from '@/io/auth'
 import { installLuaRunner } from '@/lua/runner'
 
 installLuaRunner()
@@ -29,6 +32,13 @@ export function AppShell() {
   const [showTooltips, setShowTooltips] = useState(true)
   const [pinsOpen, setPinsOpen] = useState(false)
   const [gameFilesOpen, setGameFilesOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [account, setAccount] = useState<Account | null>(null)
+
+  useEffect(() => {
+    if (!cloudLibrary()) return
+    void me().then(setAccount, () => setAccount(null))
+  }, [])
 
   // Folders chosen on an earlier visit are picked up quietly
   useEffect(() => {
@@ -101,9 +111,21 @@ export function AppShell() {
         <PinPanel />
         {monitorPort && <MonitorPanel port={monitorPort} onClose={() => watchVideo(null)} />}
       </div>
-      <StatusBar onOpenPicker={() => setPickerOpen(true)} />
+      <StatusBar
+        onOpenPicker={() => setPickerOpen(true)}
+        {...(cloudLibrary()
+          ? {
+              accountLabel: account?.email ?? 'Sign in',
+              onAccount: () => {
+                if (account) void logout().then(() => setAccount(null))
+                else setAuthOpen(true)
+              },
+            }
+          : {})}
+      />
       {pickerOpen && <ComponentPicker onClose={() => setPickerOpen(false)} />}
       {dialog && <ProjectDialog mode={dialog} onClose={() => setDialog(null)} />}
+      {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} onSignedIn={setAccount} />}
       {gameFilesOpen && <GameFilesDialog onClose={() => setGameFilesOpen(false)} />}
       {editingScript && <LuaEditor node={editingScript} onClose={() => openScript(null)} />}
     </div>

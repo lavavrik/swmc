@@ -5,7 +5,6 @@ const fetchMock = vi.fn()
 
 beforeEach(() => {
   vi.stubEnv('VITE_API_BASE_URL', 'https://api.example')
-  vi.stubEnv('VITE_API_TOKEN', 'secret')
   vi.stubGlobal('fetch', fetchMock)
 })
 
@@ -30,9 +29,7 @@ describe('cloud library client', () => {
     ])
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example/microcontrollers',
-      expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: 'Bearer secret' }),
-      }),
+      expect.objectContaining({ credentials: 'include' }),
     )
   })
 
@@ -63,7 +60,7 @@ describe('cloud library client', () => {
 
   it('treats a 401 as unauthorized', async () => {
     fetchMock.mockResolvedValue(new Response('{"error":"unauthorized"}', { status: 401 }))
-    await expect(listRemote()).rejects.toThrow(/unauthorized/)
+    await expect(listRemote()).rejects.toThrow(/sign in/)
   })
 
   it('ignores deleting something that is already gone', async () => {

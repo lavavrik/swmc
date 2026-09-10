@@ -4,7 +4,7 @@
  * The function stores the same XML the game would load. List is JSON; a
  * single project is the XML itself. Writes send the token; reads do not.
  */
-import { apiBaseUrl, apiToken } from './config'
+import { apiBaseUrl } from './config'
 
 interface Summary {
   readonly id: string
@@ -14,23 +14,13 @@ interface Summary {
   readonly componentCount: number
 }
 
-const jsonHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  const token = apiToken()
-  if (token) headers.Authorization = `Bearer ${token}`
-  return headers
-}
+const jsonHeaders = (): Record<string, string> => ({ Accept: 'application/json' })
 
-const xmlHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = { 'Content-Type': 'application/xml' }
-  const token = apiToken()
-  if (token) headers.Authorization = `Bearer ${token}`
-  return headers
-}
+const xmlHeaders = (): Record<string, string> => ({ 'Content-Type': 'application/xml' })
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(`${apiBaseUrl()}${path}`, init)
-  if (res.status === 401) throw new Error('cloud library: unauthorized')
+  const res = await fetch(`${apiBaseUrl()}${path}`, { credentials: 'include', ...init })
+  if (res.status === 401) throw new Error('cloud library: sign in first')
   return res
 }
 

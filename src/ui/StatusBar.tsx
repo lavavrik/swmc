@@ -35,7 +35,15 @@ function SizeControl({
   )
 }
 
-export function StatusBar({ onOpenPicker }: { onOpenPicker: () => void }) {
+export function StatusBar({
+  onOpenPicker,
+  accountLabel,
+  onAccount,
+}: {
+  onOpenPicker: () => void
+  accountLabel?: string
+  onAccount?: () => void
+}) {
   const meta = useEditorStore((s) => s.doc.meta)
   const setMeta = useEditorStore((s) => s.setMeta)
   const problem = useEditorStore((s) => s.problem)
@@ -74,6 +82,17 @@ export function StatusBar({ onOpenPicker }: { onOpenPicker: () => void }) {
           </span>
         )}
       </div>
+      {onAccount && (
+        <button
+          className="text-button account-button"
+          title={
+            accountLabel && accountLabel !== 'Sign in' ? 'Sign out' : 'Sign in to the cloud library'
+          }
+          onClick={onAccount}
+        >
+          {accountLabel ?? 'Sign in'}
+        </button>
+      )}
       <button className="round-button primary" title="Add component" onClick={onOpenPicker}>
         <Icon name="components" />
       </button>

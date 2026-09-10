@@ -1,31 +1,33 @@
 package handler
 
 import (
-	"crypto/subtle"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
+	"time"
 )
 
 var app *App
 
+const cookieName = "swmc_session"
+
 // Init is called by the cloudhost runner after each successful build.
 func Init() error {
-	dataDir := os.Getenv("DATA_DIR")
-	if dataDir == "" {
-		dataDir = "/data"
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		return errors.New("DATABASE_URL is required")
 	}
-	store, err := Open(filepath.Join(dataDir, "library"))
+	store, err := Open(context.Background(), url)
 	if err != nil {
 		return err
 	}
-	app = newApp(store, os.Getenv("API_TOKEN"), os.Getenv("ALLOWED_ORIGIN"))
-	slog.Info("swmc library ready", "dir", store.dir)
+	app = newApp(store, os.Getenv("ALLOWED_ORIGIN"))
+	slog.Info("swmc library ready")
 	return nil
 }
 
@@ -40,15 +42,18 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 type App struct {
 	store         *Store
-	token         string
 	allowedOrigin string
 	mux           *http.ServeMux
 }
 
-func newApp(store *Store, token, allowedOrigin string) *App {
-	a := &App{store: store, token: token, allowedOrigin: allowedOrigin}
+func newApp(store *Store, allowedOrigin string) *App {
+	a := &App{store: store, allowedOrigin: allowedOrigin}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", a.root)
+	mux.HandleFunc("POST /auth/register", a.register)
+	mux.HandleFunc("POST /auth/login", a.login)
+	mux.HandleFunc("POST /auth/logout", a.logout)
+	mux.HandleFunc("GET /auth/me", a.me)
 	mux.HandleFunc("GET /microcontrollers", a.list)
 	mux.HandleFunc("GET /microcontrollers/{id}", a.get)
 	mux.HandleFunc("PUT /microcontrollers/{id}", a.put)
@@ -63,19 +68,15 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	if !a.authorized(r) {
-		writeErr(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
 	a.mux.ServeHTTP(w, r)
 }
 
 func (a *App) setCORS(w http.ResponseWriter, r *http.Request) {
 	allow := strings.TrimSpace(a.allowedOrigin)
-	if allow == "" || allow == "*" {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-	} else {
-		origin := r.Header.Get("Origin")
+	origin := r.Header.Get("Origin")
+	if allow == "*" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	} else if allow != "" {
 		for _, o := range strings.Split(allow, ",") {
 			if strings.TrimSpace(o) == origin {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -84,33 +85,126 @@ func (a *App) setCORS(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Vary", "Origin")
 	}
-	w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 }
 
-// Reads are public so the open dialog works for anyone using the SPA.
-// Writes need API_TOKEN when it is set — bake the same value into the SPA as
-// VITE_API_TOKEN. An empty token means the instance is open (local dev).
-func (a *App) authorized(r *http.Request) bool {
-	if r.Method == http.MethodGet || r.Method == http.MethodHead {
-		return true
+func (a *App) currentUser(r *http.Request) (User, bool) {
+	c, err := r.Cookie(cookieName)
+	if err != nil || c.Value == "" {
+		return User{}, false
 	}
-	if a.token == "" {
-		return true
+	u, err := a.store.UserForSession(r.Context(), c.Value)
+	if err != nil {
+		return User{}, false
 	}
-	got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if !ok || len(got) != len(a.token) {
-		return false
+	return u, true
+}
+
+func (a *App) requireUser(w http.ResponseWriter, r *http.Request) (User, bool) {
+	u, ok := a.currentUser(r)
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return User{}, false
 	}
-	return subtle.ConstantTimeCompare([]byte(got), []byte(a.token)) == 1
+	return u, true
+}
+
+func (a *App) setSession(w http.ResponseWriter, r *http.Request, token string) {
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Now().Add(sessionTTL),
+	})
+}
+
+func (a *App) clearSession(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+	})
+}
+
+type authBody struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (a *App) register(w http.ResponseWriter, r *http.Request) {
+	var body authBody
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<12)).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad body")
+		return
+	}
+	u, token, err := a.store.CreateUser(r.Context(), body.Email, body.Password)
+	switch {
+	case errors.Is(err, errBadEmail):
+		writeErr(w, http.StatusBadRequest, "bad email")
+	case errors.Is(err, errBadPassword):
+		writeErr(w, http.StatusBadRequest, "password must be at least 8 characters")
+	case errors.Is(err, errEmailTaken):
+		writeErr(w, http.StatusConflict, "email taken")
+	case err != nil:
+		writeErr(w, http.StatusInternalServerError, "register failed")
+	default:
+		a.setSession(w, r, token)
+		writeJSON(w, http.StatusCreated, u)
+	}
+}
+
+func (a *App) login(w http.ResponseWriter, r *http.Request) {
+	var body authBody
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<12)).Decode(&body); err != nil {
+		writeErr(w, http.StatusBadRequest, "bad body")
+		return
+	}
+	u, token, err := a.store.Authenticate(r.Context(), body.Email, body.Password)
+	switch {
+	case errors.Is(err, errBadLogin):
+		writeErr(w, http.StatusUnauthorized, "bad login")
+	case err != nil:
+		writeErr(w, http.StatusInternalServerError, "login failed")
+	default:
+		a.setSession(w, r, token)
+		writeJSON(w, http.StatusOK, u)
+	}
+}
+
+func (a *App) logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie(cookieName); err == nil {
+		_ = a.store.DeleteSession(r.Context(), c.Value)
+	}
+	a.clearSession(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *App) me(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, u)
 }
 
 func (a *App) root(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"service": "swmc-library"})
 }
 
-func (a *App) list(w http.ResponseWriter, _ *http.Request) {
-	all, err := a.store.List()
+func (a *App) list(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+	all, err := a.store.List(r.Context(), u.ID)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "list failed")
 		return
@@ -119,7 +213,11 @@ func (a *App) list(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (a *App) get(w http.ResponseWriter, r *http.Request) {
-	xml, _, err := a.store.Get(r.PathValue("id"))
+	u, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+	xml, _, err := a.store.Get(r.Context(), u.ID, r.PathValue("id"))
 	if errors.Is(err, errBadID) {
 		writeErr(w, http.StatusBadRequest, "bad id")
 		return
@@ -138,12 +236,16 @@ func (a *App) get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) put(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxXMLBytes+1))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "bad body")
 		return
 	}
-	sum, err := a.store.Put(r.PathValue("id"), string(body))
+	sum, err := a.store.Put(r.Context(), u.ID, r.PathValue("id"), string(body))
 	switch {
 	case errors.Is(err, errBadID):
 		writeErr(w, http.StatusBadRequest, "bad id")
@@ -159,7 +261,11 @@ func (a *App) put(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) del(w http.ResponseWriter, r *http.Request) {
-	err := a.store.Delete(r.PathValue("id"))
+	u, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+	err := a.store.Delete(r.Context(), u.ID, r.PathValue("id"))
 	switch {
 	case errors.Is(err, errBadID):
 		writeErr(w, http.StatusBadRequest, "bad id")

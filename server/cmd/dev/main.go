@@ -11,9 +11,6 @@ import (
 )
 
 func main() {
-	if os.Getenv("DATA_DIR") == "" {
-		_ = os.Setenv("DATA_DIR", "data")
-	}
 	if err := handler.Init(); err != nil {
 		log.Fatal(err)
 	}
@@ -21,6 +18,6 @@ func main() {
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
 	}
-	log.Printf("swmc library on %s (DATA_DIR=%s)", addr, os.Getenv("DATA_DIR"))
+	log.Printf("swmc library on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, http.HandlerFunc(handler.Handle)))
 }

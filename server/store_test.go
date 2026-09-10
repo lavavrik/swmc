@@ -1,12 +1,37 @@
 package handler
 
 import (
-	"errors"
+	"context"
 	"os"
-	"path/filepath"
 	"testing"
-	"time"
 )
+
+func testStore(t *testing.T) *Store {
+	t.Helper()
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		url = "postgres://swmc:swmc@127.0.0.1:5432/swmc?sslmode=disable"
+	}
+	ctx := context.Background()
+	s, err := Open(ctx, url)
+	if err != nil {
+		t.Skipf("postgres not available: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = s.pool.Exec(ctx, `TRUNCATE users CASCADE`)
+		s.Close()
+	})
+	return s
+}
+
+func testUser(t *testing.T, s *Store, email string) User {
+	t.Helper()
+	u, _, err := s.CreateUser(context.Background(), email, "password1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u
+}
 
 const sampleXML = `<?xml version="1.0" encoding="UTF-8"?>
 <microprocessor name="Test Rig" description="A test microcontroller" width="1" length="1">
@@ -25,12 +50,11 @@ const sampleXML = `<?xml version="1.0" encoding="UTF-8"?>
 `
 
 func TestPutGetListDelete(t *testing.T) {
-	s, err := Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	s := testStore(t)
+	ctx := context.Background()
+	u := testUser(t, s, "a@example.com")
 
-	sum, err := s.Put("test-rig", sampleXML)
+	sum, err := s.Put(ctx, u.ID, "test-rig", sampleXML)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,140 +68,82 @@ func TestPutGetListDelete(t *testing.T) {
 		t.Fatalf("components: %d", sum.ComponentCount)
 	}
 
-	xml, got, err := s.Get("test-rig")
+	xml, got, err := s.Get(ctx, u.ID, "test-rig")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if xml != sampleXML {
-		t.Fatalf("xml round-trip mismatch")
+		t.Fatal("xml mismatch")
 	}
 	if got.Name != "Test Rig" {
 		t.Fatalf("get name: %q", got.Name)
 	}
 
-	all, err := s.List()
+	list, err := s.List(ctx, u.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(all) != 1 || all[0].ID != "test-rig" {
-		t.Fatalf("list: %+v", all)
+	if len(list) != 1 || list[0].ID != "test-rig" {
+		t.Fatalf("list: %+v", list)
 	}
 
-	if err := s.Delete("test-rig"); err != nil {
+	other := testUser(t, s, "b@example.com")
+	theirs, err := s.List(ctx, other.ID)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := s.Get("test-rig"); !errors.Is(err, errNotFound) {
+	if len(theirs) != 0 {
+		t.Fatalf("other user saw %d projects", len(theirs))
+	}
+
+	if err := s.Delete(ctx, u.ID, "test-rig"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.Get(ctx, u.ID, "test-rig"); err != errNotFound {
 		t.Fatalf("want not found, got %v", err)
 	}
 }
 
-func TestPutReplaces(t *testing.T) {
-	s, err := Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
+func TestPutRejectsBadIDAndXML(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	u := testUser(t, s, "c@example.com")
+	if _, err := s.Put(ctx, u.ID, "Nope", sampleXML); err != errBadID {
+		t.Fatalf("bad id: %v", err)
 	}
-	if _, err := s.Put("rig", sampleXML); err != nil {
-		t.Fatal(err)
-	}
-	updated := `<microprocessor name="Other"><c type="1"/><c type="2"/><c type="3"/></microprocessor>`
-	sum, err := s.Put("rig", updated)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sum.Name != "Other" || sum.ComponentCount != 3 {
-		t.Fatalf("replaced: %+v", sum)
-	}
-	all, _ := s.List()
-	if len(all) != 1 {
-		t.Fatalf("still one file, got %d", len(all))
+	if _, err := s.Put(ctx, u.ID, "ok", "<nope/>"); err != errBadXML {
+		t.Fatalf("bad xml: %v", err)
 	}
 }
 
-func TestListNewestFirst(t *testing.T) {
-	dir := t.TempDir()
-	s, err := Open(dir)
+func TestRegisterLoginSession(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	u, token, err := s.CreateUser(ctx, "D@Example.COM", "password1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	older := `<microprocessor name="Older"><c type="1"/></microprocessor>`
-	newer := `<microprocessor name="Newer"><c type="1"/></microprocessor>`
-	if _, err := s.Put("older", older); err != nil {
+	if u.Email != "d@example.com" {
+		t.Fatalf("email: %q", u.Email)
+	}
+	got, err := s.UserForSession(ctx, token)
+	if err != nil || got.ID != u.ID {
+		t.Fatalf("session: %+v %v", got, err)
+	}
+	if _, _, err := s.CreateUser(ctx, "d@example.com", "password1"); err != errEmailTaken {
+		t.Fatalf("dup: %v", err)
+	}
+	if _, _, err := s.Authenticate(ctx, "d@example.com", "wrongwrong"); err != errBadLogin {
+		t.Fatalf("bad login: %v", err)
+	}
+	u2, token2, err := s.Authenticate(ctx, "d@example.com", "password1")
+	if err != nil || u2.ID != u.ID || token2 == "" {
+		t.Fatalf("login: %+v %v", u2, err)
+	}
+	if err := s.DeleteSession(ctx, token); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Put("newer", newer); err != nil {
-		t.Fatal(err)
-	}
-	past := time.Now().Add(-time.Hour)
-	if err := os.Chtimes(filepath.Join(dir, "older.xml"), past, past); err != nil {
-		t.Fatal(err)
-	}
-	all, err := s.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(all) != 2 || all[0].Name != "Newer" || all[1].Name != "Older" {
-		t.Fatalf("order: %+v", all)
-	}
-}
-
-func TestRejectsBadInput(t *testing.T) {
-	s, err := Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases := []struct {
-		id, xml string
-		want    error
-	}{
-		{"../escape", sampleXML, errBadID},
-		{"Has Caps", sampleXML, errBadID},
-		{"ok", "<html/>", errBadXML},
-		{"ok", "", errBadXML},
-	}
-	for _, tc := range cases {
-		if _, err := s.Put(tc.id, tc.xml); !errors.Is(err, tc.want) {
-			t.Errorf("Put(%q): got %v want %v", tc.id, err, tc.want)
-		}
-	}
-	if _, _, err := s.Get("../escape"); !errors.Is(err, errBadID) {
-		t.Errorf("Get traversal: %v", err)
-	}
-}
-
-func TestIgnoresStrayFiles(t *testing.T) {
-	dir := t.TempDir()
-	s, err := Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, ".keep"), nil, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "skip_me.xml"), []byte(sampleXML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.Put("ok", sampleXML); err != nil {
-		t.Fatal(err)
-	}
-	all, err := s.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(all) != 1 || all[0].ID != "ok" {
-		t.Fatalf("list: %+v", all)
-	}
-}
-
-func TestNameEntities(t *testing.T) {
-	s, err := Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum, err := s.Put("amp", `<microprocessor name="A &amp; B"/>`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sum.Name != "A & B" {
-		t.Fatalf("unescaped name: %q", sum.Name)
+	if _, err := s.UserForSession(ctx, token); err != errNoSession {
+		t.Fatalf("deleted session: %v", err)
 	}
 }

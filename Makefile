@@ -1,6 +1,6 @@
 # Deploying swmc to CloudHost. See docs/deploy.md.
 #
-# Topology is deploy/topology.yaml (ui webserver + api function). The SPA
+# Topology is deploy/topology.yaml (ui, api, db). The SPA
 # bundle and the function source are files, uploaded separately — hostctl apply
 # does not carry them on the remote path.
 
@@ -18,7 +18,7 @@ test:
 	npm run typecheck
 	npm run lint
 	npm test
-	npm run test:server
+	DATABASE_URL=$${DATABASE_URL:-postgres://swmc:swmc@127.0.0.1:5432/swmc?sslmode=disable} npm run test:server
 
 plan:
 	hostctl plan -f deploy/topology.yaml --env swmc

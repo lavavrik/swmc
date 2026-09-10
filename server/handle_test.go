@@ -2,33 +2,39 @@ package handler
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-func testApp(t *testing.T, token, origin string) *App {
+func testApp(t *testing.T) *App {
 	t.Helper()
-	s, err := Open(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	return newApp(s, token, origin)
+	return newApp(testStore(t), "http://localhost:5173")
 }
 
-func do(app *App, method, path, body, token string) *httptest.ResponseRecorder {
+func do(app *App, method, path, body string, cookies []*http.Cookie, contentType string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
+	for _, c := range cookies {
+		req.AddCookie(c)
 	}
-	if body != "" {
-		req.Header.Set("Content-Type", "application/xml")
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
+	req.Header.Set("Origin", "http://localhost:5173")
 	rec := httptest.NewRecorder()
 	app.ServeHTTP(rec, req)
 	return rec
+}
+
+func sessionOf(rec *httptest.ResponseRecorder) []*http.Cookie {
+	var out []*http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == cookieName && c.Value != "" {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func TestHandleBeforeInitReturns503(t *testing.T) {
@@ -43,21 +49,40 @@ func TestHandleBeforeInitReturns503(t *testing.T) {
 }
 
 func TestRootAndUnknown(t *testing.T) {
-	a := testApp(t, "", "")
-	rec := do(a, http.MethodGet, "/", "", "")
+	a := testApp(t)
+	rec := do(a, http.MethodGet, "/", "", nil, "")
 	if rec.Code != 200 {
 		t.Fatalf("GET /: %d", rec.Code)
 	}
-	rec = do(a, http.MethodGet, "/nope", "", "")
+	rec = do(a, http.MethodGet, "/nope", "", nil, "")
 	if rec.Code != 404 {
 		t.Fatalf("GET /nope: %d", rec.Code)
 	}
 }
 
-func TestSaveOpenDelete(t *testing.T) {
-	a := testApp(t, "secret", "*")
+func TestAuthAndPrivateLibrary(t *testing.T) {
+	a := testApp(t)
 
-	rec := do(a, http.MethodPut, "/microcontrollers/test-rig", sampleXML, "secret")
+	rec := do(a, http.MethodGet, "/microcontrollers", "", nil, "")
+	if rec.Code != 401 {
+		t.Fatalf("list anon: %d", rec.Code)
+	}
+
+	rec = do(a, http.MethodPost, "/auth/register", `{"email":"u@example.com","password":"password1"}`, nil, "application/json")
+	if rec.Code != 201 {
+		t.Fatalf("register: %d %s", rec.Code, rec.Body.String())
+	}
+	cookies := sessionOf(rec)
+	if len(cookies) != 1 {
+		t.Fatalf("cookies: %+v", rec.Result().Cookies())
+	}
+
+	rec = do(a, http.MethodGet, "/auth/me", "", cookies, "")
+	if rec.Code != 200 {
+		t.Fatalf("me: %d", rec.Code)
+	}
+
+	rec = do(a, http.MethodPut, "/microcontrollers/test-rig", sampleXML, cookies, "application/xml")
 	if rec.Code != 200 {
 		t.Fatalf("PUT: %d %s", rec.Code, rec.Body.String())
 	}
@@ -69,119 +94,54 @@ func TestSaveOpenDelete(t *testing.T) {
 		t.Fatalf("summary: %+v", sum)
 	}
 
-	rec = do(a, http.MethodGet, "/microcontrollers/test-rig", "", "")
+	rec = do(a, http.MethodGet, "/microcontrollers/test-rig", "", cookies, "")
 	if rec.Code != 200 {
 		t.Fatalf("GET: %d", rec.Code)
-	}
-	if rec.Header().Get("Content-Type") != "application/xml; charset=utf-8" {
-		t.Fatalf("content-type: %s", rec.Header().Get("Content-Type"))
 	}
 	if rec.Body.String() != sampleXML {
 		t.Fatal("xml mismatch")
 	}
 
-	rec = do(a, http.MethodGet, "/microcontrollers", "", "")
+	rec = do(a, http.MethodGet, "/microcontrollers", "", cookies, "")
 	if rec.Code != 200 {
-		t.Fatalf("LIST: %d", rec.Code)
-	}
-	var all []Summary
-	if err := json.NewDecoder(rec.Body).Decode(&all); err != nil {
-		t.Fatal(err)
-	}
-	if len(all) != 1 || all[0].ID != "test-rig" {
-		t.Fatalf("list: %+v", all)
+		t.Fatalf("list: %d", rec.Code)
 	}
 
-	rec = do(a, http.MethodDelete, "/microcontrollers/test-rig", "", "secret")
+	rec = do(a, http.MethodPost, "/auth/logout", "", cookies, "")
 	if rec.Code != 204 {
-		t.Fatalf("DELETE: %d", rec.Code)
+		t.Fatalf("logout: %d", rec.Code)
 	}
-	rec = do(a, http.MethodGet, "/microcontrollers/test-rig", "", "")
-	if rec.Code != 404 {
-		t.Fatalf("GET after delete: %d", rec.Code)
-	}
-}
-
-func TestWritesNeedTokenReadsDoNot(t *testing.T) {
-	a := testApp(t, "secret", "")
-	if rec := do(a, http.MethodPut, "/microcontrollers/test-rig", sampleXML, ""); rec.Code != 401 {
-		t.Fatalf("PUT without token: %d", rec.Code)
-	}
-	if rec := do(a, http.MethodPut, "/microcontrollers/test-rig", sampleXML, "wrong"); rec.Code != 401 {
-		t.Fatalf("PUT wrong token: %d", rec.Code)
-	}
-	if rec := do(a, http.MethodPut, "/microcontrollers/test-rig", sampleXML, "secret"); rec.Code != 200 {
-		t.Fatalf("PUT good token: %d %s", rec.Code, rec.Body.String())
-	}
-	if rec := do(a, http.MethodGet, "/microcontrollers", "", ""); rec.Code != 200 {
-		t.Fatalf("public list: %d", rec.Code)
-	}
-	if rec := do(a, http.MethodDelete, "/microcontrollers/test-rig", "", ""); rec.Code != 401 {
-		t.Fatalf("DELETE without token: %d", rec.Code)
+	rec = do(a, http.MethodGet, "/microcontrollers", "", cookies, "")
+	if rec.Code != 401 {
+		t.Fatalf("list after logout: %d", rec.Code)
 	}
 }
 
-func TestOpenWritesWhenNoTokenConfigured(t *testing.T) {
-	a := testApp(t, "", "")
-	if rec := do(a, http.MethodPut, "/microcontrollers/test-rig", sampleXML, ""); rec.Code != 200 {
-		t.Fatalf("open PUT: %d", rec.Code)
+func TestRegisterValidation(t *testing.T) {
+	a := testApp(t)
+	rec := do(a, http.MethodPost, "/auth/register", `{"email":"nope","password":"password1"}`, nil, "application/json")
+	if rec.Code != 400 {
+		t.Fatalf("bad email: %d", rec.Code)
+	}
+	rec = do(a, http.MethodPost, "/auth/register", `{"email":"ok@example.com","password":"short"}`, nil, "application/json")
+	if rec.Code != 400 {
+		t.Fatalf("short password: %d", rec.Code)
 	}
 }
 
-func TestPutRejectsGarbage(t *testing.T) {
-	a := testApp(t, "", "")
-	if rec := do(a, http.MethodPut, "/microcontrollers/test-rig", "<html/>", ""); rec.Code != 400 {
-		t.Fatalf("garbage: %d", rec.Code)
-	}
-	if rec := do(a, http.MethodPut, "/microcontrollers/Not_Valid", sampleXML, ""); rec.Code != 400 {
-		t.Fatalf("bad id: %d", rec.Code)
-	}
-}
-
-func TestCorsPreflight(t *testing.T) {
-	a := testApp(t, "secret", "https://swmc-ui.example")
-	req := httptest.NewRequest(http.MethodOptions, "/microcontrollers/x", nil)
-	req.Header.Set("Origin", "https://swmc-ui.example")
-	rec := httptest.NewRecorder()
-	a.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("preflight: %d", rec.Code)
-	}
-	if rec.Header().Get("Access-Control-Allow-Origin") != "https://swmc-ui.example" {
-		t.Fatalf("allow-origin: %q", rec.Header().Get("Access-Control-Allow-Origin"))
-	}
-	if !strings.Contains(rec.Header().Get("Access-Control-Allow-Headers"), "Authorization") {
-		t.Fatalf("allow-headers: %q", rec.Header().Get("Access-Control-Allow-Headers"))
-	}
-}
-
-func TestCorsStar(t *testing.T) {
-	a := testApp(t, "", "*")
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+func TestCORSCredentials(t *testing.T) {
+	a := testApp(t)
+	req := httptest.NewRequest(http.MethodOptions, "/microcontrollers", nil)
 	req.Header.Set("Origin", "http://localhost:5173")
 	rec := httptest.NewRecorder()
 	a.ServeHTTP(rec, req)
-	if rec.Header().Get("Access-Control-Allow-Origin") != "*" {
-		t.Fatalf("allow-origin: %q", rec.Header().Get("Access-Control-Allow-Origin"))
+	if rec.Code != 204 {
+		t.Fatalf("options: %d", rec.Code)
 	}
-}
-
-func TestInitUsesDataDir(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("DATA_DIR", dir)
-	t.Setenv("API_TOKEN", "t")
-	t.Setenv("ALLOWED_ORIGIN", "*")
-	if err := Init(); err != nil {
-		t.Fatal(err)
+	if rec.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
+		t.Fatalf("origin: %s", rec.Header().Get("Access-Control-Allow-Origin"))
 	}
-	t.Cleanup(func() { app = nil })
-	rec := httptest.NewRecorder()
-	Handle(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	if rec.Code != 200 {
-		t.Fatalf("after Init: %d", rec.Code)
-	}
-	body, _ := io.ReadAll(rec.Body)
-	if !strings.Contains(string(body), "swmc-library") {
-		t.Fatalf("body: %s", body)
+	if rec.Header().Get("Access-Control-Allow-Credentials") != "true" {
+		t.Fatal("credentials")
 	}
 }

@@ -1,15 +1,15 @@
 package handler
 
 import (
+	"context"
 	"encoding/xml"
 	"errors"
 	"html"
-	"os"
-	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const maxXMLBytes = 2 << 20
@@ -19,12 +19,9 @@ var (
 	errBadID    = errors.New("bad id")
 	errBadXML   = errors.New("not a microcontroller")
 	errTooLarge = errors.New("too large")
-
-	// Same slug the editor derives from a name: lowercase, hyphenated, no dots.
-	idRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
 
-// Summary is what the open dialog lists. The document itself is the XML file.
+// Summary is what the open dialog lists. The document itself is the XML.
 type Summary struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
@@ -33,147 +30,131 @@ type Summary struct {
 	ComponentCount int    `json:"componentCount"`
 }
 
-// Store keeps one .xml file per microcontroller under dir.
-//
-// The files live in a subdirectory of the functions volume (/data/library),
-// not in /data itself: the functions runner watches /data and rebuilds on
-// every change there. Nested writes do not fire that watcher.
+// Store is the per-user microcontroller library in Postgres.
 type Store struct {
-	dir string
-}
-
-func Open(dir string) (*Store, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
-	}
-	return &Store{dir: dir}, nil
+	pool *pgxpool.Pool
 }
 
 func validID(id string) bool {
-	return len(id) > 0 && len(id) <= 64 && idRe.MatchString(id)
+	if len(id) == 0 || len(id) > 64 {
+		return false
+	}
+	for i, c := range id {
+		if c >= 'a' && c <= 'z' || c >= '0' && c <= '9' {
+			continue
+		}
+		if c == '-' && i > 0 && i < len(id)-1 {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
-func (s *Store) path(id string) string {
-	return filepath.Join(s.dir, id+".xml")
-}
-
-func (s *Store) List() ([]Summary, error) {
-	entries, err := os.ReadDir(s.dir)
+func (s *Store) List(ctx context.Context, userID string) ([]Summary, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT slug, name, description, component_count, updated_at
+		FROM projects WHERE user_id = $1::uuid
+		ORDER BY updated_at DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Summary, 0, len(entries))
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".xml") {
-			continue
+	defer rows.Close()
+	out := make([]Summary, 0)
+	for rows.Next() {
+		var sum Summary
+		var updated time.Time
+		if err := rows.Scan(&sum.ID, &sum.Name, &sum.Description, &sum.ComponentCount, &updated); err != nil {
+			return nil, err
 		}
-		id := strings.TrimSuffix(name, ".xml")
-		if !validID(id) {
-			continue
-		}
-		sum, err := s.stat(id)
-		if err != nil {
-			continue
-		}
+		sum.UpdatedAt = updated.UnixMilli()
 		out = append(out, sum)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].UpdatedAt > out[j].UpdatedAt })
-	return out, nil
+	return out, rows.Err()
 }
 
-func (s *Store) Get(id string) (string, Summary, error) {
-	if !validID(id) {
+func (s *Store) Get(ctx context.Context, userID, slug string) (string, Summary, error) {
+	if !validID(slug) {
 		return "", Summary{}, errBadID
 	}
-	data, err := os.ReadFile(s.path(id))
-	if errors.Is(err, os.ErrNotExist) {
+	var xml string
+	var sum Summary
+	var updated time.Time
+	err := s.pool.QueryRow(ctx, `
+		SELECT slug, name, description, xml, component_count, updated_at
+		FROM projects WHERE user_id = $1::uuid AND slug = $2`,
+		userID, slug,
+	).Scan(&sum.ID, &sum.Name, &sum.Description, &xml, &sum.ComponentCount, &updated)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return "", Summary{}, errNotFound
 	}
 	if err != nil {
 		return "", Summary{}, err
 	}
-	info, err := os.Stat(s.path(id))
-	if err != nil {
-		return "", Summary{}, err
-	}
-	return string(data), summarize(id, data, info.ModTime()), nil
+	sum.UpdatedAt = updated.UnixMilli()
+	return xml, sum, nil
 }
 
-func (s *Store) Put(id, xml string) (Summary, error) {
-	if !validID(id) {
+func (s *Store) Put(ctx context.Context, userID, slug, doc string) (Summary, error) {
+	if !validID(slug) {
 		return Summary{}, errBadID
 	}
-	if len(xml) > maxXMLBytes {
+	if len(doc) > maxXMLBytes {
 		return Summary{}, errTooLarge
 	}
-	if !looksLikeMC(xml) {
+	if !looksLikeMC(doc) {
 		return Summary{}, errBadXML
 	}
-	tmp, err := os.CreateTemp(s.dir, id+".*.tmp")
-	if err != nil {
-		return Summary{}, err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
-	if _, err := tmp.WriteString(xml); err != nil {
-		tmp.Close()
-		return Summary{}, err
-	}
-	if err := tmp.Close(); err != nil {
-		return Summary{}, err
-	}
-	if err := os.Rename(tmpName, s.path(id)); err != nil {
-		return Summary{}, err
-	}
-	return s.stat(id)
-}
-
-func (s *Store) Delete(id string) error {
-	if !validID(id) {
-		return errBadID
-	}
-	err := os.Remove(s.path(id))
-	if errors.Is(err, os.ErrNotExist) {
-		return errNotFound
-	}
-	return err
-}
-
-func (s *Store) stat(id string) (Summary, error) {
-	path := s.path(id)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return Summary{}, err
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return Summary{}, err
-	}
-	return summarize(id, data, info.ModTime()), nil
-}
-
-func summarize(id string, data []byte, mtime time.Time) Summary {
-	name, description, count := xmlMeta(data)
+	name, description, count := xmlMeta([]byte(doc))
 	if name == "" {
-		name = id
+		name = slug
+	}
+	var updated time.Time
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO projects (user_id, slug, name, description, xml, component_count, updated_at)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, now())
+		ON CONFLICT (user_id, slug) DO UPDATE SET
+			name = excluded.name,
+			description = excluded.description,
+			xml = excluded.xml,
+			component_count = excluded.component_count,
+			updated_at = now()
+		RETURNING updated_at`,
+		userID, slug, name, description, doc, count,
+	).Scan(&updated)
+	if err != nil {
+		return Summary{}, err
 	}
 	return Summary{
-		ID:             id,
+		ID:             slug,
 		Name:           name,
 		Description:    description,
-		UpdatedAt:      mtime.UnixMilli(),
+		UpdatedAt:      updated.UnixMilli(),
 		ComponentCount: count,
+	}, nil
+}
+
+func (s *Store) Delete(ctx context.Context, userID, slug string) error {
+	if !validID(slug) {
+		return errBadID
 	}
+	tag, err := s.pool.Exec(ctx,
+		`DELETE FROM projects WHERE user_id = $1::uuid AND slug = $2`,
+		userID, slug,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errNotFound
+	}
+	return nil
 }
 
 func looksLikeMC(doc string) bool {
 	return strings.Contains(doc, "<microprocessor")
 }
 
-// xmlMeta reads the root name attribute and counts component elements. It is
-// deliberately not a full parse — the editor is the codec; we only need enough
-// to fill the open-dialog list.
 func xmlMeta(data []byte) (name, description string, components int) {
 	var root struct {
 		Name        string `xml:"name,attr"`
