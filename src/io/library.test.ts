@@ -21,7 +21,15 @@ describe('project library', () => {
     await saveProject(sample('Autopilot'), 1000)
     const projects = await listProjects()
     expect(projects).toHaveLength(1)
-    expect(projects[0]).toMatchObject({ name: 'Autopilot', componentCount: 1 })
+    expect(projects[0]).toMatchObject({ name: 'Autopilot', description: '', componentCount: 1 })
+  })
+
+  it('keeps the description through save and load', async () => {
+    const doc = sample('Autopilot')
+    await saveProject({ ...doc, meta: { ...doc.meta, description: 'holds heading' } }, 1000)
+    expect((await listProjects())[0]?.description).toBe('holds heading')
+    const loaded = unwrap(await loadProject(projectId('Autopilot')))
+    expect(loaded.meta.description).toBe('holds heading')
   })
 
   it('loads a saved project back as a document', async () => {

@@ -9,6 +9,7 @@ import { apiBaseUrl, apiToken } from './config'
 interface Summary {
   readonly id: string
   readonly name: string
+  readonly description?: string
   readonly updatedAt: number
   readonly componentCount: number
 }

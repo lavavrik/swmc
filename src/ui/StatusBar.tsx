@@ -51,7 +51,15 @@ export function StatusBar({ onOpenPicker }: { onOpenPicker: () => void }) {
         className="name-field"
         value={meta.name}
         title="Microcontroller name"
+        placeholder="name"
         onChange={(e) => setMeta({ name: e.target.value })}
+      />
+      <input
+        className="description-field"
+        value={meta.description}
+        title="Microcontroller description"
+        placeholder="description"
+        onChange={(e) => setMeta({ description: e.target.value })}
       />
       <SizeControl label="width" value={meta.width} onChange={(width) => setMeta({ width })} />
       <SizeControl label="length" value={meta.length} onChange={(length) => setMeta({ length })} />

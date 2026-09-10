@@ -1,0 +1,129 @@
+/**
+ * Tick a built microcontroller with named pin values.
+ *
+ * The plant (engine, battery, wheels) is not in this repository. A scenario is
+ * the values arriving on the pins, and the values leaving them.
+ */
+import { formatSignal } from '@/sim/format'
+import { Simulation } from '@/sim/engine'
+import type { SignalValue } from '@/library/types'
+import { err, ok, type Result } from '@/model/result'
+import type { Microcontroller, NodeId, SignalType } from '@/model/types'
+import { slugPort } from './ports'
+
+export interface SimPin {
+  readonly id: string
+  readonly label: string
+  readonly direction: 'in' | 'out'
+  readonly signal: SignalType
+  readonly value: SignalValue | undefined
+}
+
+export interface SimResult {
+  readonly ticks: number
+  readonly pins: readonly SimPin[]
+}
+
+export function parseSignalValue(signal: SignalType, raw: string): Result<SignalValue> {
+  const text = raw.trim()
+  if (signal === 'onoff') {
+    const lower = text.toLowerCase()
+    if (lower === 'true' || lower === 'on' || lower === 'yes' || lower === '1') return ok(true)
+    if (lower === 'false' || lower === 'off' || lower === 'no' || lower === '0') return ok(false)
+    return err(`on/off value "${raw}" — use on/off or true/false`)
+  }
+  if (signal === 'number') {
+    const n = Number(text)
+    if (!Number.isFinite(n)) return err(`not a number: ${raw}`)
+    return ok(n)
+  }
+  return err(`setting ${signal} pins is not supported on the command line`)
+}
+
+export function pinAliases(
+  doc: Microcontroller,
+  names?: ReadonlyMap<string, NodeId>,
+): Map<string, NodeId> {
+  const aliases = new Map<string, NodeId>()
+  const reverse = new Map<NodeId, string>()
+  if (names) {
+    for (const [name, id] of names) reverse.set(id, name)
+  }
+  for (const id of doc.ioOrder) {
+    const node = doc.nodes.find((n) => n.id === id)
+    if (!node) continue
+    const recipeId = reverse.get(id)
+    const label = String(node.properties.label ?? '')
+    const keys = [id, recipeId, label, slugPort(label)].filter(
+      (k): k is string => !!k && k.length > 0,
+    )
+    for (const key of keys) {
+      if (!aliases.has(key)) aliases.set(key, id)
+      if (!aliases.has(key.toLowerCase())) aliases.set(key.toLowerCase(), id)
+    }
+  }
+  return aliases
+}
+
+export function runSim(
+  doc: Microcontroller,
+  ticks: number,
+  inputs: Readonly<Record<string, string>>,
+  names?: ReadonlyMap<string, NodeId>,
+): Result<SimResult> {
+  const aliases = pinAliases(doc, names)
+  const sim = new Simulation(doc)
+
+  for (const [key, raw] of Object.entries(inputs)) {
+    const id = aliases.get(key) ?? aliases.get(key.toLowerCase())
+    if (!id) {
+      const known = doc.ioOrder
+        .map((pinId) => {
+          const n = doc.nodes.find((node) => node.id === pinId)
+          return n ? String(n.properties.label || pinId) : pinId
+        })
+        .join(', ')
+      return err(`no pin "${key}". pins: ${known || '(none)'}`)
+    }
+    const node = doc.nodes.find((n) => n.id === id)
+    if (!node) return err(`no pin "${key}"`)
+    const signal = node.type.split('.')[2] as SignalType
+    if (!node.type.startsWith('io.in.')) return err(`"${key}" is not an input pin`)
+    const value = parseSignalValue(signal, raw)
+    if (!value.ok) return err(`${key}: ${value.error}`)
+    sim.setInput(id, value.value)
+  }
+
+  sim.run(Math.max(0, ticks))
+
+  const reverse = new Map<NodeId, string>()
+  if (names) for (const [name, id] of names) reverse.set(id, name)
+
+  const pins: SimPin[] = doc.ioOrder.flatMap((id) => {
+    const node = doc.nodes.find((n) => n.id === id)
+    if (!node) return []
+    const [, direction, signal] = node.type.split('.') as ['io', 'in' | 'out', SignalType]
+    const value =
+      direction === 'in' ? sim.outputValue({ node: id, kind: 'out', index: 0 }) : sim.getOutput(id)
+    return [
+      {
+        id: reverse.get(id) ?? id,
+        label: String(node.properties.label ?? ''),
+        direction,
+        signal,
+        value,
+      },
+    ]
+  })
+
+  return ok({ ticks: sim.tickCount, pins })
+}
+
+export function formatSimResult(result: SimResult): string {
+  const rows = result.pins.map((pin) => {
+    const name = pin.label || pin.id
+    const value = pin.value === undefined ? '—' : formatSignal(pin.value)
+    return `${pin.direction.padEnd(3)} ${name.padEnd(22)} ${value}`
+  })
+  return [`t=${result.ticks}`, ...rows].join('\n')
+}

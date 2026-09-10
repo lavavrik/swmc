@@ -14,7 +14,8 @@
     "test:server": "go test -C server ./...",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "extract-font": "tsx scripts/extract-tiny-font.ts"
+    "extract-font": "tsx scripts/extract-tiny-font.ts",
+    "mc": "tsx --tsconfig tsconfig.app.json src/recipe/cli.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -46,6 +47,7 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.23.0",
     "vite": "^6.1.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "yaml": "^2.9.0"
   }
 }

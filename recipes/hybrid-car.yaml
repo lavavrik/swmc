@@ -1,0 +1,75 @@
+# Small hybrid: starter, engine RPS hold, generator enable, electric motor.
+#
+# Vehicle wiring (not simulated here — only the microcontroller is):
+#   ignition        seat / key on/off
+#   throttle        driver demand 0..1
+#   engine_rps      engine RPS sensor
+#   battery         battery charge 0..1
+#   starter         engine starter motor
+#   engine_throttle engine throttle 0..1
+#   generator       generator clutch 0..1 (Stormworks clutches are numbers)
+#   motor           electric motor throttle 0..1
+name: Hybrid Car
+description: Starter, RPS hold, generator and electric drive
+width: 2
+length: 4
+pins:
+  - { id: ignition, dir: in, signal: onoff, label: Ignition }
+  - { id: throttle, dir: in, signal: number, label: Throttle }
+  - { id: engine_rps, dir: in, signal: number, label: Engine RPS }
+  - { id: battery, dir: in, signal: number, label: Battery }
+  - { id: starter, dir: out, signal: onoff, label: Starter }
+  - { id: engine_throttle, dir: out, signal: number, label: Engine Throttle }
+  - { id: generator, dir: out, signal: number, label: Generator }
+  - { id: motor, dir: out, signal: number, label: Motor }
+nodes:
+  - { id: idle, type: const.number, value: 2 }
+  - { id: target_rps, type: const.number, value: 8 }
+  - { id: charge_low, type: const.number, value: 0.8 }
+  - { id: battery_cut, type: const.number, value: 0.2 }
+  - { id: zero, type: const.number, value: 0 }
+  - { id: one, type: const.number, value: 1 }
+  - { id: starter_low, type: comparison.lessThan }
+  - { id: starter_gate, type: logic.and }
+  - { id: pid, type: arithmetic.pid, kp: 0.2, ki: 0.02, kd: 0 }
+  - { id: throttle_clamp, type: arithmetic.clamp, min: 0, max: 1 }
+  - { id: running, type: comparison.greaterThan }
+  - { id: needs_charge, type: comparison.lessThan }
+  - { id: gen_gate, type: logic.and }
+  - { id: batt_ok, type: comparison.greaterThan }
+  - { id: motor_enable, type: logic.and }
+  - { id: motor_sw, type: arithmetic.numericalSwitchbox }
+  - { id: gen_sw, type: arithmetic.numericalSwitchbox }
+wires:
+  # starter: ignition AND engine_rps < idle
+  - { from: engine_rps, to: starter_low.a }
+  - { from: idle, to: starter_low.b }
+  - { from: starter_low, to: starter_gate.a }
+  - { from: ignition, to: starter_gate.b }
+  - { from: starter_gate, to: starter }
+  # engine throttle: PID towards 8 RPS while ignition is on
+  - { from: target_rps, to: pid.setpoint }
+  - { from: engine_rps, to: pid.process-variable }
+  - { from: ignition, to: pid.active }
+  - { from: pid, to: throttle_clamp }
+  - { from: throttle_clamp, to: engine_throttle }
+  # generator: running AND battery < 0.8
+  - { from: engine_rps, to: running.a }
+  - { from: idle, to: running.b }
+  - { from: battery, to: needs_charge.a }
+  - { from: charge_low, to: needs_charge.b }
+  - { from: running, to: gen_gate.a }
+  - { from: needs_charge, to: gen_gate.b }
+  - { from: one, to: gen_sw.value-on }
+  - { from: zero, to: gen_sw.value-off }
+  - { from: gen_gate, to: gen_sw.switch }
+  - { from: gen_sw, to: generator }
+  # motor: ignition AND battery > 0.2 ? throttle : 0
+  - { from: battery, to: batt_ok.a }
+  - { from: battery_cut, to: batt_ok.b }
+  - { from: ignition, to: motor_enable.a }
+  - { from: batt_ok, to: motor_enable.b }
+  - { from: throttle, to: motor_sw.value-on }
+  - { from: zero, to: motor_sw.value-off }
+  - { from: motor_enable, to: motor_sw.switch }
+  - { from: motor_sw, to: motor }

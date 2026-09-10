@@ -41,6 +41,15 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
+test('opens a saved microcontroller from ?open=', async ({ page }) => {
+  await page.goto('/?open=hybrid-car')
+  await expect(page.locator('.name-field')).toHaveValue('Hybrid Car')
+  await expect(nodes(page)).toHaveCount(25)
+  await expect(page.locator('.statusbar')).toContainText('25 components')
+  await expect(page.locator('.pin-row .port-swatch-in')).toHaveCount(4)
+  await expect(page.locator('.pin-row .port-swatch-out')).toHaveCount(4)
+})
+
 test('places a component from the picker', async ({ page }) => {
   await place(page, 'Constant Number')
   await expect(nodes(page)).toHaveCount(1)
@@ -160,6 +169,7 @@ test('pans the workspace with the middle button', async ({ page }) => {
 test('saves a microcontroller to the library and opens it again', async ({ page }) => {
   await place(page, 'Constant Number')
   await page.locator('.name-field').fill('Test Rig')
+  await page.locator('.description-field').fill('holds heading')
 
   await page.getByTitle('Save or export this microcontroller').click()
   await page.getByRole('button', { name: 'Save to library' }).click()
@@ -171,6 +181,7 @@ test('saves a microcontroller to the library and opens it again', async ({ page 
   await page.getByRole('button', { name: /Test Rig/ }).click()
   await expect(nodes(page)).toHaveCount(1)
   await expect(page.locator('.name-field')).toHaveValue('Test Rig')
+  await expect(page.locator('.description-field')).toHaveValue('holds heading')
 })
 
 test('imports a dropped-in file through the open dialog', async ({ page }) => {
@@ -223,9 +234,17 @@ test('drives the graph from a microcontroller input pin', async ({ page }) => {
   const target = nodes(page).nth(1).locator('[data-port-kind="in"]').first()
   await drag(page, await centre(source), await centre(target))
 
-  await page.locator('.pin-panel input[type=number]').fill('7')
+  const pinNumber = page.locator('.pin-panel .pin-number')
+  await pinNumber.fill('7')
   await page.getByTitle('Advance one tick').click()
   await expect(page.locator('.pin-panel .pin-value')).toHaveText('7')
+
+  await pinNumber.fill('0.5')
+  await expect(pinNumber).toHaveValue('0.5')
+  await pinNumber.fill('0,75')
+  await expect(pinNumber).toHaveValue('0,75')
+  await pinNumber.blur()
+  await expect(pinNumber).toHaveValue('0.75')
 })
 
 test('runs a Lua script and draws it on the monitor', async ({ page }) => {

@@ -195,7 +195,14 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   border: 1px solid var(--port-ring);
+}
+
+.port-swatch-in {
+  background: transparent;
+  border-width: 2.5px;
 }
 
 /* ---------- component picker ---------- */
@@ -481,8 +488,8 @@
   font-size: 12px;
 }
 
-.name-field {
-  width: 200px;
+.name-field,
+.description-field {
   padding: 7px 9px;
   border: 1px solid #3d474c;
   border-radius: 3px;
@@ -490,6 +497,17 @@
   color: var(--chrome-text);
   font: inherit;
   font-size: 13px;
+}
+
+.name-field {
+  width: 180px;
+  flex: 0 0 auto;
+}
+
+.description-field {
+  flex: 1;
+  min-width: 140px;
+  max-width: 320px;
 }
 
 /* ---------- simulation ---------- */
@@ -535,7 +553,7 @@
   white-space: nowrap;
 }
 
-.pin-row input[type='number'] {
+.pin-row .pin-number {
   width: 80px;
 }
 

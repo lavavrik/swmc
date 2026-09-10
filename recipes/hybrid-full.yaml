@@ -1,0 +1,257 @@
+# Series hybrid. The engine is an external controller:
+#   Engine            on/off start/stop
+#   Engine Throttle   0..1 load (0 = idle)
+# That controller owns starter, idle and RPS. This MCU only decides
+# whether the engine should run and how hard to load it.
+#
+# Clutches are a number 0..1, never on/off.
+# Shaft: [Engine]--Engine Clutch--[Motor]--Drive Clutch--[Wheels]
+# Motor-as-starter: while cranking, lock Engine Clutch, open Drive Clutch,
+# and run the motor (Starter throttle). Wheels stay still; the motor spins
+# the diesel. After RPS > idle, Drive Clutch locks and motor goes back to
+# the pedal. Engine Gen stays 0 until the engine is actually running.
+#
+# Gearboxes only switch on/off between two ratios set on the block, so
+# three boxes in series give 8 gears (binary). Wire Gearbox 1..3 in order.
+# Reverse holds 1st (all off) and still uses Motor Reverse.
+#
+# Legal ratios: -1:1, 1:1, 6:5, 3:2, 9:5, 2:1, 5:2, 3:1. Flip to invert.
+# Recommended (4th ≈ 0.90, 5th = 1:1). See AGENTS.md.
+#   GB1 arrows toward motors:  off 1:1, on 6:5
+#   GB2 arrows toward motors:  off 1:1, on 3:2
+#   GB3 arrows away from motors: off 2:1, on 1:1
+# Gears 1–8 × wheel/motor: 0.50, 0.60, 0.75, 0.90, 1.00, 1.20, 1.50, 1.80
+#
+# Vehicle wiring:
+#   ignition / throttle / brake / reverse   seat
+#   engine_rps                              engine RPS (from the controller)
+#   battery                                 battery charge 0..1
+#   speed                                   wheel / propshaft RPS (for shifting)
+#   engine / engine_throttle                external engine controller
+#   engine_clutch                           engine ↔ motor (1 while cranking)
+#   drive_clutch                            motor → wheels (0 while cranking)
+#   engine_gen                              engine → generator clutch
+#   regen                                   transmission generator clutch
+#   motor / reverse_out                     electric motors (also the starter)
+#   gb1 / gb2 / gb3                         gearbox on/off (binary gear)
+#
+# Properties:
+#   EV mode       engine off unless battery is low or Charge hold
+#   Charge hold   force the engine on
+#   Charge throttle   load sent while generating (0 = idle)
+#   Starter throttle  motor power used to crank the diesel
+#   RPS per gear  wheel RPS step between auto gears (default 4)
+name: Hybrid Full
+description: Series hybrid — engine controller, regen clutch, 3× gearbox (8 gears)
+width: 3
+length: 6
+pins:
+  - { id: ignition, dir: in, signal: onoff, label: Ignition }
+  - { id: throttle, dir: in, signal: number, label: Throttle }
+  - { id: brake, dir: in, signal: number, label: Brake }
+  - { id: reverse, dir: in, signal: onoff, label: Reverse }
+  - { id: engine_rps, dir: in, signal: number, label: Engine RPS }
+  - { id: battery, dir: in, signal: number, label: Battery }
+  - { id: speed, dir: in, signal: number, label: Wheel RPS }
+  - { id: engine, dir: out, signal: onoff, label: Engine }
+  - { id: engine_throttle, dir: out, signal: number, label: Engine Throttle }
+  - { id: engine_clutch, dir: out, signal: number, label: Engine Clutch }
+  - { id: drive_clutch, dir: out, signal: number, label: Drive Clutch }
+  - { id: engine_gen, dir: out, signal: number, label: Engine Gen }
+  - { id: regen, dir: out, signal: number, label: Regen Clutch }
+  - { id: motor, dir: out, signal: number, label: Motor }
+  - { id: reverse_out, dir: out, signal: onoff, label: Motor Reverse }
+  - { id: gb1, dir: out, signal: onoff, label: Gearbox 1 }
+  - { id: gb2, dir: out, signal: onoff, label: Gearbox 2 }
+  - { id: gb3, dir: out, signal: onoff, label: Gearbox 3 }
+nodes:
+  - { id: ev_mode, type: property.toggle, name: EV mode, value: false }
+  - { id: charge_hold, type: property.toggle, name: Charge hold, value: false }
+  - { id: idle, type: property.number, name: Idle RPS, value: 2.5 }
+  - {
+      id: charge_throttle,
+      type: property.slider,
+      name: Charge throttle,
+      min: 0,
+      max: 1,
+      increment: 0.05,
+      value: 0.7,
+    }
+  - {
+      id: starter_throttle,
+      type: property.slider,
+      name: Starter throttle,
+      min: 0,
+      max: 1,
+      increment: 0.05,
+      value: 0.4,
+    }
+  - { id: soc_cut, type: property.number, name: SOC cut, value: 0.15 }
+  - { id: soc_low, type: property.number, name: SOC low, value: 0.3 }
+  - { id: soc_gen, type: property.number, name: SOC generate, value: 0.75 }
+  - { id: soc_full, type: property.number, name: SOC full, value: 0.95 }
+  - { id: shift_step, type: property.number, name: RPS per gear, value: 4 }
+  - { id: brake_eps, type: const.number, value: 0.05 }
+  - { id: zero, type: const.number, value: 0 }
+  - { id: one, type: const.number, value: 1 }
+
+  - { id: rps_run, type: comparison.greaterThan }
+  - { id: batt_low, type: comparison.lessThan }
+  - { id: batt_need, type: comparison.lessThan }
+  - { id: batt_full, type: comparison.greaterThan }
+  - { id: batt_ok, type: comparison.greaterThan }
+  - { id: braking, type: comparison.greaterThan }
+
+  # ignition AND (not EV OR charge hold OR battery low)
+  - { id: engine_wanted, type: logic.function4, expression: 'x&(!y|z|w)' }
+  # charge hold OR low OR need generate, and not full
+  - { id: want_load, type: logic.function4, expression: '(x|y|z)&!w' }
+  - { id: gen_fn, type: logic.function4, expression: 'x&y&z' }
+  # wanted AND not yet running
+  - { id: cranking, type: logic.function4, expression: 'x&!y' }
+  # cranking OR (running AND wanted AND not EV AND not charge hold)
+  - { id: eng_clutch_fn, type: logic.function8, expression: 'x|(y&z&!w&!a)' }
+  # ignition AND not cranking
+  - { id: drive_clutch_fn, type: logic.function4, expression: 'x&!y' }
+  # ignition AND braking AND battery not full
+  - { id: regen_fn, type: logic.function4, expression: 'x&y&!z' }
+  - { id: motor_en, type: logic.and }
+  - { id: reverse_fn, type: logic.function4, expression: 'x&y&z' }
+  # ignition AND not reverse → use auto gear, else 1st
+  - { id: want_auto, type: logic.function4, expression: 'x&!y' }
+  - { id: auto_gear, type: arithmetic.function3, expression: 'clamp(floor(x/y)+1,1,8)' }
+  - { id: gear, type: arithmetic.numericalSwitchbox }
+  - { id: gb1_n, type: arithmetic.function1, expression: 'floor(x-1)%2' }
+  - { id: gb2_n, type: arithmetic.function1, expression: 'floor((x-1)/2)%2' }
+  - { id: gb3_n, type: arithmetic.function1, expression: 'floor((x-1)/4)%2' }
+  - { id: gb1_on, type: comparison.greaterThan }
+  - { id: gb2_on, type: comparison.greaterThan }
+  - { id: gb3_on, type: comparison.greaterThan }
+
+  - { id: load_sw, type: arithmetic.numericalSwitchbox }
+  - { id: throttle_en, type: arithmetic.numericalSwitchbox }
+  - { id: motor_brake_sw, type: arithmetic.numericalSwitchbox }
+  - { id: motor_en_sw, type: arithmetic.numericalSwitchbox }
+  - { id: engine_gen_sw, type: arithmetic.numericalSwitchbox }
+  - { id: engine_clutch_sw, type: arithmetic.numericalSwitchbox }
+  - { id: drive_clutch_sw, type: arithmetic.numericalSwitchbox }
+  - { id: motor_crank_sw, type: arithmetic.numericalSwitchbox }
+  - { id: regen_sw, type: arithmetic.numericalSwitchbox }
+
+  - { id: tip_rps, type: tooltip.number, name: Engine RPS }
+  - { id: tip_soc, type: tooltip.number, name: Battery }
+  - { id: tip_engine, type: tooltip.onoff, name: Engine, onLabel: run, offLabel: off }
+  - { id: tip_regen, type: tooltip.number, name: Regen }
+  - { id: tip_gear, type: tooltip.number, name: Gear }
+wires:
+  - { from: engine_rps, to: rps_run.a }
+  - { from: idle, to: rps_run.b }
+  - { from: battery, to: batt_low.a }
+  - { from: soc_low, to: batt_low.b }
+  - { from: battery, to: batt_need.a }
+  - { from: soc_gen, to: batt_need.b }
+  - { from: battery, to: batt_full.a }
+  - { from: soc_full, to: batt_full.b }
+  - { from: battery, to: batt_ok.a }
+  - { from: soc_cut, to: batt_ok.b }
+  - { from: brake, to: braking.a }
+  - { from: brake_eps, to: braking.b }
+
+  - { from: ignition, to: engine_wanted.x }
+  - { from: ev_mode, to: engine_wanted.y }
+  - { from: charge_hold, to: engine_wanted.z }
+  - { from: batt_low, to: engine_wanted.w }
+  - { from: engine_wanted, to: engine }
+
+  - { from: charge_hold, to: want_load.x }
+  - { from: batt_low, to: want_load.y }
+  - { from: batt_need, to: want_load.z }
+  - { from: batt_full, to: want_load.w }
+
+  - { from: rps_run, to: gen_fn.x }
+  - { from: engine_wanted, to: gen_fn.y }
+  - { from: want_load, to: gen_fn.z }
+  - { from: one, to: engine_gen_sw.value-on }
+  - { from: zero, to: engine_gen_sw.value-off }
+  - { from: gen_fn, to: engine_gen_sw.switch }
+  - { from: engine_gen_sw, to: engine_gen }
+
+  - { from: engine_wanted, to: cranking.x }
+  - { from: rps_run, to: cranking.y }
+
+  - { from: cranking, to: eng_clutch_fn.x }
+  - { from: rps_run, to: eng_clutch_fn.y }
+  - { from: engine_wanted, to: eng_clutch_fn.z }
+  - { from: ev_mode, to: eng_clutch_fn.w }
+  - { from: charge_hold, to: eng_clutch_fn.a }
+  - { from: one, to: engine_clutch_sw.value-on }
+  - { from: zero, to: engine_clutch_sw.value-off }
+  - { from: eng_clutch_fn, to: engine_clutch_sw.switch }
+  - { from: engine_clutch_sw, to: engine_clutch }
+
+  - { from: ignition, to: drive_clutch_fn.x }
+  - { from: cranking, to: drive_clutch_fn.y }
+  - { from: one, to: drive_clutch_sw.value-on }
+  - { from: zero, to: drive_clutch_sw.value-off }
+  - { from: drive_clutch_fn, to: drive_clutch_sw.switch }
+  - { from: drive_clutch_sw, to: drive_clutch }
+
+  - { from: ignition, to: regen_fn.x }
+  - { from: braking, to: regen_fn.y }
+  - { from: batt_full, to: regen_fn.z }
+  - { from: brake, to: regen_sw.value-on }
+  - { from: zero, to: regen_sw.value-off }
+  - { from: regen_fn, to: regen_sw.switch }
+  - { from: regen_sw, to: regen }
+
+  - { from: charge_throttle, to: load_sw.value-on }
+  - { from: zero, to: load_sw.value-off }
+  - { from: want_load, to: load_sw.switch }
+  - { from: load_sw, to: throttle_en.value-on }
+  - { from: zero, to: throttle_en.value-off }
+  - { from: engine_wanted, to: throttle_en.switch }
+  - { from: throttle_en, to: engine_throttle }
+
+  - { from: ignition, to: motor_en.a }
+  - { from: batt_ok, to: motor_en.b }
+  - { from: reverse, to: reverse_fn.x }
+  - { from: ignition, to: reverse_fn.y }
+  - { from: batt_ok, to: reverse_fn.z }
+  - { from: reverse_fn, to: reverse_out }
+
+  - { from: speed, to: auto_gear.x }
+  - { from: shift_step, to: auto_gear.y }
+  - { from: ignition, to: want_auto.x }
+  - { from: reverse, to: want_auto.y }
+  - { from: auto_gear, to: gear.value-on }
+  - { from: one, to: gear.value-off }
+  - { from: want_auto, to: gear.switch }
+  - { from: gear, to: gb1_n }
+  - { from: gear, to: gb2_n }
+  - { from: gear, to: gb3_n }
+  - { from: gb1_n, to: gb1_on.a }
+  - { from: zero, to: gb1_on.b }
+  - { from: gb2_n, to: gb2_on.a }
+  - { from: zero, to: gb2_on.b }
+  - { from: gb3_n, to: gb3_on.a }
+  - { from: zero, to: gb3_on.b }
+  - { from: gb1_on, to: gb1 }
+  - { from: gb2_on, to: gb2 }
+  - { from: gb3_on, to: gb3 }
+
+  - { from: zero, to: motor_brake_sw.value-on }
+  - { from: throttle, to: motor_brake_sw.value-off }
+  - { from: braking, to: motor_brake_sw.switch }
+  - { from: motor_brake_sw, to: motor_en_sw.value-on }
+  - { from: zero, to: motor_en_sw.value-off }
+  - { from: motor_en, to: motor_en_sw.switch }
+  - { from: starter_throttle, to: motor_crank_sw.value-on }
+  - { from: motor_en_sw, to: motor_crank_sw.value-off }
+  - { from: cranking, to: motor_crank_sw.switch }
+  - { from: motor_crank_sw, to: motor }
+
+  - { from: engine_rps, to: tip_rps.value }
+  - { from: battery, to: tip_soc.value }
+  - { from: engine_wanted, to: tip_engine }
+  - { from: regen_sw, to: tip_regen.value }
+  - { from: gear, to: tip_gear.value }

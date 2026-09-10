@@ -33,6 +33,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
   const [designs, setDesigns] = useState<FoundDesign[] | null>(null)
   const designsFolder = useGameFilesStore((s) => s.designs)
   const [name, setName] = useState(doc.meta.name)
+  const [description, setDescription] = useState(doc.meta.description)
   const [problem, setProblem] = useState<string | null>(null)
   const [dropping, setDropping] = useState(false)
 
@@ -83,9 +84,9 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
   }
 
   const save = async () => {
-    setMeta({ name })
+    setMeta({ name, description })
     try {
-      await saveProject({ ...doc, meta: { ...doc.meta, name } }, Date.now())
+      await saveProject({ ...doc, meta: { ...doc.meta, name, description } }, Date.now())
       onClose()
     } catch (error) {
       setProblem(String(error))
@@ -112,12 +113,23 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
                 }}
               />
             </label>
+            <label>
+              <span>Description</span>
+              <input
+                value={description}
+                placeholder="what this microcontroller does"
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void save()
+                }}
+              />
+            </label>
             <button className="text-button primary" onClick={() => void save()}>
               {cloudLibrary() ? 'Save to cloud' : 'Save to library'}
             </button>
             <button
               className="text-button"
-              onClick={() => exportFile({ ...doc, meta: { ...doc.meta, name } })}
+              onClick={() => exportFile({ ...doc, meta: { ...doc.meta, name, description } })}
             >
               Export .xml
             </button>
@@ -184,6 +196,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
               <button className="picker-item" onClick={() => void open(project.id)}>
                 <span className="picker-item-name">{project.name}</span>
                 <span className="picker-item-desc">
+                  {project.description ? `${project.description} · ` : ''}
                   {project.componentCount} components · {formatDate(project.updatedAt)}
                 </span>
               </button>

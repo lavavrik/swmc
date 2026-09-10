@@ -19,6 +19,7 @@ import { deleteRemote, getRemote, listRemote, putRemote } from './remote'
 export interface ProjectSummary {
   readonly id: string
   readonly name: string
+  readonly description: string
   /** Milliseconds since the epoch. */
   readonly updatedAt: number
   readonly componentCount: number
@@ -38,10 +39,24 @@ export function projectId(name: string): string {
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
-  if (cloudLibrary()) return listRemote()
+  if (cloudLibrary()) {
+    return (await listRemote()).map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description ?? '',
+      updatedAt: p.updatedAt,
+      componentCount: p.componentCount,
+    }))
+  }
   const all = await transact<StoredProject[]>(PROJECTS, 'readonly', (store) => store.getAll())
   return all
-    .map(({ id, name, updatedAt, componentCount }) => ({ id, name, updatedAt, componentCount }))
+    .map(({ id, name, description = '', updatedAt, componentCount }) => ({
+      id,
+      name,
+      description,
+      updatedAt,
+      componentCount,
+    }))
     .sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
@@ -50,6 +65,7 @@ export async function saveProject(doc: Microcontroller, now: number): Promise<St
   const project: StoredProject = {
     id: projectId(doc.meta.name),
     name: doc.meta.name,
+    description: doc.meta.description,
     updatedAt: now,
     componentCount: doc.nodes.length,
     xml,
@@ -60,6 +76,7 @@ export async function saveProject(doc: Microcontroller, now: number): Promise<St
       ...project,
       updatedAt: saved.updatedAt,
       name: saved.name,
+      description: saved.description ?? project.description,
       componentCount: saved.componentCount,
     }
   }

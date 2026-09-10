@@ -9,7 +9,7 @@ import (
 )
 
 const sampleXML = `<?xml version="1.0" encoding="UTF-8"?>
-<microprocessor name="Test Rig" width="1" length="1">
+<microprocessor name="Test Rig" description="A test microcontroller" width="1" length="1">
 	<nodes/>
 	<group>
 		<data><inputs/><outputs/></data>
@@ -36,6 +36,9 @@ func TestPutGetListDelete(t *testing.T) {
 	}
 	if sum.Name != "Test Rig" {
 		t.Fatalf("name: %q", sum.Name)
+	}
+	if sum.Description != "A test microcontroller" {
+		t.Fatalf("description: %q", sum.Description)
 	}
 	if sum.ComponentCount != 2 {
 		t.Fatalf("components: %d", sum.ComponentCount)

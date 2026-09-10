@@ -279,6 +279,12 @@ describe('setMeta', () => {
     expect(setMeta(createEmpty(), { name: 'PID' }).meta.name).toBe('PID')
   })
 
+  it('sets the description', () => {
+    expect(setMeta(createEmpty(), { description: 'holds heading' }).meta.description).toBe(
+      'holds heading',
+    )
+  })
+
   it('clamps the block size to the range the game allows', () => {
     expect(setMeta(createEmpty(), { width: 0, length: 99 }).meta).toMatchObject({
       width: 1,

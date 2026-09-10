@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@/editor/Canvas'
 import { useEditorStore } from '@/editor/store'
 import { importFile } from '@/io/library'
+import { fetchMicrocontroller, openParam, xmlPathFromOpen } from '@/io/openQuery'
 import { ComponentPicker } from './ComponentPicker'
 import { LuaEditor } from './LuaEditor'
 import { MonitorPanel } from './MonitorPanel'
@@ -48,6 +49,27 @@ export function AppShell() {
 
   // Dropping a .xml file anywhere on the workspace opens it
   const load = useEditorStore((s) => s.load)
+  const zoomToFit = useEditorStore((s) => s.zoomToFit)
+
+  // `?open=hybrid-car` loads the XML the CLI wrote under microcontrollers/
+  useEffect(() => {
+    const wanted = openParam(window.location.search)
+    if (!wanted) return
+    const path = xmlPathFromOpen(wanted)
+    if (!path.ok) {
+      useEditorStore.setState({ problem: path.error })
+      return
+    }
+    void fetchMicrocontroller(path.value).then((result) => {
+      if (!result.ok) {
+        useEditorStore.setState({ problem: result.error })
+        return
+      }
+      load(result.value)
+      requestAnimationFrame(() => zoomToFit(viewSize()))
+    })
+  }, [load, zoomToFit, viewSize])
+
   const onDrop = async (event: React.DragEvent) => {
     event.preventDefault()
     const file = event.dataTransfer.files[0]

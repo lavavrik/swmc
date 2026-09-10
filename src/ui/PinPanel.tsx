@@ -2,10 +2,12 @@
  * The microcontroller's pins during simulation: set what arrives on the inputs,
  * watch what leaves the outputs.
  */
+import { useState } from 'react'
 import { formatSignal } from '@/sim/format'
 import { useSimulationStore } from '@/sim/store'
 import { SIGNAL_LABELS, signalColor } from './signals'
 import type { SignalType } from '@/model/types'
+import { isDecimalDraft, parseDecimal } from './decimal'
 
 export function PinPanel() {
   const pins = useSimulationStore((s) => s.pins)
@@ -22,20 +24,22 @@ export function PinPanel() {
 
       {pins.map((pin) => {
         const value = pin.direction === 'in' ? inputs[pin.id] : outputs.get(pin.id)
+        const colour = signalColor(pin.signal as SignalType)
+        // Same as the canvas: inputs are rings, outputs are solid
         return (
           <div key={pin.id} className="pin-row">
             <span
-              className="port-swatch"
-              style={{ background: signalColor(pin.signal as SignalType) }}
+              className={`port-swatch port-swatch-${pin.direction}`}
+              style={pin.direction === 'in' ? { borderColor: colour } : { background: colour }}
+              title={pin.direction === 'in' ? 'input' : 'output'}
             />
             <span className="pin-label" title={SIGNAL_LABELS[pin.signal as SignalType]}>
               {pin.label}
             </span>
             {pin.direction === 'in' && pin.signal === 'number' && (
-              <input
-                type="number"
+              <PinNumberField
                 value={typeof value === 'number' ? value : 0}
-                onChange={(e) => setInput(pin.id, Number(e.target.value))}
+                onChange={(n) => setInput(pin.id, n)}
               />
             )}
             {pin.direction === 'in' && pin.signal === 'onoff' && (
@@ -52,5 +56,31 @@ export function PinPanel() {
         )
       })}
     </aside>
+  )
+}
+
+/** Text field so "0." and "0," survive; `type="number"` would swallow the separator. */
+function PinNumberField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  return (
+    <input
+      className="pin-number"
+      type="text"
+      inputMode="decimal"
+      value={draft ?? String(value)}
+      onFocus={() => setDraft(String(value))}
+      onChange={(e) => {
+        const raw = e.target.value
+        if (!isDecimalDraft(raw)) return
+        setDraft(raw)
+        const n = parseDecimal(raw)
+        if (n !== null) onChange(n)
+      }}
+      onBlur={() => {
+        const n = draft === null ? value : (parseDecimal(draft) ?? 0)
+        setDraft(null)
+        onChange(n)
+      }}
+    />
   )
 }

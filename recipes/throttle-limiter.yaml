@@ -1,0 +1,29 @@
+# Clamps a throttle request and doubles it. Same idea as the game fixture
+# in src/io/__fixtures__/throttle.xml, written as a named recipe.
+name: Throttle Limiter
+description: Clamps the throttle
+width: 1
+length: 1
+pins:
+  - id: throttle_in
+    dir: in
+    signal: number
+    label: Throttle In
+    description: the requested throttle
+  - id: throttle_out
+    dir: out
+    signal: number
+    label: Throttle Out
+    description: the limited throttle
+nodes:
+  - id: clamp
+    type: arithmetic.clamp
+    min: 0
+    max: 0.75
+  - id: scale
+    type: arithmetic.function1
+    expression: x*2
+wires:
+  - { from: throttle_in, to: clamp }
+  - { from: clamp, to: scale }
+  - { from: scale, to: throttle_out }

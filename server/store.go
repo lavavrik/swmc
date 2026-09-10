@@ -28,6 +28,7 @@ var (
 type Summary struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
+	Description    string `json:"description,omitempty"`
 	UpdatedAt      int64  `json:"updatedAt"`
 	ComponentCount int    `json:"componentCount"`
 }
@@ -153,13 +154,14 @@ func (s *Store) stat(id string) (Summary, error) {
 }
 
 func summarize(id string, data []byte, mtime time.Time) Summary {
-	name, count := xmlMeta(data)
+	name, description, count := xmlMeta(data)
 	if name == "" {
 		name = id
 	}
 	return Summary{
 		ID:             id,
 		Name:           name,
+		Description:    description,
 		UpdatedAt:      mtime.UnixMilli(),
 		ComponentCount: count,
 	}
@@ -172,10 +174,11 @@ func looksLikeMC(doc string) bool {
 // xmlMeta reads the root name attribute and counts component elements. It is
 // deliberately not a full parse — the editor is the codec; we only need enough
 // to fill the open-dialog list.
-func xmlMeta(data []byte) (name string, components int) {
+func xmlMeta(data []byte) (name, description string, components int) {
 	var root struct {
-		Name string `xml:"name,attr"`
+		Name        string `xml:"name,attr"`
+		Description string `xml:"description,attr"`
 	}
 	_ = xml.Unmarshal(data, &root)
-	return html.UnescapeString(root.Name), strings.Count(string(data), `<c type="`)
+	return html.UnescapeString(root.Name), html.UnescapeString(root.Description), strings.Count(string(data), `<c type="`)
 }
