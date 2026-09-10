@@ -12,7 +12,10 @@ import (
 	"time"
 )
 
-var app *App
+var (
+	app     *App
+	initErr error
+)
 
 const cookieName = "swmc_session"
 
@@ -20,10 +23,21 @@ const cookieName = "swmc_session"
 func Init() error {
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
-		return errors.New("DATABASE_URL is required")
+		initErr = errors.New("DATABASE_URL is required")
+		return initErr
 	}
-	store, err := Open(context.Background(), url)
+	var store *Store
+	var err error
+	for i := 0; i < 12; i++ {
+		store, err = Open(context.Background(), url)
+		if err == nil {
+			break
+		}
+		slog.Error("postgres not ready", "attempt", i+1, "err", err)
+		time.Sleep(2 * time.Second)
+	}
 	if err != nil {
+		initErr = err
 		return err
 	}
 	app = newApp(store, os.Getenv("ALLOWED_ORIGIN"))
@@ -34,7 +48,11 @@ func Init() error {
 // Handle is the required cloudhost entry point.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	if app == nil {
-		http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+		msg := "service unavailable"
+		if initErr != nil {
+			msg = initErr.Error()
+		}
+		http.Error(w, msg, http.StatusServiceUnavailable)
 		return
 	}
 	app.ServeHTTP(w, r)
