@@ -41,6 +41,13 @@ type User struct {
 }
 
 func Open(ctx context.Context, url string) (*Store, error) {
+	if !strings.Contains(url, "sslmode=") {
+		if strings.Contains(url, "?") {
+			url += "&sslmode=disable"
+		} else {
+			url += "?sslmode=disable"
+		}
+	}
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {
 		return nil, err
