@@ -61,7 +61,7 @@ export async function listProjects(): Promise<ProjectSummary[]> {
 }
 
 export async function saveProject(doc: Microcontroller, now: number): Promise<StoredProject> {
-  const xml = serializeMicrocontroller(doc)
+  const xml = serializeMicrocontroller(doc, { minifyLua: false })
   const project: StoredProject = {
     id: projectId(doc.meta.name),
     name: doc.meta.name,
@@ -111,13 +111,40 @@ export async function importFile(file: File): Promise<Result<Microcontroller>> {
   return parseMicrocontroller(text)
 }
 
+/** Game-loadable XML as a named file, for download or a drag onto a folder. */
+export function xmlFile(doc: Microcontroller): File {
+  return new File([serializeMicrocontroller(doc)], `${projectId(doc.meta.name)}.xml`, {
+    type: 'application/xml',
+  })
+}
+
 /** Offers the document to the user as an `.xml` download. */
 export function exportFile(doc: Microcontroller): void {
-  const blob = new Blob([serializeMicrocontroller(doc)], { type: 'application/xml' })
-  const url = URL.createObjectURL(blob)
+  const file = xmlFile(doc)
+  const url = URL.createObjectURL(file)
   const link = document.createElement('a')
   link.href = url
-  link.download = `${projectId(doc.meta.name)}.xml`
+  link.download = file.name
   link.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Puts the microcontroller on a drag so Chromium can drop it onto a folder.
+ * `DownloadURL` is a Chrome/Edge type; other browsers keep click-to-download.
+ */
+export function startXmlDrag(transfer: DataTransfer, doc: Microcontroller): void {
+  const file = xmlFile(doc)
+  const url = URL.createObjectURL(file)
+  transfer.effectAllowed = 'copy'
+  transfer.setData('DownloadURL', `application/xml:${file.name}:${url}`)
+  transfer.setData('text/uri-list', url)
+  transfer.setData('text/plain', file.name)
+  try {
+    transfer.items.add(file)
+  } catch {
+    // Some browsers only accept strings on the drag store
+  }
+  const done = () => URL.revokeObjectURL(url)
+  window.addEventListener('dragend', done, { once: true })
 }

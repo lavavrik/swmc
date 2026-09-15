@@ -4,21 +4,25 @@
  * Positions are grid units, the same space `GraphNode.position` uses. Agents
  * do not have to pick coordinates; an explicit `position` on a node still wins.
  *
- * Columns are a component plus an empty channel so the stub-and-diagonal wires
- * have room; rows leave a full game unit between cards. Within a column, a
- * node sits at the median y of the nodes that feed it, then packs downward
- * so cards do not overlap.
+ * Columns are a component plus a one-unit wire channel. Stacked cards touch
+ * top-to-bottom. Within a column, a node sits at the median y of the nodes
+ * that feed it, then packs downward.
  */
-import { componentHeightUnits, COMPONENT_WIDTH_UNITS } from '@/library/geometry'
+import {
+  COMPONENT_WIDTH_UNITS,
+  EDITOR_WIDTH_SCALE,
+  componentHeightUnits,
+} from '@/library/geometry'
 import { getComponent } from '@/library/registry'
 import { POSITION_SCALE } from '@/io/schema'
 import { setPositions } from '@/model/ops'
 import type { GraphNode, Microcontroller, NodeId, Point } from '@/model/types'
 
-/** Component width plus three game units of wire channel. */
-export const COL_STRIDE = COMPONENT_WIDTH_UNITS * POSITION_SCALE + 3 * POSITION_SCALE
-/** One game unit of air between stacked cards. */
-export const ROW_GAP = POSITION_SCALE
+/** Component width plus one game unit of wire channel. */
+export const COL_STRIDE =
+  COMPONENT_WIDTH_UNITS * EDITOR_WIDTH_SCALE * POSITION_SCALE + POSITION_SCALE
+/** Stacked cards touch; no vertical gap. */
+export const ROW_GAP = 0
 
 function heightGrid(node: GraphNode): number {
   const def = getComponent(node.type)

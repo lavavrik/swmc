@@ -5,6 +5,7 @@
  * human-readable reason; operations that cannot fail return the document
  * directly. Nothing here throws on user error, and nothing mutates its input.
  */
+import { packIoFaces } from './ioLayout'
 import { err, ok, type Result } from './result'
 import type { GraphSchema } from './schema'
 import type {
@@ -83,19 +84,22 @@ export function addIoNode(
   if (!added.ok) return added
   return ok({
     id: added.value.id,
-    doc: { ...added.value.doc, ioOrder: [...added.value.doc.ioOrder, added.value.id] },
+    doc: packIoFaces({
+      ...added.value.doc,
+      ioOrder: [...added.value.doc.ioOrder, added.value.id],
+    }),
   })
 }
 
 export function removeNodes(doc: Microcontroller, ids: readonly NodeId[]): Microcontroller {
   const doomed = new Set(ids)
   if (doomed.size === 0) return doc
-  return {
+  return packIoFaces({
     ...doc,
     nodes: doc.nodes.filter((n) => !doomed.has(n.id)),
     wires: doc.wires.filter((w) => !doomed.has(w.from.node) && !doomed.has(w.to.node)),
     ioOrder: doc.ioOrder.filter((id) => !doomed.has(id)),
-  }
+  })
 }
 
 export function moveNodes(
@@ -240,7 +244,7 @@ export function setProperty(
 export function setMeta(doc: Microcontroller, meta: Partial<MicrocontrollerMeta>): Microcontroller {
   const width = clampSize(meta.width ?? doc.meta.width)
   const length = clampSize(meta.length ?? doc.meta.length)
-  return { ...doc, meta: { ...doc.meta, ...meta, width, length } }
+  return packIoFaces({ ...doc, meta: { ...doc.meta, ...meta, width, length } })
 }
 
 /** The game allows microcontroller blocks from 1x1 up to 6x6. */
@@ -266,7 +270,7 @@ export function setNodeType(
     ...doc,
     nodes: doc.nodes.map((n) => (n.id === id ? { ...n, type } : n)),
   }
-  return ok(pruneDanglingWires(schema, retyped))
+  return ok(packIoFaces(pruneDanglingWires(schema, retyped)))
 }
 
 /**
@@ -292,7 +296,7 @@ export function reorderIoNodes(
   const next = [...order].sort()
   const same = current.length === next.length && current.every((id, i) => id === next[i])
   if (!same) return err('the new order must contain exactly the current pins')
-  return ok({ ...doc, ioOrder: [...order] })
+  return ok(packIoFaces({ ...doc, ioOrder: [...order] }))
 }
 
 export interface Subgraph {

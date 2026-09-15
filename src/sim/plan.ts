@@ -38,9 +38,37 @@ export function planEvaluation(doc: Microcontroller): EvaluationPlan {
     }
   }
 
-  // Whatever is left sits in a cycle; append it in document order
-  const placed = new Set(order)
-  for (const node of doc.nodes) if (!placed.has(node.id)) order.push(node.id)
+  // Cycles cannot finish Kahn. Place leftover by the same ready-list rule,
+  // breaking a cycle on a node that still feeds someone (not a sink pin), so
+  // an output pin after a slew still sees this tick.
+  const remaining = new Set(doc.nodes.map((n) => n.id).filter((id) => !order.includes(id)))
+  const leftIn = new Map([...remaining].map((id) => [id, 0]))
+  for (const wire of doc.wires) {
+    if (remaining.has(wire.from.node) && remaining.has(wire.to.node)) {
+      leftIn.set(wire.to.node, (leftIn.get(wire.to.node) ?? 0) + 1)
+    }
+  }
+  const nextLeftover = (): NodeId | null => {
+    for (const node of doc.nodes) {
+      if (remaining.has(node.id) && (leftIn.get(node.id) ?? 0) === 0) return node.id
+    }
+    for (const node of doc.nodes) {
+      if (!remaining.has(node.id)) continue
+      if ((dependents.get(node.id) ?? []).some((id) => remaining.has(id))) return node.id
+    }
+    for (const node of doc.nodes) if (remaining.has(node.id)) return node.id
+    return null
+  }
+  while (remaining.size > 0) {
+    const id = nextLeftover()
+    if (!id) break
+    remaining.delete(id)
+    order.push(id)
+    for (const next of dependents.get(id) ?? []) {
+      if (!remaining.has(next)) continue
+      leftIn.set(next, (leftIn.get(next) ?? 1) - 1)
+    }
+  }
 
   const position = new Map(order.map((id, i) => [id, i]))
   const backEdges = new Set<WireId>()

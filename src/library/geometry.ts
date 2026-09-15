@@ -11,8 +11,11 @@ import { resolvePorts } from './ports'
 import type { NodeProperties } from '@/model/schema'
 import type { ComponentDef } from './types'
 
-/** Every component is one game unit wide, whatever it does. */
+/** Every component is one game unit wide, as the game draws them. */
 export const COMPONENT_WIDTH_UNITS = 1
+
+/** Editor cards use the same width as the game. */
+export const EDITOR_WIDTH_SCALE = 1
 
 /** A port row is a quarter unit, and a card has a quarter unit of surround. */
 export const PORT_ROW_UNITS = 0.25

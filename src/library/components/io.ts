@@ -19,9 +19,10 @@ const SIGNAL_NAMES: Record<SignalType, string> = {
 }
 
 /**
- * `faceX` and `faceZ` place the pin on the block's face, and `nodeId` is the
- * identifier the vehicle uses for it — both come straight from a saved file and
- * are kept so imports round-trip.
+ * `faceX` and `faceZ` place the pin on the block's face in the vehicle, and
+ * `nodeId` is the identifier the vehicle uses for it — both come straight from
+ * a saved file and are kept so imports round-trip. Face coordinates are hidden
+ * in the editor (pin order on the list is what the user edits).
  */
 const labelProperties = [
   { kind: 'text', key: 'label', label: 'Name', default: '' },

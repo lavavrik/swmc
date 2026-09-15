@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hybrid Full — Stormworks connections</title>
+    <style>
+      :root {
+        --bg: #141a1d;
+        --panel: #22282b;
+        --line: #3d474c;
+        --text: #e8eef0;
+        --dim: #8b989d;
+        --onoff: #e51937;
+        --number: #22b14c;
+        --composite: #7a3ff0;
+        --electric: #e6c200;
+        --pipe: #4ec4e0;
+        --rps: #e08830;
+        --block: #2c3438;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.35 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      }
+      header {
+        padding: 18px 28px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+      header p { margin: 6px 0 0; color: var(--dim); max-width: 72em; }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px 22px;
+        padding: 12px 28px;
+        color: var(--dim);
+        font-size: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .key { display: flex; align-items: center; gap: 8px; }
+      .key i { display: block; }
+      .page { padding: 18px 28px 48px; display: grid; gap: 22px; }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px 14px;
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+      svg.board {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #101518;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 22px;
+      }
+      .face {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(6, 36px);
+        gap: 3px;
+      }
+      .cell {
+        background: var(--block);
+        border-radius: 3px;
+        padding: 4px 5px;
+        font-size: 10px;
+        line-height: 1.15;
+        color: var(--dim);
+      }
+      .cell strong { display: block; color: var(--text); font-size: 11px; }
+      .notes { color: var(--dim); font-size: 12px; }
+      .notes p { margin: 0 0 8px; }
+      .notes code {
+        color: var(--text);
+        background: #151b1e;
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Hybrid Full — Stormworks connections</h1>
+      <p>
+        Pipes are universal: the same pipe blocks carry <strong>RPS / torque</strong> and
+        <strong>fluid</strong> (fuel, air, exhaust, coolant). A cross can carry both at once.
+        Clutches and gearboxes pass RPS, not fluid. Electric and logic are separate overlays.
+      </p>
+    </header>
+    <div class="legend">
+      <span class="key"><i style="width:28px;height:6px;background:#e08830;border-radius:99px"></i>pipe — RPS / torque</span>
+      <span class="key"><i style="width:28px;height:6px;background:#4ec4e0;border-radius:99px"></i>pipe — fluid</span>
+      <span class="key"><i style="width:28px;height:3px;background:#e6c200"></i>electric</span>
+      <span class="key"><i style="width:10px;height:10px;border:2px solid #e51937;border-radius:50%"></i>on/off</span>
+      <span class="key"><i style="width:10px;height:10px;border:2px solid #22b14c;border-radius:50%"></i>number</span>
+      <span class="key"><i style="width:10px;height:10px;border:2px solid #7a3ff0;border-radius:50%"></i>composite</span>
+      <span>rings = MCU in · fills = MCU out</span>
+    </div>
+    <div class="page">
+      <svg class="board" viewBox="0 0 1280 700" role="img" aria-label="Stormworks vehicle connections">
+        <defs>
+          <filter id="soft"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-opacity="0.35"/></filter>
+        </defs>
+
+        <text x="24" y="24" fill="#e08830" font-size="11" letter-spacing="1.4">PIPES — RPS / TORQUE</text>
+        <text x="24" y="268" fill="#4ec4e0" font-size="11" letter-spacing="1.4">PIPES — FLUID</text>
+        <text x="24" y="368" fill="#e6c200" font-size="11" letter-spacing="1.4">ELECTRIC</text>
+        <text x="24" y="500" fill="#8b989d" font-size="11" letter-spacing="1.4">LOGIC  →  microcontroller</text>
+
+        <!-- drivetrain pipe -->
+        <g fill="none" stroke="#e08830" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M280 88 H 1000"/>
+          <path d="M230 88 V 148"/>
+          <path d="M880 88 V 148 H 1008"/>
+        </g>
+        <g fill="#e08830">
+          <circle cx="230" cy="88" r="6"/>
+          <circle cx="880" cy="88" r="6"/>
+          <circle cx="230" cy="148" r="5"/>
+          <circle cx="1008" cy="148" r="5"/>
+        </g>
+
+        <g font-size="12" text-anchor="middle" filter="url(#soft)">
+          <rect x="180" y="62" width="100" height="52" rx="3" fill="#3a3328" stroke="#6a5a40"/>
+          <text x="230" y="84" fill="#e8eef0" font-weight="600">Engine</text>
+          <text x="230" y="100" fill="#8b989d" font-size="10">+ ECU</text>
+
+          <rect x="300" y="70" width="100" height="36" rx="3" fill="#2c3438" stroke="#e08830"/>
+          <text x="350" y="92" fill="#e8eef0" font-size="11">Starter clutch</text>
+
+          <rect x="420" y="62" width="96" height="52" rx="3" fill="#243a32" stroke="#3d6a55"/>
+          <text x="468" y="84" fill="#e8eef0" font-weight="600">Motor</text>
+          <text x="468" y="100" fill="#8b989d" font-size="10">starter too</text>
+
+          <rect x="536" y="70" width="96" height="36" rx="3" fill="#2c3438" stroke="#e08830"/>
+          <text x="584" y="92" fill="#e8eef0" font-size="11">Drive clutch</text>
+
+          <rect x="652" y="66" width="68" height="44" rx="3" fill="#2e3340" stroke="#e51937"/>
+          <text x="686" y="84" fill="#e8eef0" font-weight="600">GB1</text>
+          <text x="686" y="100" fill="#8b989d" font-size="9">→ mot 1:1/6:5</text>
+
+          <rect x="736" y="66" width="68" height="44" rx="3" fill="#2e3340" stroke="#e51937"/>
+          <text x="770" y="84" fill="#e8eef0" font-weight="600">GB2</text>
+          <text x="770" y="100" fill="#8b989d" font-size="9">→ mot 1:1/3:2</text>
+
+          <rect x="820" y="66" width="68" height="44" rx="3" fill="#2e3340" stroke="#e51937"/>
+          <text x="854" y="84" fill="#e8eef0" font-weight="600">GB3</text>
+          <text x="854" y="100" fill="#8b989d" font-size="9">← mot 2:1/1:1</text>
+
+          <rect x="908" y="62" width="92" height="52" rx="3" fill="#2a3d44" stroke="#5a7a84"/>
+          <text x="954" y="84" fill="#e8eef0" font-weight="600">Wheels</text>
+          <text x="954" y="100" fill="#8b989d" font-size="10">+ RPS sensor</text>
+
+          <rect x="178" y="148" width="104" height="36" rx="3" fill="#2c3438" stroke="#e08830"/>
+          <text x="230" y="170" fill="#e8eef0" font-size="11">Engine Gen clutch</text>
+          <rect x="178" y="192" width="104" height="32" rx="3" fill="#3a3220" stroke="#c4a35a"/>
+          <text x="230" y="212" fill="#e8eef0" font-size="11">Generator</text>
+
+          <rect x="1008" y="148" width="104" height="36" rx="3" fill="#2c3438" stroke="#e08830"/>
+          <text x="1060" y="170" fill="#e8eef0" font-size="11">Regen clutch</text>
+          <rect x="1008" y="192" width="104" height="32" rx="3" fill="#3a3220" stroke="#c4a35a"/>
+          <text x="1060" y="212" fill="#e8eef0" font-size="11">Generator</text>
+        </g>
+        <text x="584" y="128" fill="#8b989d" font-size="10">0 while cranking</text>
+        <text x="290" y="162" fill="#8b989d" font-size="10">on the engine, not via the motor</text>
+
+        <!-- fuel left of the engine, not through the genset -->
+        <rect x="24" y="70" width="88" height="44" rx="3" fill="#1c333a" stroke="#4ec4e0"/>
+        <text x="68" y="88" text-anchor="middle" fill="#e8eef0" font-size="12" font-weight="600">Fuel tank</text>
+        <text x="68" y="104" text-anchor="middle" fill="#8b989d" font-size="9">diesel</text>
+        <path d="M112 88 H 180" fill="none" stroke="#4ec4e0" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="112" cy="88" r="5" fill="#4ec4e0"/>
+        <circle cx="180" cy="88" r="5" fill="#4ec4e0"/>
+        <text x="146" y="78" text-anchor="middle" fill="#4ec4e0" font-size="10">fuel in</text>
+        <text x="24" y="292" fill="#8b989d" font-size="11">Modular engines also need air / exhaust / coolant loops — same pipe tool, not this MCU.</text>
+
+        <!-- electric bus -->
+        <line x1="24" y1="420" x2="1120" y2="420" stroke="#e6c200" stroke-width="4"/>
+        <g stroke="#e6c200" stroke-width="2">
+          <line x1="230" y1="114" x2="230" y2="420"/>
+          <line x1="468" y1="114" x2="468" y2="420"/>
+          <line x1="686" y1="110" x2="686" y2="420"/>
+          <line x1="770" y1="110" x2="770" y2="420"/>
+          <line x1="854" y1="110" x2="854" y2="420"/>
+          <line x1="230" y1="224" x2="230" y2="420"/>
+          <line x1="1060" y1="224" x2="1060" y2="420"/>
+          <line x1="1200" y1="80" x2="1200" y2="420"/>
+        </g>
+        <rect x="500" y="400" width="120" height="40" rx="3" fill="#3a3220" stroke="#e6c200"/>
+        <text x="560" y="424" text-anchor="middle" fill="#e8eef0" font-size="13" font-weight="600">Battery</text>
+        <text x="24" y="448" fill="#8b989d" font-size="10">Power: ECU, motors, gearboxes (to shift), generators, MCU. Charge 0..1 is a number, not this yellow node.</text>
+
+        <!-- MCU -->
+        <rect x="1140" y="48" width="128" height="240" rx="6" fill="#22282b" stroke="#5a656b"/>
+        <text x="1204" y="70" text-anchor="middle" fill="#e8eef0" font-size="13" font-weight="600">MCU 4×6</text>
+        <text x="1204" y="86" text-anchor="middle" fill="#8b989d" font-size="10">Hybrid Full</text>
+        <g font-size="9" fill="#8b989d">
+          <circle cx="1154" cy="108" r="5" fill="none" stroke="#e51937" stroke-width="2"/>
+          <text x="1164" y="111">Ignition</text>
+          <circle cx="1154" cy="128" r="5" fill="none" stroke="#7a3ff0" stroke-width="2"/>
+          <text x="1164" y="131">Seat</text>
+          <circle cx="1154" cy="148" r="5" fill="none" stroke="#e51937" stroke-width="2"/>
+          <text x="1164" y="151">Reverse</text>
+          <circle cx="1154" cy="168" r="5" fill="none" stroke="#e51937" stroke-width="2"/>
+          <text x="1164" y="171">EV / hold</text>
+          <circle cx="1154" cy="188" r="5" fill="none" stroke="#22b14c" stroke-width="2"/>
+          <text x="1164" y="191">Eng RPS</text>
+          <circle cx="1154" cy="208" r="5" fill="none" stroke="#22b14c" stroke-width="2"/>
+          <text x="1164" y="211">Battery %</text>
+          <circle cx="1154" cy="228" r="5" fill="none" stroke="#22b14c" stroke-width="2"/>
+          <text x="1164" y="231">Wheel RPS</text>
+
+          <circle cx="1254" cy="108" r="5" fill="#e51937"/>
+          <text x="1248" y="111" text-anchor="end">Engine</text>
+          <circle cx="1254" cy="128" r="5" fill="#22b14c"/>
+          <text x="1248" y="131" text-anchor="end">Eng thr</text>
+          <circle cx="1254" cy="148" r="5" fill="#22b14c"/>
+          <text x="1248" y="151" text-anchor="end">Starter</text>
+          <circle cx="1254" cy="168" r="5" fill="#22b14c"/>
+          <text x="1248" y="171" text-anchor="end">Drive cl</text>
+          <circle cx="1254" cy="188" r="5" fill="#22b14c"/>
+          <text x="1248" y="191" text-anchor="end">Eng gen</text>
+          <circle cx="1254" cy="208" r="5" fill="#22b14c"/>
+          <text x="1248" y="211" text-anchor="end">Regen</text>
+          <circle cx="1254" cy="228" r="5" fill="#22b14c"/>
+          <text x="1248" y="231" text-anchor="end">Motor</text>
+          <circle cx="1254" cy="248" r="5" fill="#e51937"/>
+          <text x="1248" y="251" text-anchor="end">Rev / GB</text>
+        </g>
+
+        <rect x="24" y="528" width="100" height="44" rx="3" fill="#2a3d44" stroke="#5a7a84"/>
+        <text x="74" y="548" text-anchor="middle" fill="#e8eef0" font-size="12" font-weight="600">Seat</text>
+        <text x="74" y="562" text-anchor="middle" fill="#8b989d" font-size="9">key · reverse · data</text>
+        <rect x="140" y="534" width="88" height="32" rx="3" fill="#2c3438" stroke="#e51937"/>
+        <text x="184" y="554" text-anchor="middle" fill="#e8eef0" font-size="11">EV / Hold</text>
+
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M124 550 H 1154" stroke="#7a3ff0" stroke-width="2"/>
+          <path d="M74 528 V 488 H 1154" stroke="#e51937" stroke-width="2"/>
+          <path d="M184 534 V 508 H 1154" stroke="#e51937" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <path d="M230 62 V 36 H 1254 V 108" stroke="#e51937" stroke-width="2"/>
+          <path d="M242 36 H 1254" stroke="#22b14c" stroke-width="2" opacity="0.85"/>
+          <path d="M230 114 V 188 H 1254" stroke="#22b14c" stroke-width="1.6"/>
+          <path d="M350 70 V 44 H 1254" stroke="#22b14c" stroke-width="1.6"/>
+          <path d="M584 70 V 48 H 1254" stroke="#22b14c" stroke-width="1.6"/>
+          <path d="M1060 148 H 1254" stroke="#22b14c" stroke-width="1.6"/>
+          <path d="M468 62 V 32 H 1254" stroke="#22b14c" stroke-width="2"/>
+          <path d="M686 66 V 20 H 1254" stroke="#e51937" stroke-width="1.8"/>
+          <path d="M770 20 H 1254" stroke="#e51937" stroke-width="1.8"/>
+          <path d="M854 20 H 1254" stroke="#e51937" stroke-width="1.8"/>
+          <path d="M954 114 V 228 H 1154" stroke="#22b14c" stroke-width="1.6"/>
+          <path d="M560 400 V 208 H 1154" stroke="#22b14c" stroke-width="1.6"/>
+        </g>
+
+        <text x="24" y="620" fill="#8b989d" font-size="11">
+          Seat data composite: number ch 2 = W/S (W throttle, S brake). Reverse is its own on/off node on the seat.
+        </text>
+        <text x="24" y="638" fill="#8b989d" font-size="11">
+          Crank: Starter clutch = 1 until RPS 3, Drive clutch = 0, Motor = Starter throttle. Charge is Engine Gen on the engine pipe.
+        </text>
+        <text x="24" y="656" fill="#8b989d" font-size="11">
+          Generator T-offs are pipe T-junctions into a clutch, then a pipe into the generator. Crosses can carry RPS and fluid together; clutches/gearboxes pass RPS only.
+        </text>
+      </svg>
+
+      <div class="cols">
+        <div class="card">
+          <h2>MCU face 4×6</h2>
+          <div class="face">
+            <div class="cell"><strong>Ignition</strong>in on/off</div>
+            <div class="cell"><strong>Battery</strong>in number</div>
+            <div class="cell"><strong>Motor</strong>out number</div>
+            <div class="cell"><strong>Engine</strong>out on/off</div>
+            <div class="cell"><strong>Seat</strong>in composite</div>
+            <div class="cell"><strong>Wheel RPS</strong>in number</div>
+            <div class="cell"><strong>Motor Reverse</strong>out on/off</div>
+            <div class="cell"><strong>Engine Throttle</strong>out number</div>
+            <div class="cell"><strong>Reverse</strong>in on/off</div>
+            <div class="cell"><strong>Physics</strong>in composite</div>
+            <div class="cell"><strong>Gearbox 1</strong>out on/off</div>
+            <div class="cell"><strong>Starter Clutch</strong>out number</div>
+            <div class="cell"><strong>EV mode</strong>in on/off</div>
+            <div class="cell"></div>
+            <div class="cell"><strong>Gearbox 2</strong>out on/off</div>
+            <div class="cell"><strong>Drive Clutch</strong>out number</div>
+            <div class="cell"><strong>Charge hold</strong>in on/off</div>
+            <div class="cell"></div>
+            <div class="cell"><strong>Gearbox 3</strong>out on/off</div>
+            <div class="cell"><strong>Engine Gen</strong>out number</div>
+            <div class="cell"><strong>Engine RPS</strong>in number</div>
+            <div class="cell"></div>
+            <div class="cell"><strong>Instruments</strong>out composite</div>
+            <div class="cell"><strong>Regen Clutch</strong>out number</div>
+          </div>
+        </div>
+        <div class="card notes">
+          <h2>Pipes are universal</h2>
+          <p><strong>RPS / torque</strong> and <strong>fluid</strong> both use the pipe tool. Straight pipes, corners, T-junctions, crosses. A cross can carry RPS and fluid at the same time.</p>
+          <p><strong>Two RPS pipes:</strong> Engine → Engine Gen → Generator (charge). Engine → Starter clutch → Motor → Drive clutch → GB → Wheels. T-off the generator from the <em>engine</em>. If it sits behind the starter clutch, charge dies when that clutch opens at Start RPS.</p>
+          <p>Clutches and gearboxes <strong>pass RPS, not fluid</strong>. Fuel/air/exhaust/coolant need their own path around those boxes (or a cross before them).</p>
+          <p><strong>Electric</strong> is still the yellow network. Gearboxes need it to switch. Battery <code>0..1</code> on the MCU is a number, not that node.</p>
+          <p><strong>Logic:</strong> Seat data (W/S = ch 2). Physics sensor (abs speed = ch 13). Instruments out: ch 1 engine RPS, ch 2 speed m/s, ch 3 battery, ch 4 gear. Wheel Brakes number to the brake pads; regen takes over as wheel RPS rises.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

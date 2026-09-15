@@ -102,7 +102,10 @@ export function PropertyPanel() {
       {def.properties.length > 0 && (
         <div className="panel-fields">
           {def.properties
-            .filter((property) => property.key !== 'script')
+            .filter(
+              (property) =>
+                property.key !== 'script' && property.key !== 'faceX' && property.key !== 'faceZ',
+            )
             .map((property) => (
               <label key={property.key}>
                 <span>{property.label}</span>

@@ -347,6 +347,27 @@
   font-size: 12px;
 }
 
+/* Chromium can drop this chip onto a folder; click still downloads. */
+.xml-drag {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px dashed #5a656b;
+  border-radius: 3px;
+  background: #1a1f22;
+  color: var(--chrome-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: grab;
+}
+
+.xml-drag:hover {
+  border-color: var(--chrome-text);
+}
+
+.xml-drag:active {
+  cursor: grabbing;
+}
+
 /* Kept in the layout and focusable, unlike `hidden`, which stops Safari and
    Firefox opening a file picker for it. */
 .visually-hidden {
@@ -784,23 +805,6 @@
 .pin-edit-head select {
   flex: 1;
   min-width: 0;
-}
-
-.pin-edit-face {
-  display: flex;
-  gap: 10px;
-}
-
-.pin-edit-face label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--chrome-text-dim);
-}
-
-.pin-edit-face input {
-  width: 64px;
 }
 
 .pin-edit-add {

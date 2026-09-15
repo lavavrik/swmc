@@ -7,6 +7,7 @@
  */
 import { parse as parseYaml } from 'yaml'
 import { getComponent } from '@/library/registry'
+import { assignPinFaces } from '@/model/ioLayout'
 import { err, ok, type Result } from '@/model/result'
 import { SIGNAL_TYPES, type PropertyValue, type SignalType } from '@/model/types'
 import type { PropertyDef } from '@/library/types'
@@ -96,25 +97,32 @@ export function recipeFromUnknown(raw: unknown): Result<Recipe> {
   }
 
   const autoLength = Math.min(6, Math.max(1, inputs.length, outputs.length, 1))
-  const autoWidth = inputs.length > 0 && outputs.length > 0 && autoLength > 1 ? 2 : 1
-
-  const sizedWidth = width.value ?? autoWidth
-  const right = Math.max(1, sizedWidth - 1)
-  const pins: PinRecipe[] = parsedPins.map((pin) => ({
+  const autoWidth = inputs.length > 0 && outputs.length > 0 ? 2 : 1
+  const placed = assignPinFaces(
+    parsedPins.map((pin) => ({
+      dir: pin.dir,
+      explicit: pin.faceExplicit,
+      faceX: pin.faceX,
+      faceZ: pin.faceZ,
+    })),
+    width.value ?? autoWidth,
+    length.value ?? autoLength,
+  )
+  const pins: PinRecipe[] = parsedPins.map((pin, i) => ({
     id: pin.id,
     dir: pin.dir,
     signal: pin.signal,
     label: pin.label,
     description: pin.description,
-    faceX: pin.faceExplicit ? pin.faceX : pin.dir === 'in' ? 0 : right,
-    faceZ: pin.faceExplicit ? pin.faceZ : (pin.dir === 'in' ? inputs : outputs).indexOf(pin),
+    faceX: placed.faces[i]!.x,
+    faceZ: placed.faces[i]!.z,
   }))
 
   return ok({
     name: name.value,
     description: description.value,
-    width: sizedWidth,
-    length: length.value ?? autoLength,
+    width: placed.width,
+    length: placed.length,
     pins,
     nodes,
     wires,

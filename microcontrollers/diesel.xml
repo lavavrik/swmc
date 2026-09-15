@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<microprocessor name="Diesel" description="Diesel + 8-speed, motor assist, regen, touch cruise. Diesel from gear 3. Shift on engine RPS (up 12, down 7). Drive clutch off below idle 5. GB1 toward off 1:1 on 6:5, GB2 toward off 1:1 on 3:2, GB3 away off 3:1 on 1:1. 1st = ×0.33." width="4" length="6" id_counter="55" id_counter_node="23">
+	<nodes>
+		<n id="1" component_id="1">
+			<node label="Ignition" mode="1" type="0" description="Seat key">
+				<position/>
+			</node>
+		</n>
+		<n id="2" component_id="2">
+			<node label="Seat" mode="1" type="5" description="Seat data — W/S ch 2 (W throttle, S brake)">
+				<position z="1"/>
+			</node>
+		</n>
+		<n id="3" component_id="3">
+			<node label="Reverse" mode="1" type="0" description="1st gear + Reverse out">
+				<position z="2"/>
+			</node>
+		</n>
+		<n id="4" component_id="4">
+			<node label="Engine RPS" mode="1" type="1" description="ECU — start/idle only">
+				<position z="3"/>
+			</node>
+		</n>
+		<n id="5" component_id="5">
+			<node label="Engine" mode="0" type="0" description="ECU run">
+				<position x="3"/>
+			</node>
+		</n>
+		<n id="6" component_id="6">
+			<node label="Engine Throttle" mode="0" type="1" description="Pedal 0..1 (0 idle)">
+				<position x="3" z="1"/>
+			</node>
+		</n>
+		<n id="7" component_id="7">
+			<node label="Clutch" mode="0" type="1" description="Drive T→GB — slow launch, holds while moving, dips + cuts throttle on shift">
+				<position x="3" z="2"/>
+			</node>
+		</n>
+		<n id="8" component_id="8">
+			<node label="Brakes" mode="0" type="1" description="Wheel brakes from seat S">
+				<position x="3" z="3"/>
+			</node>
+		</n>
+		<n id="9" component_id="9">
+			<node label="Reverse Box" mode="0" type="0" description="Optional -1:1 gearbox">
+				<position x="3" z="4"/>
+			</node>
+		</n>
+		<n id="10" component_id="10">
+			<node label="Gearbox 1" mode="0" type="0" description="Toward engine — off 1:1, on 6:5">
+				<position x="1"/>
+			</node>
+		</n>
+		<n id="11" component_id="11">
+			<node label="Gearbox 2" mode="0" type="0" description="Toward engine — off 1:1, on 3:2">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+		<n id="12" component_id="12">
+			<node label="Gearbox 3" mode="0" type="0" description="Away from engine — off 3:1 (1st–4th), on 1:1. Reduction is OFF.">
+				<position x="1" z="2"/>
+			</node>
+		</n>
+		<n id="13" component_id="13">
+			<node label="HUD" mode="0" type="6" description="Tap speed to SET cruise. Left −5, right +5, middle cancel.">
+				<position x="1" z="3"/>
+			</node>
+		</n>
+		<n id="14" component_id="14">
+			<node label="Instruments" mode="0" type="5" description="ch 1 engine RPS, ch 2 gear">
+				<position x="1" z="4"/>
+			</node>
+		</n>
+		<n id="15" component_id="15">
+			<node label="Starter Clutch" mode="0" type="1" description="T→motor — crank + drive (all gears)">
+				<position x="3" z="5"/>
+			</node>
+		</n>
+		<n id="16" component_id="16">
+			<node label="Motor" mode="0" type="1" description="Starter, then pedal (no cut on shift)">
+				<position x="1" z="5"/>
+			</node>
+		</n>
+		<n id="17" component_id="17">
+			<node label="Engine Clutch" mode="0" type="1" description="Engine→T — 1 while cranking and from Diesel from gear">
+				<position z="4"/>
+			</node>
+		</n>
+		<n id="18" component_id="18">
+			<node label="Battery" mode="1" type="1" description="Charge 0..1">
+				<position z="5"/>
+			</node>
+		</n>
+		<n id="19" component_id="19">
+			<node label="Physics" mode="1" type="5" description="Physics sensor — spd ch 13, alt Y ch 2, hdg ch 17">
+				<position x="2"/>
+			</node>
+		</n>
+		<n id="20" component_id="20">
+			<node label="Regen Clutch" mode="0" type="1" description="T→generator — coast 1, idle on pedal; 0 at 100% battery">
+				<position x="2" z="1"/>
+			</node>
+		</n>
+		<n id="21" component_id="21">
+			<node label="Shaft RPS" mode="1" type="1" description="RPS sensor after the motor — shifts on this">
+				<position x="2" z="2"/>
+			</node>
+		</n>
+		<n id="22" component_id="22">
+			<node label="Fuel" mode="1" type="1" description="Tank litres">
+				<position x="2" z="3"/>
+			</node>
+		</n>
+		<n id="23" component_id="23">
+			<node label="Touch" mode="1" type="5" description="Monitor composite. Tap speed to SET; − / + chips once on.">
+				<position x="2" z="4"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data>
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="34">
+				<object id="24" n="Start RPS">
+					<pos x="2" y="-0.5"/>
+					<v text="3" value="3"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="25" n="Idle RPS">
+					<pos x="2" y="-1"/>
+					<v text="5" value="5"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="26" n="Upshift RPS">
+					<pos x="2" y="-1.5"/>
+					<v text="12" value="12"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="27" n="Downshift RPS">
+					<pos x="2" y="-2"/>
+					<v text="7" value="7"/>
+				</object>
+			</c>
+			<c type="19">
+				<object id="28" name="Clutch fade">
+					<pos x="2" y="-2.5"/>
+					<min text="0.005" value="0.005"/>
+					<max text="0.08" value="0.08"/>
+					<int text="0.005" value="0.005"/>
+					<v text="0.025" value="0.025"/>
+				</object>
+			</c>
+			<c type="19">
+				<object id="29" name="Shift fade">
+					<pos x="2" y="-3"/>
+					<min text="0.01" value="0.01"/>
+					<max text="0.15" value="0.15"/>
+					<int text="0.01" value="0.01"/>
+					<v text="0.09" value="0.09"/>
+				</object>
+			</c>
+			<c type="19">
+				<object id="30" name="Starter throttle">
+					<pos x="2" y="-3.5"/>
+					<min text="0" value="0"/>
+					<max text="1" value="1"/>
+					<int text="0.05" value="0.05"/>
+					<v text="0.4" value="0.4"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="31" n="Hybrid gears">
+					<pos x="2" y="-4"/>
+					<v text="4" value="4"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="32" n="Diesel from gear">
+					<pos x="2" y="-4.5"/>
+					<v text="3" value="3"/>
+				</object>
+			</c>
+			<c type="34">
+				<object id="33" n="Fuel tank L">
+					<pos x="2" y="-5"/>
+					<v text="658" value="658"/>
+				</object>
+			</c>
+			<c type="19">
+				<object id="34" name="Regen idle">
+					<pos x="2" y="-5.5"/>
+					<min text="0" value="0"/>
+					<max text="0.5" value="0.5"/>
+					<int text="0.05" value="0.05"/>
+					<v text="0.4" value="0.4"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="35" i="1">
+					<pos x="2" y="-6"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="36" i="12">
+					<pos x="2" y="-6.5"/>
+					<in1 component_id="19"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="37" i="1">
+					<pos x="2" y="-7"/>
+					<in1 component_id="19"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="38" i="16">
+					<pos x="2" y="-7.5"/>
+					<in1 component_id="19"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="39" offset="6" count="19">
+					<pos x="4" y="-8.5"/>
+					<in1 component_id="4"/>
+					<in2 component_id="35"/>
+					<in3 component_id="24"/>
+					<in4 component_id="25"/>
+					<in5 component_id="26"/>
+					<in6 component_id="27"/>
+					<in7 component_id="28"/>
+					<in8 component_id="30"/>
+					<in9 component_id="29"/>
+					<in10 component_id="31"/>
+					<in11 component_id="18"/>
+					<in12 component_id="36"/>
+					<in13 component_id="38"/>
+					<in14 component_id="37"/>
+					<in15 component_id="34"/>
+					<in16 component_id="32"/>
+					<in17 component_id="21"/>
+					<in18 component_id="22"/>
+					<in19 component_id="33"/>
+					<inc component_id="23"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="40" offset="2" count="2">
+					<pos x="6" y="-2"/>
+					<inc component_id="39"/>
+					<in1 component_id="1"/>
+					<in2 component_id="3"/>
+				</object>
+			</c>
+			<c type="56">
+				<object id="41" script="b=1 m=0 E=0 h=0 F=0 G=false H=false o=false aB=0 S=0 ap=false e=false g=0 aC=false i=0 aq=0 p=0 q=0.3 L=0 ad=0 aD=96 aE=32 j=false aF={rps=0,gear=1,spd=0,fuel=0,bat=0,tank=100,crank=false,diesel=false,hyb=false,rev=false,coast=false,cc=false,ccv=0,n=false}function aG(M,aV,k)local a=aV-M if a&gt;k then a=k elseif a&lt;-k then a=-k end M=M+a if M&lt;0 then return 0 end if M&gt;1 then return 1 end return M end function ae(z,A,T,U,aW,N,n,ar)screen.setColor(10,12,14)screen.drawRectF(z,A,T,U)local aH=math.floor(T*math.min(math.max(aW,0),1))if aH&gt;0 then screen.setColor(N,n,ar)screen.drawRectF(z,A,aH,U)end end function as(z,A,l)local aX=#l*5+3 screen.setColor(0,0,0)screen.drawRectF(z-2,A-2,aX,9)screen.setColor(255,255,255)screen.drawText(z,A,l)end function aI(l)if l&lt;0 then l=0 elseif l&gt;1 then l=1 end local N,n=210,36 if l&lt;0.5 then n=math.floor(190*l*2)else N=math.floor(210*(1-l)*2)n=190 end return N,n,40 end function O(z,A,T,U,l,N,n,ar)screen.setColor(N,n,ar)screen.drawRectF(z,A,T,U)screen.setColor(8,10,12)screen.drawTextBox(z,A,T,U,l,0,0)end function onTick()local d=input.getBool(3)local I=input.getBool(4)local aJ=input.getBool(1)local s=input.getNumber(3)local V=input.getNumber(4)local W=input.getNumber(7)local aK=input.getNumber(8)local aL=input.getNumber(9)local aY=input.getNumber(10)local at=input.getNumber(11)local au=input.getNumber(12)local X=input.getNumber(13)local aZ=input.getNumber(14)local av=input.getNumber(15)local Y=input.getNumber(16)local af=input.getNumber(17)local ba=input.getNumber(18)local bl=input.getNumber(19)local bm=input.getNumber(20)local aw=input.getNumber(21)local P=input.getNumber(22)local Q=input.getNumber(23)local bb=input.getNumber(24)local B=input.getNumber(25)if X&lt;0.001 then X=0.025 end if B&lt;1 then B=658 end if aw&lt;0 then aw=0.4 end if av&lt;0.001 then av=0.09 end if Y&lt;0 then Y=4 end if P&lt;1 then P=3 end if af&lt;0.5 then ap=true elseif af&gt;=0.75 then ap=false end if ap then P=1 end if at&lt;1 then at=12 end if au&lt;1 then au=7 end if b&gt;=P and Q&lt;0.01 then Q=W end local f=math.max(aK,0)local ax=math.max(-aK,0)if not d then H=false G=false elseif W&gt;=aY then H=true elseif W&lt;aL then H=false G=false end local t=d and W&lt;aL if d and H and(f&gt;0.05 or I)then G=true end local bc=f-aB aB=f if f&gt;S then S=f end if(not d)or t then o=false S=0 elseif ax&gt;0.05 then o=false elseif bc&gt;0.002 then o=true S=f elseif S-f&gt;0.02 then o=false end local J=math.abs(ba)*3.6 if(not d)or I or t or ax&gt;0.08 then e=false end local Z,aa=aD,aE if Z&lt;8 then Z=96 end if aa&lt;8 then aa=32 end if s&lt;=1 and V&lt;=1 then s=s*Z V=V*aa end local r=math.max(3,math.floor(aa/10))local C=math.floor((aa-r)*0.45)local D=math.min(11,C-2)if D&lt;9 then D=9 end local bd=Z-3*D-3 local aM=Z-2*D-2 local aN=D+2 if aJ and not aC and V&gt;=r and V&lt;r+C then if s&gt;=aM and s&lt;aM+D then j=not j if j then e=false end elseif s&gt;=bd then elseif e and s&lt;D+1 then g=g-5 if g&lt;10 then g=10 end elseif e and s&gt;=aN and s&lt;aN+D then g=g+5 if g&gt;180 then g=180 end elseif not e then if J&gt;=10 then e=true g=J i=J q=f if q&lt;0.2 then q=0.2 end if q&gt;0.65 then q=0.65 end p=q L=0 aq=J end else e=false end end aC=aJ if i&lt;0.01 then i=J else i=i*0.9+J*0.1 end local ag=0 if e then G=true if h==0 then local ay=g-i L=L*0.8+(i-aq)*0.2 if math.abs(ay)&lt;2 and math.abs(L)&lt;0.06 then q=q*0.96+p*0.04 end local ah,aO=0.04,2.5 if b&gt;=P then ah=0.07 aO=1.1 end if b&gt;Y then ah=ah+0.03 end local K=q+ay*ah-L*aO if b&gt;Y then K=K+0.12 end if K&lt;0 then K=0 elseif K&gt;1 then K=1 end local k=0.01 if ay&gt;5 then k=0.02 end p=aG(p,K,k)end ag=p o=ag&gt;0.05 if ag&gt;f then f=ag end aq=i else p=0 end if(not d)or I then j=false end if j then o=false e=false end local aP=d and H and(not j)and(G or f&gt;0.05 or I or e)local ai=0 if aP then ai=1 end if(not d)or I then b=1 E=0 h=0 F=0 elseif not G and m&lt;0.2 and not j then b=1 E=0 h=0 F=0 elseif h==1 then ai=0.15 if m&lt;=0.22 then if F&lt;0 then p=p*0.88 end b=b+F if b&lt;1 then b=1 end if b&gt;8 then b=8 end F=0 h=2 end elseif h==2 then if m&gt;=0.85 or not aP then h=0 E=0 end elseif m&gt;0.85 then E=E+1 if E&gt;=12 then E=0 if(f&gt;0.05 or e)and b&lt;8 and Q&gt;at then F=1 h=1 elseif b&gt;1 and Q&lt;au then if(not e)or(g-i&gt;8)then F=-1 h=1 end end end end if not d then m=0 else local k=X if h~=0 then k=av elseif ai&lt;m then k=math.max(X*4,0.06)elseif b==1 then k=X*0.5 end m=aG(m,ai,k)end if e and h~=0 then local az=p*0.75 if az&lt;0.22 then az=0.22 end f=az end local aj=b&gt;=P local aQ=0 if d and(t or aj or j)then aQ=1 end local ak=0 if d and(aj or j)then ak=f end if h==1 and not e then ak=0 end local aR=d and H and(not t)and b&lt;=Y and o local aS=d and H and(not t)and(not o)and(not e)and(not j)and(G or m&gt;0.4)local aA=0 local al=0 if t then aA=1 al=aZ elseif aR then aA=1 al=f end local ab=0 if d and(not t)and aS then ab=1 elseif d and(not t)and j then ab=1 elseif d and aj and o then ab=aw end if af&gt;=0.99 or e then ab=0 end local n=math.floor(b-1)output.setNumber(1,ak)output.setNumber(2,m)output.setNumber(3,d and ax or 0)output.setNumber(4,b)output.setNumber(5,aA)output.setNumber(6,al)output.setNumber(7,aQ)output.setNumber(8,ab)output.setBool(1,d)output.setBool(2,I and d)output.setBool(3,n%2~=0)output.setBool(4,math.floor(n/2)%2~=0)output.setBool(5,math.floor(n/4)%2~=0)aF={rps=Q&gt;0.01 and Q or W,gear=b,spd=i,fuel=bb,bat=af,tank=B,crank=t,diesel=aj,hyb=aR,rev=I and d,coast=aS,cc=e,ccv=g,n=j,}ad=ad+1 if ad&gt;=5 then ad=0 async.httpGet(8787,string.format(&apos;/t?s=%.1f&amp;f=%.1f&amp;v=%.0f&amp;i=%.3f&amp;h=%.3f&amp;a=%.3f&amp;e=%.1f&amp;g=%d&amp;p=%d&amp;c=%.2f&amp;m=%.2f&amp;d=%.2f&amp;u=%d&amp;k=%d&apos;,J,i,g,p,q,L,g-i,b,h,m,al,ak,o and 1 or 0,e and 1 or 0))end end function httpReply()end function onDraw()local u=screen.getWidth()local am=screen.getHeight()aD=u aE=am local a=aF screen.setColor(6,8,10)screen.drawClear()local r=math.max(3,math.floor(am/10))local be=am-r local C=math.floor(be*0.45)local ac=r+C local an=math.floor(u/2)ae(0,0,u,r,a.rps/20,150,38,34)ae(0,r,u,C-1,a.spd/160,18,72,108)local c=math.min(11,C-2)if c&lt;9 then c=9 end local R=r+math.floor((C-c)/2)local aT=string.format(&apos;%.0f&apos;,a.spd)if a.cc then aT=string.format(&apos;%.0f/%.0f&apos;,a.spd,a.ccv)end local aU=2 if a.cc then aU=2*c+4 end as(aU,r+math.max(2,math.floor((C-1)/2)-2),aT)if a.cc then O(1,R,c,c,&apos;-&apos;,200,80,80)O(c+2,R,c,c,&apos;+&apos;,80,190,100)end local v,w,x,y=&apos;-&apos;,70,74,78 if a.crank then v,w,x,y=&apos;S&apos;,220,170,50 elseif a.rev then v,w,x,y=&apos;R&apos;,220,80,70 elseif a.n then v,w,x,y=&apos;N&apos;,230,220,80 elseif a.cc then v,w,x,y=&apos;P&apos;,80,200,255 elseif a.coast then v,w,x,y=&apos;C&apos;,200,90,220 elseif a.hyb and a.diesel then v,w,x,y=&apos;H&apos;,90,210,130 elseif a.hyb then v,w,x,y=&apos;E&apos;,60,190,220 elseif a.diesel then v,w,x,y=&apos;D&apos;,90,210,110 end O(u-3*c-3,R,c,c,tostring(math.floor(a.gear)),210,210,204)if a.n then O(u-2*c-2,R,c,c,&apos;N&apos;,230,220,80)else O(u-2*c-2,R,c,c,&apos;N&apos;,70,74,78)end O(u-c-1,R,c,c,v,w,x,y)local B=a.tank if B&lt;1 then B=658 end local bf,bg,bh=aI(a.fuel/B)local bi,bj,bk=aI(a.bat)local ao=am-ac ae(0,ac,an-1,ao,a.fuel/B,bf,bg,bh)as(2,ac+math.max(2,math.floor(ao/2)-2),string.format(&apos;%.0fL&apos;,a.fuel))ae(an,ac,u-an,ao,a.bat,bi,bj,bk)as(an+2,ac+math.max(2,math.floor(ao/2)-2),string.format(&apos;%.1f&apos;,a.bat*100))end">
+					<pos x="8" y="-1.75"/>
+					<in1 component_id="40"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="42" i="0">
+					<pos x="10" y="-1.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="43" i="1">
+					<pos x="10" y="-2"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="44" i="2">
+					<pos x="10" y="-2.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="45" i="3">
+					<pos x="10" y="-3"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="46" i="4">
+					<pos x="10" y="-3.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="47" i="5">
+					<pos x="10" y="-4"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="48" i="6">
+					<pos x="10" y="-4.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="49" i="7">
+					<pos x="10" y="-5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="50" i="0">
+					<pos x="10" y="-5.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="51" i="1">
+					<pos x="10" y="-6"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="52" i="2">
+					<pos x="10" y="-6.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="53" i="3">
+					<pos x="10" y="-7"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="54" i="4">
+					<pos x="10" y="-7.5"/>
+					<in1 component_id="41"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="55" offset="0" count="2">
+					<pos x="12" y="-3"/>
+					<in1 component_id="4"/>
+					<in2 component_id="45"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="0">
+				<object id="1">
+					<pos y="-0.5"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="2">
+					<pos y="-1"/>
+				</object>
+			</c>
+			<c type="0">
+				<object id="3">
+					<pos y="-1.5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="4">
+					<pos y="-2"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="5">
+					<in1 component_id="50"/>
+					<pos x="14" y="-6"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="6">
+					<in1 component_id="42"/>
+					<pos x="14" y="-1.5"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="7">
+					<in1 component_id="43"/>
+					<pos x="14" y="-2.5"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="8">
+					<in1 component_id="44"/>
+					<pos x="14" y="-3"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="9">
+					<in1 component_id="51"/>
+					<pos x="14" y="-6.5"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="10">
+					<in1 component_id="52"/>
+					<pos x="14" y="-7"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="11">
+					<in1 component_id="53"/>
+					<pos x="14" y="-7.5"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="12">
+					<in1 component_id="54"/>
+					<pos x="14" y="-8"/>
+				</object>
+			</c>
+			<c type="7">
+				<object id="13">
+					<in1 component_id="41" node_index="1"/>
+					<pos x="14" y="-2"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="14">
+					<in1 component_id="55"/>
+					<pos x="14" y="-3.5"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="15">
+					<in1 component_id="46"/>
+					<pos x="14" y="-4"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="16">
+					<in1 component_id="47"/>
+					<pos x="14" y="-4.5"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="17">
+					<in1 component_id="48"/>
+					<pos x="14" y="-5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="18">
+					<pos y="-2.5"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="19">
+					<pos y="-3"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="20">
+					<in1 component_id="49"/>
+					<pos x="14" y="-5.5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="21">
+					<pos y="-3.5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="22">
+					<pos y="-4"/>
+				</object>
+			</c>
+			<c type="4">
+				<object id="23">
+					<pos y="-4.5"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+	</group>
+</microprocessor>

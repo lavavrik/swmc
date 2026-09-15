@@ -112,6 +112,7 @@ const PROTECTED = new Set([
   'screen',
   'map',
   'async',
+  'httpReply',
   // what the game calls
   'onTick',
   'onDraw',

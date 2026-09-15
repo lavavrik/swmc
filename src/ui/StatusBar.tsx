@@ -2,6 +2,7 @@
 import { useEditorStore } from '@/editor/store'
 import { Icon } from './icons'
 import { SimulationControls } from './SimulationControls'
+import { XmlDragHandle } from './XmlDragHandle'
 
 function SizeControl({
   label,
@@ -69,6 +70,7 @@ export function StatusBar({
         placeholder="description"
         onChange={(e) => setMeta({ description: e.target.value })}
       />
+      <XmlDragHandle />
       <SizeControl label="width" value={meta.width} onChange={(width) => setMeta({ width })} />
       <SizeControl label="length" value={meta.length} onChange={(length) => setMeta({ length })} />
       <SimulationControls />

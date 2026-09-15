@@ -3,7 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { expect as unwrap } from '@/model/result'
 import { addNode, createEmpty } from '@/model/ops'
 import { librarySchema } from '@/library/registry'
-import { deleteProject, listProjects, loadProject, projectId, saveProject } from './library'
+import {
+  deleteProject,
+  listProjects,
+  loadProject,
+  projectId,
+  saveProject,
+  xmlFile,
+} from './library'
 import { serializeMicrocontroller } from './microcontroller'
 
 const sample = (name: string) => {
@@ -66,6 +73,12 @@ describe('project library', () => {
   it('falls back to a usable id for a nameless project', () => {
     expect(projectId('')).toBe('untitled')
     expect(projectId('My Nice MC!')).toBe('my-nice-mc')
+  })
+
+  it('names an export file from the project id', () => {
+    const file = xmlFile(sample('My Nice MC!'))
+    expect(file.name).toBe('my-nice-mc.xml')
+    expect(file.type).toBe('application/xml')
   })
 })
 

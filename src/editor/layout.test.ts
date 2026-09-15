@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { defaultProperties } from '@/library/defaults'
+import { componentHeightUnits } from '@/library/geometry'
 import { getComponent } from '@/library/registry'
 import {
   CARD,
@@ -19,7 +21,7 @@ const def = (id: string): ComponentDef => {
 }
 
 /** Height in game units, which is how the game records it. */
-const heightUnits = (id: string) => defaultLayout(def(id)).height / GAME_UNIT
+const heightUnits = (id: string) => componentHeightUnits(def(id), defaultProperties(def(id)))
 
 describe('card layout', () => {
   it('makes every component one game unit wide, as the game does', () => {

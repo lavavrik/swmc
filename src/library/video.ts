@@ -57,6 +57,7 @@ export const BLANK_FRAME: VideoFrame = { kind: 'video', commands: [], width: 32,
 export const MONITORS = [
   { label: '1×1', width: 32, height: 32 },
   { label: '2×1', width: 64, height: 32 },
+  { label: '3×1', width: 96, height: 32 },
   { label: '2×2', width: 64, height: 64 },
   { label: '3×2', width: 96, height: 64 },
   { label: '3×3', width: 96, height: 96 },

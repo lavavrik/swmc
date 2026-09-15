@@ -120,24 +120,6 @@ export function PinEditor({ onClose }: { onClose: () => void }) {
               value={String(pin.properties.description ?? '')}
               onChange={(e) => setProperty(pin.id, 'description', e.target.value)}
             />
-            <div className="pin-edit-face">
-              <label>
-                <span>face x</span>
-                <input
-                  type="number"
-                  value={Number(pin.properties.faceX ?? 0)}
-                  onChange={(e) => setProperty(pin.id, 'faceX', Number(e.target.value))}
-                />
-              </label>
-              <label>
-                <span>z</span>
-                <input
-                  type="number"
-                  value={Number(pin.properties.faceZ ?? 0)}
-                  onChange={(e) => setProperty(pin.id, 'faceZ', Number(e.target.value))}
-                />
-              </label>
-            </div>
           </div>
         )
       })}

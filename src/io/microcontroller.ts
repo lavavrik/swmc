@@ -21,6 +21,7 @@ import type {
   SignalType,
   Wire,
 } from '@/model/types'
+import { minifyLua } from '@/lua/minify'
 import { decodeProperties, encodeProperties, propertyAttributeNames } from './properties'
 import {
   KNOWN_ROOT_ATTRIBUTES,
@@ -306,7 +307,21 @@ const positionElement = (n: GraphNode): XmlNode => {
 
 const isPin = (n: GraphNode): boolean => n.type.startsWith('io.')
 
-export function serializeMicrocontroller(doc: Microcontroller): string {
+function withMinifiedScript(
+  properties: Readonly<Record<string, PropertyValue>>,
+): Readonly<Record<string, PropertyValue>> {
+  const source = String(properties.script ?? '')
+  if (source.length === 0) return properties
+  const result = minifyLua(source)
+  if (result.error) return properties
+  return { ...properties, script: result.code }
+}
+
+export function serializeMicrocontroller(
+  doc: Microcontroller,
+  options: { minifyLua?: boolean } = {},
+): string {
+  const minifyScripts = options.minifyLua !== false
   const pins = doc.ioOrder
     .map((id) => doc.nodes.find((n) => n.id === id))
     .filter((n): n is GraphNode => n !== undefined && isPin(n))
@@ -353,9 +368,13 @@ export function serializeMicrocontroller(doc: Microcontroller): string {
       const names = isUnknown
         ? resolvePorts(def, 'in', n.properties).map((_, i) => String(i + 1))
         : inputNames(def, n.properties)
+      const properties =
+        minifyScripts && n.type === 'data.luaScript'
+          ? withMinifiedScript(n.properties)
+          : n.properties
       const encoded = isUnknown
         ? { attributes: {}, elements: [] }
-        : encodeProperties(def, n.properties)
+        : encodeProperties(def, properties)
 
       const object = node(
         'object',

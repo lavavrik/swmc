@@ -14,12 +14,14 @@ import { buildRecipe } from './build'
 import { componentCatalog } from './catalog'
 import { formatFromPath, parseRecipeText } from './parse'
 import { formatSimResult, runSim } from './run'
+import { startTelemServer } from './telem'
 
 const USAGE = `Usage:
   npm run mc -- catalog [--json] [--all]
   npm run mc -- build <recipe> [-o path|-] [--open]
   npm run mc -- open <slug-or-xml>
-  npm run mc -- sim <recipe-or-xml> [--ticks N] [--set pin=value]... [--json]`
+  npm run mc -- sim <recipe-or-xml> [--ticks N] [--set pin=value]... [--json]
+  npm run mc -- telem [--port N]`
 
 function main(args: string[]): number {
   const cmd = args[0]
@@ -157,6 +159,17 @@ function simCmd(args: string[]): number {
   return 0
 }
 
+function telemCmd(args: string[]): number {
+  const flags = parseFlags(args)
+  const port = Number(flags.get('port') ?? 8787)
+  if (!Number.isFinite(port) || port < 1 || port > 65535) {
+    stderr.write('--port must be 1..65535\n')
+    return 1
+  }
+  startTelemServer(port)
+  return 0
+}
+
 function loadRecipe(file: string) {
   const path = resolve(file)
   const parsed = parseRecipeText(readFileSync(path, 'utf8'), formatFromPath(path))
@@ -222,4 +235,15 @@ function parseFlags(args: string[]): {
   }
 }
 
-exit(main(argv.slice(2)))
+const args = argv.slice(2)
+if (args[0] === 'telem') {
+  try {
+    const code = telemCmd(args.slice(1))
+    if (code !== 0) exit(code)
+  } catch (cause) {
+    stderr.write(`${cause instanceof Error ? cause.message : String(cause)}\n`)
+    exit(1)
+  }
+} else {
+  exit(main(args))
+}

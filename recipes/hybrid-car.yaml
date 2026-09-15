@@ -27,7 +27,6 @@ nodes:
   - { id: target_rps, type: const.number, value: 8 }
   - { id: charge_low, type: const.number, value: 0.8 }
   - { id: battery_cut, type: const.number, value: 0.2 }
-  - { id: zero, type: const.number, value: 0 }
   - { id: one, type: const.number, value: 1 }
   - { id: starter_low, type: comparison.lessThan }
   - { id: starter_gate, type: logic.and }
@@ -61,7 +60,6 @@ wires:
   - { from: running, to: gen_gate.a }
   - { from: needs_charge, to: gen_gate.b }
   - { from: one, to: gen_sw.value-on }
-  - { from: zero, to: gen_sw.value-off }
   - { from: gen_gate, to: gen_sw.switch }
   - { from: gen_sw, to: generator }
   # motor: ignition AND battery > 0.2 ? throttle : 0
@@ -70,6 +68,5 @@ wires:
   - { from: ignition, to: motor_enable.a }
   - { from: batt_ok, to: motor_enable.b }
   - { from: throttle, to: motor_sw.value-on }
-  - { from: zero, to: motor_sw.value-off }
   - { from: motor_enable, to: motor_sw.switch }
   - { from: motor_sw, to: motor }

@@ -9,7 +9,6 @@ import { useEditorStore } from '@/editor/store'
 import { cloudLibrary } from '@/io/config'
 import {
   deleteProject,
-  exportFile,
   importFile,
   listProjects,
   loadProject,
@@ -19,6 +18,7 @@ import {
 import { findDesigns, type FoundDesign } from '@/io/gameFiles'
 import { parseMicrocontroller } from '@/io/microcontroller'
 import { useGameFilesStore } from './gameFilesStore'
+import { XmlDragHandle } from './XmlDragHandle'
 
 export type ProjectDialogMode = 'open' | 'save'
 
@@ -127,12 +127,9 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
             <button className="text-button primary" onClick={() => void save()}>
               {cloudLibrary() ? 'Save to my library' : 'Save to library'}
             </button>
-            <button
-              className="text-button"
-              onClick={() => exportFile({ ...doc, meta: { ...doc.meta, name, description } })}
-            >
+            <XmlDragHandle doc={{ ...doc, meta: { ...doc.meta, name, description } }}>
               Export .xml
-            </button>
+            </XmlDragHandle>
           </div>
         )}
 

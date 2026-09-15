@@ -2,7 +2,7 @@
 # in src/io/__fixtures__/throttle.xml, written as a named recipe.
 name: Throttle Limiter
 description: Clamps the throttle
-width: 1
+width: 2
 length: 1
 pins:
   - id: throttle_in

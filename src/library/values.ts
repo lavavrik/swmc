@@ -21,3 +21,20 @@ export function asComposite(value: SignalValue | undefined): CompositeValue {
     ? value
     : EMPTY_COMPOSITE
 }
+
+/** 1-based composite number channel, 0 if missing. */
+export function compositeNumber(value: SignalValue | undefined, channel: number): number {
+  return asComposite(value).numbers[channel - 1] ?? 0
+}
+
+export function withCompositeNumber(
+  value: SignalValue | undefined,
+  channel: number,
+  n: number,
+): CompositeValue {
+  const base = asComposite(value)
+  const numbers = [...base.numbers]
+  const index = Math.max(0, Math.min(31, channel - 1))
+  numbers[index] = n
+  return { numbers, bools: base.bools }
+}

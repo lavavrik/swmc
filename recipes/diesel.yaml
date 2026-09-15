@@ -1,0 +1,722 @@
+# Diesel + 8-speed gearbox. Motor is a starter on a T-off (for later hybrid).
+# Shift on ENGINE RPS, not wheel RPS — shifting on wheel speed stuck the
+# old car in 3rd (~22 m/s) because 3rd is 0.75× and the diesel never
+# revved high enough to cross the next wheel-RPS threshold.
+#
+#   Engine — Engine clutch — T ┬— Starter clutch — Motor
+#                              ├— Regen clutch — Generator
+#                              └— Drive clutch — GB1 — GB2 — GB3 — Wheels
+# GB1 toward engine off 1:1 on 6:5; GB2 toward off 1:1 on 3:2;
+# GB3 away off 3:1 on 1:1 (reduction is OFF — gears 1–4). 1st = ×0.33.
+#
+# Crank: engine clutch 1, starter clutch 1, motor = Starter throttle,
+# drive clutch 0 until Start RPS. After start: motor follows the pedal
+# in every gear. Diesel throttle + engine clutch only from Diesel from gear
+# (default 3); below that diesel idles off the T. Diesel cuts on shift; motor does not.
+# Shift on Shaft RPS (sensor after the motor), not ECU RPS.
+# Drive clutch 0 below idle 5, then fades in slowly (~2s in 1st).
+# Stays locked while moving so shaft RPS can downshift on lift-off.
+# On a gear change: cut diesel throttle, dip clutch, swap, fade back (Shift fade).
+# Regen clutch: Regen idle while on the pedal; 1 on lift-off or brake.
+#
+# ECU: Engine on/off + throttle 0..1.
+name: Diesel
+description: >-
+  Diesel + 8-speed, motor assist, regen, touch cruise. Diesel from gear 3.
+  Shift on engine RPS (up 12, down 7). Drive clutch off below idle 5.
+  GB1 toward off 1:1 on 6:5, GB2 toward off 1:1 on 3:2,
+  GB3 away off 3:1 on 1:1. 1st = ×0.33.
+width: 4
+length: 6
+pins:
+  - id: ignition
+    dir: in
+    signal: onoff
+    label: Ignition
+    description: Seat key
+    face: { x: 0, z: 0 }
+  - id: seat
+    dir: in
+    signal: composite
+    label: Seat
+    description: Seat data — W/S ch 2 (W throttle, S brake)
+    face: { x: 0, z: 1 }
+  - id: reverse
+    dir: in
+    signal: onoff
+    label: Reverse
+    description: 1st gear + Reverse out
+    face: { x: 0, z: 2 }
+  - id: engine_rps
+    dir: in
+    signal: number
+    label: Engine RPS
+    description: ECU — start/idle only
+    face: { x: 0, z: 3 }
+  - id: engine
+    dir: out
+    signal: onoff
+    label: Engine
+    description: ECU run
+    face: { x: 3, z: 0 }
+  - id: engine_throttle
+    dir: out
+    signal: number
+    label: Engine Throttle
+    description: Pedal 0..1 (0 idle)
+    face: { x: 3, z: 1 }
+  - id: clutch
+    dir: out
+    signal: number
+    label: Clutch
+    description: Drive T→GB — slow launch, holds while moving, dips + cuts throttle on shift
+    face: { x: 3, z: 2 }
+  - id: brakes
+    dir: out
+    signal: number
+    label: Brakes
+    description: Wheel brakes from seat S
+    face: { x: 3, z: 3 }
+  - id: reverse_out
+    dir: out
+    signal: onoff
+    label: Reverse Box
+    description: Optional -1:1 gearbox
+    face: { x: 3, z: 4 }
+  - id: gb1
+    dir: out
+    signal: onoff
+    label: Gearbox 1
+    description: Toward engine — off 1:1, on 6:5
+    face: { x: 1, z: 0 }
+  - id: gb2
+    dir: out
+    signal: onoff
+    label: Gearbox 2
+    description: Toward engine — off 1:1, on 3:2
+    face: { x: 1, z: 1 }
+  - id: gb3
+    dir: out
+    signal: onoff
+    label: Gearbox 3
+    description: Away from engine — off 3:1 (1st–4th), on 1:1. Reduction is OFF.
+    face: { x: 1, z: 2 }
+  - id: hud
+    dir: out
+    signal: video
+    label: HUD
+    description: Tap speed to SET cruise. Left −5, right +5, middle cancel.
+    face: { x: 1, z: 3 }
+  - id: instruments
+    dir: out
+    signal: composite
+    label: Instruments
+    description: ch 1 engine RPS, ch 2 gear
+    face: { x: 1, z: 4 }
+  - id: starter_clutch
+    dir: out
+    signal: number
+    label: Starter Clutch
+    description: T→motor — crank + drive (all gears)
+    face: { x: 3, z: 5 }
+  - id: motor
+    dir: out
+    signal: number
+    label: Motor
+    description: Starter, then pedal (no cut on shift)
+    face: { x: 1, z: 5 }
+  - id: engine_clutch
+    dir: out
+    signal: number
+    label: Engine Clutch
+    description: Engine→T — 1 while cranking and from Diesel from gear
+    face: { x: 0, z: 4 }
+  - id: battery
+    dir: in
+    signal: number
+    label: Battery
+    description: Charge 0..1
+    face: { x: 0, z: 5 }
+  - id: physics
+    dir: in
+    signal: composite
+    label: Physics
+    description: Physics sensor — spd ch 13, alt Y ch 2, hdg ch 17
+    face: { x: 2, z: 0 }
+  - id: regen_clutch
+    dir: out
+    signal: number
+    label: Regen Clutch
+    description: T→generator — coast 1, idle on pedal; 0 at 100% battery
+    face: { x: 2, z: 1 }
+  - id: shaft_rps
+    dir: in
+    signal: number
+    label: Shaft RPS
+    description: RPS sensor after the motor — shifts on this
+    face: { x: 2, z: 2 }
+  - id: fuel
+    dir: in
+    signal: number
+    label: Fuel
+    description: Tank litres
+    face: { x: 2, z: 3 }
+  - id: touch
+    dir: in
+    signal: composite
+    label: Touch
+    description: Monitor composite. Tap speed to SET; − / + chips once on.
+    face: { x: 2, z: 4 }
+nodes:
+  - { id: start_rps, type: property.number, name: Start RPS, value: 3 }
+  - { id: idle_rps, type: property.number, name: Idle RPS, value: 5 }
+  - { id: up_rps, type: property.number, name: Upshift RPS, value: 12 }
+  - { id: down_rps, type: property.number, name: Downshift RPS, value: 7 }
+  - {
+      id: clutch_fade,
+      type: property.slider,
+      name: Clutch fade,
+      min: 0.005,
+      max: 0.08,
+      increment: 0.005,
+      value: 0.025,
+    }
+  - {
+      id: shift_fade,
+      type: property.slider,
+      name: Shift fade,
+      min: 0.01,
+      max: 0.15,
+      increment: 0.01,
+      value: 0.09,
+    }
+  - {
+      id: starter_throttle,
+      type: property.slider,
+      name: Starter throttle,
+      min: 0,
+      max: 1,
+      increment: 0.05,
+      value: 0.4,
+    }
+  - { id: hybrid_gears, type: property.number, name: Hybrid gears, value: 4 }
+  - { id: diesel_from, type: property.number, name: Diesel from gear, value: 3 }
+  - { id: fuel_tank, type: property.number, name: Fuel tank L, value: 658 }
+  - {
+      id: regen_idle,
+      type: property.slider,
+      name: Regen idle,
+      min: 0,
+      max: 0.5,
+      increment: 0.05,
+      value: 0.4,
+    }
+  - { id: seat_ws, type: composite.readNumber, channel: 2 }
+  - { id: phys_spd, type: composite.readNumber, channel: 13 }
+  - { id: phys_alt, type: composite.readNumber, channel: 2 }
+  - { id: phys_hdg, type: composite.readNumber, channel: 17 }
+  - { id: packn, type: composite.writeNumber, channel: 7, count: 19 }
+  - { id: packb, type: composite.writeOnoff, channel: 3, count: 2 }
+  - id: ctrl
+    type: data.luaScript
+    script: |
+      gear = 1
+      clutch_v = 0
+      shift_t = 0
+      shift_phase = 0
+      pending = 0
+      moving = false
+      alive = false
+      pull = false
+      prev_thr = 0
+      peak = 0
+      low_bat = false
+      cruise_on = false
+      cruise_v = 0
+      tapped = false
+      spd_f = 0
+      spd_prev = 0
+      cc_i = 0
+      cc_hold = 0.3
+      acc = 0
+      tlog = 0
+      sw = 96
+      sh = 32
+      neutral = false
+      hud = { rps = 0, gear = 1, spd = 0, fuel = 0, bat = 0, tank = 100, crank = false, diesel = false, hyb = false, rev = false, coast = false, cc = false, ccv = 0, n = false }
+      function towards(cur, target, step)
+        local d = target - cur
+        if d > step then d = step elseif d < -step then d = -step end
+        cur = cur + d
+        if cur < 0 then return 0 end
+        if cur > 1 then return 1 end
+        return cur
+      end
+      function bar(x, y, bw, bh, v, r, g, b)
+        screen.setColor(10, 12, 14)
+        screen.drawRectF(x, y, bw, bh)
+        local fw = math.floor(bw * math.min(math.max(v, 0), 1))
+        if fw > 0 then
+          screen.setColor(r, g, b)
+          screen.drawRectF(x, y, fw, bh)
+        end
+      end
+      function boxnum(x, y, t)
+        local tw = #t * 5 + 3
+        screen.setColor(0, 0, 0)
+        screen.drawRectF(x - 2, y - 2, tw, 9)
+        screen.setColor(255, 255, 255)
+        screen.drawText(x, y, t)
+      end
+      function heat(t)
+        if t < 0 then t = 0 elseif t > 1 then t = 1 end
+        local r, g = 210, 36
+        if t < 0.5 then
+          g = math.floor(190 * t * 2)
+        else
+          r = math.floor(210 * (1 - t) * 2)
+          g = 190
+        end
+        return r, g, 40
+      end
+      function pill(x, y, bw, bh, t, r, g, b)
+        screen.setColor(r, g, b)
+        screen.drawRectF(x, y, bw, bh)
+        screen.setColor(8, 10, 12)
+        screen.drawTextBox(x, y, bw, bh, t, 0, 0)
+      end
+      function onTick()
+        local ign = input.getBool(3)
+        local reverse = input.getBool(4)
+        local tap = input.getBool(1)
+        local tx = input.getNumber(3)
+        local ty = input.getNumber(4)
+        local rps = input.getNumber(7)
+        local ws = input.getNumber(8)
+        local start_rps = input.getNumber(9)
+        local idle_rps = input.getNumber(10)
+        local up_rps = input.getNumber(11)
+        local down_rps = input.getNumber(12)
+        local fade = input.getNumber(13)
+        local starter_thr = input.getNumber(14)
+        local shift_fade = input.getNumber(15)
+        local hyb_gears = input.getNumber(16)
+        local bat = input.getNumber(17)
+        local spd = input.getNumber(18)
+        local hdg = input.getNumber(19)
+        local alt = input.getNumber(20)
+        local regen_idle = input.getNumber(21)
+        local diesel_from = input.getNumber(22)
+        local shaft = input.getNumber(23)
+        local fuel = input.getNumber(24)
+        local tank = input.getNumber(25)
+        if fade < 0.001 then fade = 0.025 end
+        if tank < 1 then tank = 658 end
+        if regen_idle < 0 then regen_idle = 0.4 end
+        if shift_fade < 0.001 then shift_fade = 0.09 end
+        if hyb_gears < 0 then hyb_gears = 4 end
+        if diesel_from < 1 then diesel_from = 3 end
+        if bat < 0.5 then
+          low_bat = true
+        elseif bat >= 0.75 then
+          low_bat = false
+        end
+        if low_bat then diesel_from = 1 end
+        if up_rps < 1 then up_rps = 12 end
+        if down_rps < 1 then down_rps = 7 end
+        if gear >= diesel_from and shaft < 0.01 then shaft = rps end
+        local throttle = math.max(ws, 0)
+        local brake = math.max(-ws, 0)
+        if not ign then
+          alive = false
+          moving = false
+        elseif rps >= idle_rps then
+          alive = true
+        elseif rps < start_rps then
+          alive = false
+          moving = false
+        end
+        local cranking = ign and rps < start_rps
+        if ign and alive and (throttle > 0.05 or reverse) then
+          moving = true
+        end
+        local dthr = throttle - prev_thr
+        prev_thr = throttle
+        if throttle > peak then peak = throttle end
+        if (not ign) or cranking then
+          pull = false
+          peak = 0
+        elseif brake > 0.05 then
+          pull = false
+        elseif dthr > 0.002 then
+          pull = true
+          peak = throttle
+        elseif peak - throttle > 0.02 then
+          pull = false
+        end
+        local spd_kmh = math.abs(spd) * 3.6
+        if (not ign) or reverse or cranking or brake > 0.08 then
+          cruise_on = false
+        end
+        local W, H = sw, sh
+        if W < 8 then W = 96 end
+        if H < 8 then H = 32 end
+        if tx <= 1 and ty <= 1 then
+          tx = tx * W
+          ty = ty * H
+        end
+        local rps_h = math.max(3, math.floor(H / 10))
+        local mid = math.floor((H - rps_h) * 0.45)
+        local chip = math.min(11, mid - 2)
+        if chip < 9 then chip = 9 end
+        local gear_x = W - 3 * chip - 3
+        local n_x = W - 2 * chip - 2
+        local plus_x = chip + 2
+        if tap and not tapped and ty >= rps_h and ty < rps_h + mid then
+          if tx >= n_x and tx < n_x + chip then
+            neutral = not neutral
+            if neutral then cruise_on = false end
+          elseif tx >= gear_x then
+          elseif cruise_on and tx < chip + 1 then
+            cruise_v = cruise_v - 5
+            if cruise_v < 10 then cruise_v = 10 end
+          elseif cruise_on and tx >= plus_x and tx < plus_x + chip then
+            cruise_v = cruise_v + 5
+            if cruise_v > 180 then cruise_v = 180 end
+          elseif not cruise_on then
+            if spd_kmh >= 10 then
+              cruise_on = true
+              cruise_v = spd_kmh
+              spd_f = spd_kmh
+              cc_hold = throttle
+              if cc_hold < 0.2 then cc_hold = 0.2 end
+              if cc_hold > 0.65 then cc_hold = 0.65 end
+              cc_i = cc_hold
+              acc = 0
+              spd_prev = spd_kmh
+            end
+          else
+            cruise_on = false
+          end
+        end
+        tapped = tap
+        if spd_f < 0.01 then
+          spd_f = spd_kmh
+        else
+          spd_f = spd_f * 0.9 + spd_kmh * 0.1
+        end
+        local cc_thr = 0
+        if cruise_on then
+          moving = true
+          if shift_phase == 0 then
+            local err = cruise_v - spd_f
+            acc = acc * 0.8 + (spd_f - spd_prev) * 0.2
+            if math.abs(err) < 2 and math.abs(acc) < 0.06 then
+              cc_hold = cc_hold * 0.96 + cc_i * 0.04
+            end
+            local k_p, k_d = 0.04, 2.5
+            if gear >= diesel_from then
+              k_p = 0.07
+              k_d = 1.1
+            end
+            if gear > hyb_gears then
+              k_p = k_p + 0.03
+            end
+            local raw = cc_hold + err * k_p - acc * k_d
+            if gear > hyb_gears then raw = raw + 0.12 end
+            if raw < 0 then raw = 0 elseif raw > 1 then raw = 1 end
+            local step = 0.01
+            if err > 5 then step = 0.02 end
+            cc_i = towards(cc_i, raw, step)
+          end
+          cc_thr = cc_i
+          pull = cc_thr > 0.05
+          if cc_thr > throttle then throttle = cc_thr end
+          spd_prev = spd_f
+        else
+          cc_i = 0
+        end
+        if (not ign) or reverse then neutral = false end
+        if neutral then
+          pull = false
+          cruise_on = false
+        end
+        local want_drive = ign and alive and (not neutral) and (moving or throttle > 0.05 or reverse or cruise_on)
+        local cl_target = 0
+        if want_drive then cl_target = 1 end
+        if (not ign) or reverse then
+          gear = 1
+          shift_t = 0
+          shift_phase = 0
+          pending = 0
+        elseif not moving and clutch_v < 0.2 and not neutral then
+          gear = 1
+          shift_t = 0
+          shift_phase = 0
+          pending = 0
+        elseif shift_phase == 1 then
+          cl_target = 0.15
+          if clutch_v <= 0.22 then
+            if pending < 0 then
+              cc_i = cc_i * 0.88
+            end
+            gear = gear + pending
+            if gear < 1 then gear = 1 end
+            if gear > 8 then gear = 8 end
+            pending = 0
+            shift_phase = 2
+          end
+        elseif shift_phase == 2 then
+          if clutch_v >= 0.85 or not want_drive then
+            shift_phase = 0
+            shift_t = 0
+          end
+        elseif clutch_v > 0.85 then
+          shift_t = shift_t + 1
+          if shift_t >= 12 then
+            shift_t = 0
+            if (throttle > 0.05 or cruise_on) and gear < 8 and shaft > up_rps then
+              pending = 1
+              shift_phase = 1
+            elseif gear > 1 and shaft < down_rps then
+              if (not cruise_on) or (cruise_v - spd_f > 8) then
+                pending = -1
+                shift_phase = 1
+              end
+            end
+          end
+        end
+        if not ign then
+          clutch_v = 0
+        else
+          local step = fade
+          if shift_phase ~= 0 then
+            step = shift_fade
+          elseif cl_target < clutch_v then
+            step = math.max(fade * 4, 0.06)
+          elseif gear == 1 then
+            step = fade * 0.5
+          end
+          clutch_v = towards(clutch_v, cl_target, step)
+        end
+        if cruise_on and shift_phase ~= 0 then
+          local hold = cc_i * 0.75
+          if hold < 0.22 then hold = 0.22 end
+          throttle = hold
+        end
+        local diesel_on = gear >= diesel_from
+        local engine_cl = 0
+        if ign and (cranking or diesel_on or neutral) then engine_cl = 1 end
+        local engine_thr = 0
+        if ign and (diesel_on or neutral) then engine_thr = throttle end
+        if shift_phase == 1 and not cruise_on then engine_thr = 0 end
+        local hyb = ign and alive and (not cranking) and gear <= hyb_gears and pull
+        local coasting = ign and alive and (not cranking) and (not pull) and (not cruise_on) and (not neutral) and (moving or clutch_v > 0.4)
+        local starter_cl = 0
+        local motor = 0
+        if cranking then
+          starter_cl = 1
+          motor = starter_thr
+        elseif hyb then
+          starter_cl = 1
+          motor = throttle
+        end
+        local regen = 0
+        if ign and (not cranking) and coasting then
+          regen = 1
+        elseif ign and (not cranking) and neutral then
+          regen = 1
+        elseif ign and diesel_on and pull then
+          regen = regen_idle
+        end
+        if bat >= 0.99 or cruise_on then regen = 0 end
+        local g = math.floor(gear - 1)
+        output.setNumber(1, engine_thr)
+        output.setNumber(2, clutch_v)
+        output.setNumber(3, ign and brake or 0)
+        output.setNumber(4, gear)
+        output.setNumber(5, starter_cl)
+        output.setNumber(6, motor)
+        output.setNumber(7, engine_cl)
+        output.setNumber(8, regen)
+        output.setBool(1, ign)
+        output.setBool(2, reverse and ign)
+        output.setBool(3, g % 2 ~= 0)
+        output.setBool(4, math.floor(g / 2) % 2 ~= 0)
+        output.setBool(5, math.floor(g / 4) % 2 ~= 0)
+        hud = {
+          rps = shaft > 0.01 and shaft or rps,
+          gear = gear,
+          spd = spd_f,
+          fuel = fuel,
+          bat = bat,
+          tank = tank,
+          crank = cranking,
+          diesel = diesel_on,
+          hyb = hyb,
+          rev = reverse and ign,
+          coast = coasting,
+          cc = cruise_on,
+          ccv = cruise_v,
+          n = neutral,
+        }
+        tlog = tlog + 1
+        if tlog >= 5 then
+          tlog = 0
+          async.httpGet(
+            8787,
+            string.format(
+              '/t?s=%.1f&f=%.1f&v=%.0f&i=%.3f&h=%.3f&a=%.3f&e=%.1f&g=%d&p=%d&c=%.2f&m=%.2f&d=%.2f&u=%d&k=%d',
+              spd_kmh,
+              spd_f,
+              cruise_v,
+              cc_i,
+              cc_hold,
+              acc,
+              cruise_v - spd_f,
+              gear,
+              shift_phase,
+              clutch_v,
+              motor,
+              engine_thr,
+              pull and 1 or 0,
+              cruise_on and 1 or 0
+            )
+          )
+        end
+      end
+      function httpReply() end
+      function onDraw()
+        local w = screen.getWidth()
+        local h = screen.getHeight()
+        sw = w
+        sh = h
+        local d = hud
+        screen.setColor(6, 8, 10)
+        screen.drawClear()
+        local rps_h = math.max(3, math.floor(h / 10))
+        local rest = h - rps_h
+        local mid = math.floor(rest * 0.45)
+        local fy = rps_h + mid
+        local hw = math.floor(w / 2)
+        bar(0, 0, w, rps_h, d.rps / 20, 150, 38, 34)
+        bar(0, rps_h, w, mid - 1, d.spd / 160, 18, 72, 108)
+        local s = math.min(11, mid - 2)
+        if s < 9 then s = 9 end
+        local cy = rps_h + math.floor((mid - s) / 2)
+        local st = string.format('%.0f', d.spd)
+        if d.cc then st = string.format('%.0f/%.0f', d.spd, d.ccv) end
+        local nx = 2
+        if d.cc then nx = 2 * s + 4 end
+        boxnum(nx, rps_h + math.max(2, math.floor((mid - 1) / 2) - 2), st)
+        if d.cc then
+          pill(1, cy, s, s, '-', 200, 80, 80)
+          pill(s + 2, cy, s, s, '+', 80, 190, 100)
+        end
+        local mode, mr, mg, mb = '-', 70, 74, 78
+        if d.crank then
+          mode, mr, mg, mb = 'S', 220, 170, 50
+        elseif d.rev then
+          mode, mr, mg, mb = 'R', 220, 80, 70
+        elseif d.n then
+          mode, mr, mg, mb = 'N', 230, 220, 80
+        elseif d.cc then
+          mode, mr, mg, mb = 'P', 80, 200, 255
+        elseif d.coast then
+          mode, mr, mg, mb = 'C', 200, 90, 220
+        elseif d.hyb and d.diesel then
+          mode, mr, mg, mb = 'H', 90, 210, 130
+        elseif d.hyb then
+          mode, mr, mg, mb = 'E', 60, 190, 220
+        elseif d.diesel then
+          mode, mr, mg, mb = 'D', 90, 210, 110
+        end
+        pill(w - 3 * s - 3, cy, s, s, tostring(math.floor(d.gear)), 210, 210, 204)
+        if d.n then
+          pill(w - 2 * s - 2, cy, s, s, 'N', 230, 220, 80)
+        else
+          pill(w - 2 * s - 2, cy, s, s, 'N', 70, 74, 78)
+        end
+        pill(w - s - 1, cy, s, s, mode, mr, mg, mb)
+        local tank = d.tank
+        if tank < 1 then tank = 658 end
+        local fr, fg, fb = heat(d.fuel / tank)
+        local br, bg, bb = heat(d.bat)
+        local lh = h - fy
+        bar(0, fy, hw - 1, lh, d.fuel / tank, fr, fg, fb)
+        boxnum(2, fy + math.max(2, math.floor(lh / 2) - 2), string.format('%.0fL', d.fuel))
+        bar(hw, fy, w - hw, lh, d.bat, br, bg, bb)
+        boxnum(hw + 2, fy + math.max(2, math.floor(lh / 2) - 2), string.format('%.1f', d.bat * 100))
+      end
+  - { id: out_thr, type: composite.readNumber, channel: 1 }
+  - { id: out_clutch, type: composite.readNumber, channel: 2 }
+  - { id: out_brakes, type: composite.readNumber, channel: 3 }
+  - { id: out_gear, type: composite.readNumber, channel: 4 }
+  - { id: out_scl, type: composite.readNumber, channel: 5 }
+  - { id: out_motor, type: composite.readNumber, channel: 6 }
+  - { id: out_ecl, type: composite.readNumber, channel: 7 }
+  - { id: out_regen, type: composite.readNumber, channel: 8 }
+  - { id: out_engine, type: composite.readOnoff, channel: 1 }
+  - { id: out_rev, type: composite.readOnoff, channel: 2 }
+  - { id: out_gb1, type: composite.readOnoff, channel: 3 }
+  - { id: out_gb2, type: composite.readOnoff, channel: 4 }
+  - { id: out_gb3, type: composite.readOnoff, channel: 5 }
+  - { id: inst, type: composite.writeNumber, channel: 1, count: 2 }
+wires:
+  - { from: seat, to: seat_ws }
+  - { from: engine_rps, to: packn.in.1 }
+  - { from: seat_ws, to: packn.in.2 }
+  - { from: start_rps, to: packn.in.3 }
+  - { from: idle_rps, to: packn.in.4 }
+  - { from: up_rps, to: packn.in.5 }
+  - { from: down_rps, to: packn.in.6 }
+  - { from: clutch_fade, to: packn.in.7 }
+  - { from: starter_throttle, to: packn.in.8 }
+  - { from: shift_fade, to: packn.in.9 }
+  - { from: hybrid_gears, to: packn.in.10 }
+  - { from: battery, to: packn.in.11 }
+  - { from: physics, to: phys_spd }
+  - { from: physics, to: phys_alt }
+  - { from: physics, to: phys_hdg }
+  - { from: phys_spd, to: packn.in.12 }
+  - { from: phys_hdg, to: packn.in.13 }
+  - { from: phys_alt, to: packn.in.14 }
+  - { from: regen_idle, to: packn.in.15 }
+  - { from: diesel_from, to: packn.in.16 }
+  - { from: shaft_rps, to: packn.in.17 }
+  - { from: fuel, to: packn.in.18 }
+  - { from: fuel_tank, to: packn.in.19 }
+  - { from: touch, to: packn.composite }
+  - { from: packn, to: packb.composite }
+  - { from: ignition, to: packb.in.1 }
+  - { from: reverse, to: packb.in.2 }
+  - { from: packb, to: ctrl.composite }
+  - { from: ctrl.composite, to: out_thr }
+  - { from: ctrl.composite, to: out_clutch }
+  - { from: ctrl.composite, to: out_brakes }
+  - { from: ctrl.composite, to: out_gear }
+  - { from: ctrl.composite, to: out_scl }
+  - { from: ctrl.composite, to: out_motor }
+  - { from: ctrl.composite, to: out_ecl }
+  - { from: ctrl.composite, to: out_regen }
+  - { from: ctrl.composite, to: out_engine }
+  - { from: ctrl.composite, to: out_rev }
+  - { from: ctrl.composite, to: out_gb1 }
+  - { from: ctrl.composite, to: out_gb2 }
+  - { from: ctrl.composite, to: out_gb3 }
+  - { from: out_thr, to: engine_throttle }
+  - { from: out_clutch, to: clutch }
+  - { from: out_brakes, to: brakes }
+  - { from: out_engine, to: engine }
+  - { from: out_rev, to: reverse_out }
+  - { from: out_gb1, to: gb1 }
+  - { from: out_gb2, to: gb2 }
+  - { from: out_gb3, to: gb3 }
+  - { from: out_scl, to: starter_clutch }
+  - { from: out_motor, to: motor }
+  - { from: out_ecl, to: engine_clutch }
+  - { from: out_regen, to: regen_clutch }
+  - { from: engine_rps, to: inst.in.1 }
+  - { from: out_gear, to: inst.in.2 }
+  - { from: inst, to: instruments }
+  - { from: ctrl.video, to: hud }

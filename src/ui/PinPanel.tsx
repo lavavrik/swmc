@@ -7,6 +7,7 @@ import { formatSignal } from '@/sim/format'
 import { useSimulationStore } from '@/sim/store'
 import { SIGNAL_LABELS, signalColor } from './signals'
 import type { SignalType } from '@/model/types'
+import { compositeNumber, withCompositeNumber } from '@/library/values'
 import { isDecimalDraft, parseDecimal } from './decimal'
 
 export function PinPanel() {
@@ -33,7 +34,14 @@ export function PinPanel() {
               style={pin.direction === 'in' ? { borderColor: colour } : { background: colour }}
               title={pin.direction === 'in' ? 'input' : 'output'}
             />
-            <span className="pin-label" title={SIGNAL_LABELS[pin.signal as SignalType]}>
+            <span
+              className="pin-label"
+              title={
+                pin.signal === 'composite'
+                  ? pin.description || 'composite number channel 2 (seat W/S)'
+                  : pin.description || SIGNAL_LABELS[pin.signal as SignalType]
+              }
+            >
               {pin.label}
             </span>
             {pin.direction === 'in' && pin.signal === 'number' && (
@@ -49,7 +57,17 @@ export function PinPanel() {
                 onChange={(e) => setInput(pin.id, e.target.checked)}
               />
             )}
-            {(pin.direction === 'out' || (pin.signal !== 'number' && pin.signal !== 'onoff')) && (
+            {pin.direction === 'in' && pin.signal === 'composite' && (
+              <PinNumberField
+                value={compositeNumber(value, compositeEditChannel(pin))}
+                title={`composite number channel ${compositeEditChannel(pin)}`}
+                onChange={(n) =>
+                  setInput(pin.id, withCompositeNumber(value, compositeEditChannel(pin), n))
+                }
+              />
+            )}
+            {(pin.direction === 'out' ||
+              (pin.signal !== 'number' && pin.signal !== 'onoff' && pin.signal !== 'composite')) && (
               <span className="pin-value">{formatSignal(value) || '—'}</span>
             )}
           </div>
@@ -59,14 +77,31 @@ export function PinPanel() {
   )
 }
 
+/** Seat W/S is ch 2; physics absolute speed is ch 13. */
+function compositeEditChannel(pin: { label: string; description: string }): number {
+  const text = `${pin.label} ${pin.description}`.toLowerCase()
+  if (text.includes('physics')) return 13
+  if (text.includes('seat') || text.includes('w/s')) return 2
+  return 1
+}
+
 /** Text field so "0." and "0," survive; `type="number"` would swallow the separator. */
-function PinNumberField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+function PinNumberField({
+  value,
+  onChange,
+  title,
+}: {
+  value: number
+  onChange: (n: number) => void
+  title?: string
+}) {
   const [draft, setDraft] = useState<string | null>(null)
   return (
     <input
       className="pin-number"
       type="text"
       inputMode="decimal"
+      title={title}
       value={draft ?? String(value)}
       onFocus={() => setDraft(String(value))}
       onChange={(e) => {

@@ -24,6 +24,7 @@ export interface PinSummary {
   readonly direction: 'in' | 'out'
   readonly signal: string
   readonly label: string
+  readonly description: string
 }
 
 function pinsOf(doc: Microcontroller): PinSummary[] {
@@ -32,7 +33,17 @@ function pinsOf(doc: Microcontroller): PinSummary[] {
     if (!node) return []
     const [, direction, signal] = node.type.split('.') as ['io', 'in' | 'out', string]
     const label = typeof node.properties.label === 'string' ? node.properties.label : ''
-    return [{ id, direction, signal, label: label || `${direction === 'in' ? 'input' : 'output'}` }]
+    const description =
+      typeof node.properties.description === 'string' ? node.properties.description : ''
+    return [
+      {
+        id,
+        direction,
+        signal,
+        label: label || `${direction === 'in' ? 'input' : 'output'}`,
+        description,
+      },
+    ]
   })
 }
 

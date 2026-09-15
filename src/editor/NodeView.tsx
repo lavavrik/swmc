@@ -78,9 +78,13 @@ function PortDots({
 /** The settings worth showing on the card, as the game lists them. */
 function detailLines(node: GraphNode, def: ComponentDef): string[] {
   const lines: string[] = []
+  const description =
+    typeof node.properties.description === 'string' ? node.properties.description.trim() : ''
+  if (description) lines.push(description)
   for (const property of def.properties) {
     const value = node.properties[property.key]
     if (value === undefined || value === '') continue
+    if (property.key === 'description') continue
     // A script is far too long to sit on a card; its editor is a click away
     if (property.kind === 'text' && String(value).length > 24) continue
     lines.push(`${property.label.toLowerCase()}: ${String(value)}`)
@@ -90,7 +94,9 @@ function detailLines(node: GraphNode, def: ComponentDef): string[] {
 
 /** Everything about a component, for the hover tooltip. */
 function tooltipFor(node: GraphNode, def: ComponentDef): string {
-  return [def.name, def.description, ...detailLines(node, def)].join('\n')
+  return [def.name, def.description, ...detailLines(node, def)]
+    .filter((line) => line.length > 0)
+    .join('\n')
 }
 
 /** Clips text to the pixels available, since the type does not shrink. */

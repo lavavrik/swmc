@@ -7,6 +7,7 @@
 import { formatSignal } from '@/sim/format'
 import { Simulation } from '@/sim/engine'
 import type { SignalValue } from '@/library/types'
+import { EMPTY_COMPOSITE, withCompositeNumber } from '@/library/values'
 import { err, ok, type Result } from '@/model/result'
 import type { Microcontroller, NodeId, SignalType } from '@/model/types'
 import { slugPort } from './ports'
@@ -36,6 +37,27 @@ export function parseSignalValue(signal: SignalType, raw: string): Result<Signal
     const n = Number(text)
     if (!Number.isFinite(n)) return err(`not a number: ${raw}`)
     return ok(n)
+  }
+  if (signal === 'composite') {
+    // "13=20" writes that number channel. A bare number is seat W/S (ch 2).
+    if (!text.includes('=')) {
+      const n = Number(text)
+      if (!Number.isFinite(n)) {
+        return err(`composite value "${raw}" — use a number (channel 2) or ch=value`)
+      }
+      return ok(withCompositeNumber(undefined, 2, n))
+    }
+    let value = EMPTY_COMPOSITE
+    for (const part of text.split(',')) {
+      const cut = part.indexOf('=')
+      const channel = Number(part.slice(0, cut))
+      const n = Number(part.slice(cut + 1))
+      if (!Number.isInteger(channel) || channel < 1 || channel > 32 || !Number.isFinite(n)) {
+        return err(`composite value "${raw}" — use ch=value, e.g. 13=20`)
+      }
+      value = withCompositeNumber(value, channel, n)
+    }
+    return ok(value)
   }
   return err(`setting ${signal} pins is not supported on the command line`)
 }

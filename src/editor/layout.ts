@@ -1,17 +1,19 @@
 /**
  * Geometry of a component card.
  *
- * The game's own measurements, so an imported microcontroller looks the way it
- * looks in the editor it came from: a component is **one game unit wide**, and
- * `0.25 × (ports + 1)` units tall — a rule that reproduces every height the
- * community library records, from a 0.5-unit composite read to a composite
- * write that grows a quarter unit per channel.
+ * Heights follow the game (`0.25 × (ports + 1)` units). Widths are one game
+ * unit, the same as the microcontroller editor.
  *
  * Everything here is in world pixels; the conversions are `GRID_PX` (a quarter
  * unit, which is what the game snaps to) and `GAME_UNIT`.
  */
 import { defaultProperties } from '@/library/defaults'
-import { componentHeightUnits, componentWidthUnits, heightUnitsForPorts } from '@/library/geometry'
+import {
+  EDITOR_WIDTH_SCALE,
+  componentHeightUnits,
+  componentWidthUnits,
+  heightUnitsForPorts,
+} from '@/library/geometry'
 import { resolvePorts } from '@/library/ports'
 import type { ComponentDef, PortDef } from '@/library/types'
 import type { NodeProperties } from '@/model/schema'
@@ -29,7 +31,7 @@ export const GAME_UNIT = GRID_PX * GRID_PER_UNIT
 
 export const CARD = {
   /** A component is one game unit wide, whatever it does. */
-  width: GAME_UNIT,
+  width: GAME_UNIT * EDITOR_WIDTH_SCALE,
   /** Ports sit a quarter unit apart, starting a quarter unit down. */
   portSpacing: GRID_PX,
   portTop: GRID_PX,
@@ -84,7 +86,7 @@ export function cardLayout(def: ComponentDef, properties: NodeProperties): CardL
   const layout: CardLayout = {
     inputs,
     outputs,
-    width: componentWidthUnits(def) * GAME_UNIT,
+    width: componentWidthUnits(def) * EDITOR_WIDTH_SCALE * GAME_UNIT,
     height: componentHeightUnits(def, properties) * GAME_UNIT,
   }
   cache.set(key, layout)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<microprocessor name="Hybrid Car" description="Starter, RPS hold, generator and electric drive" width="2" length="4" id_counter="25" id_counter_node="8">
+<microprocessor name="Hybrid Car" description="Starter, RPS hold, generator and electric drive" width="2" length="4" id_counter="24" id_counter_node="8">
 	<nodes>
 		<n id="1" component_id="1">
 			<node label="Ignition" mode="1" type="0" description="">
@@ -51,57 +51,51 @@
 		<components>
 			<c type="15">
 				<object id="9">
-					<pos x="4" y="-0.5"/>
+					<pos x="5" y="-0.5"/>
 					<n text="2" value="2"/>
 				</object>
 			</c>
 			<c type="15">
 				<object id="10">
-					<pos x="4" y="-2"/>
+					<pos x="5" y="-2"/>
 					<n text="8" value="8"/>
 				</object>
 			</c>
 			<c type="15">
 				<object id="11">
-					<pos x="4" y="-3.5"/>
+					<pos x="5" y="-3.5"/>
 					<n text="0.8" value="0.8"/>
 				</object>
 			</c>
 			<c type="15">
 				<object id="12">
-					<pos x="4" y="-5"/>
+					<pos x="5" y="-5"/>
 					<n text="0.2" value="0.2"/>
 				</object>
 			</c>
 			<c type="15">
 				<object id="13">
-					<pos x="4" y="-6.5"/>
-					<n text="0" value="0"/>
-				</object>
-			</c>
-			<c type="15">
-				<object id="14">
-					<pos x="4" y="-8"/>
+					<pos x="5" y="-6.5"/>
 					<n text="1" value="1"/>
 				</object>
 			</c>
 			<c type="18">
-				<object id="15">
-					<pos x="8" y="-2.25"/>
+				<object id="14">
+					<pos x="10" y="-2.25"/>
 					<in1 component_id="3"/>
 					<in2 component_id="9"/>
 				</object>
 			</c>
 			<c type="1">
-				<object id="16">
-					<pos x="12" y="-1.5"/>
-					<in1 component_id="15"/>
+				<object id="15">
+					<pos x="15" y="-1.5"/>
+					<in1 component_id="14"/>
 					<in2 component_id="1"/>
 				</object>
 			</c>
 			<c type="23">
-				<object id="17">
-					<pos x="8" y="-4.25"/>
+				<object id="16">
+					<pos x="10" y="-4.25"/>
 					<in1 component_id="10"/>
 					<in2 component_id="3"/>
 					<in3 component_id="1"/>
@@ -111,62 +105,60 @@
 				</object>
 			</c>
 			<c type="11">
-				<object id="18">
-					<pos x="12" y="-3.75"/>
-					<in1 component_id="17"/>
+				<object id="17">
+					<pos x="15" y="-3.75"/>
+					<in1 component_id="16"/>
 					<min text="0" value="0"/>
 					<max text="1" value="1"/>
 				</object>
 			</c>
 			<c type="17">
-				<object id="19">
-					<pos x="8" y="-6"/>
+				<object id="18">
+					<pos x="10" y="-6"/>
 					<in1 component_id="3"/>
 					<in2 component_id="9"/>
 				</object>
 			</c>
 			<c type="18">
-				<object id="20">
-					<pos x="8" y="-7.75"/>
+				<object id="19">
+					<pos x="10" y="-7.75"/>
 					<in1 component_id="4"/>
 					<in2 component_id="11"/>
 				</object>
 			</c>
 			<c type="1">
-				<object id="21">
-					<pos x="12" y="-7.25"/>
-					<in1 component_id="19"/>
-					<in2 component_id="20"/>
+				<object id="20">
+					<pos x="15" y="-7.25"/>
+					<in1 component_id="18"/>
+					<in2 component_id="19"/>
 				</object>
 			</c>
 			<c type="17">
-				<object id="22">
-					<pos x="8" y="-9.5"/>
+				<object id="21">
+					<pos x="10" y="-9.5"/>
 					<in1 component_id="4"/>
 					<in2 component_id="12"/>
 				</object>
 			</c>
 			<c type="1">
-				<object id="23">
-					<pos x="12" y="-5.5"/>
+				<object id="22">
+					<pos x="15" y="-5.5"/>
 					<in1 component_id="1"/>
-					<in2 component_id="22"/>
+					<in2 component_id="21"/>
+				</object>
+			</c>
+			<c type="22">
+				<object id="23">
+					<pos x="20" y="-4.25"/>
+					<in1 component_id="2"/>
+					<in3 component_id="22"/>
 				</object>
 			</c>
 			<c type="22">
 				<object id="24">
-					<pos x="16" y="-5.75"/>
-					<in1 component_id="2"/>
-					<in2 component_id="13"/>
-					<in3 component_id="23"/>
-				</object>
-			</c>
-			<c type="22">
-				<object id="25">
-					<pos x="16" y="-7.75"/>
-					<in1 component_id="14"/>
-					<in2 component_id="13"/>
-					<in3 component_id="21"/>
+					<pos x="20" y="-7.25"/>
+					<in1 component_id="13"/>
+					<in3 component_id="20"/>
 				</object>
 			</c>
 		</components>
@@ -193,26 +185,26 @@
 			</c>
 			<c type="1">
 				<object id="5">
-					<in1 component_id="16"/>
-					<pos x="20" y="-1.25"/>
+					<in1 component_id="15"/>
+					<pos x="25" y="-1.25"/>
 				</object>
 			</c>
 			<c type="3">
 				<object id="6">
-					<in1 component_id="18"/>
-					<pos x="20" y="-3.75"/>
+					<in1 component_id="17"/>
+					<pos x="25" y="-3.75"/>
 				</object>
 			</c>
 			<c type="3">
 				<object id="7">
-					<in1 component_id="25"/>
-					<pos x="20" y="-7.25"/>
+					<in1 component_id="24"/>
+					<pos x="25" y="-6.75"/>
 				</object>
 			</c>
 			<c type="3">
 				<object id="8">
-					<in1 component_id="24"/>
-					<pos x="20" y="-5.25"/>
+					<in1 component_id="23"/>
+					<pos x="25" y="-5.25"/>
 				</object>
 			</c>
 		</components_bridge>

@@ -87,6 +87,21 @@ describe('ticking', () => {
     expect(sim.getOutput(output)).toBe(5)
   })
 
+  it('lets a pin after a feedback loop read this tick', () => {
+    const g = new Graph()
+    const one = g.add('const.number', { value: 1 })
+    const add = g.add('arithmetic.add')
+    const feedback = g.add('arithmetic.abs')
+    const out = g.pin('io.out.number')
+    g.wire(one, 0, add, 0)
+    g.wire(add, 0, feedback, 0)
+    g.wire(feedback, 0, add, 1)
+    g.wire(add, 0, out, 0)
+    const sim = new Simulation(g.doc)
+    sim.step()
+    expect(sim.getOutput(out)).toBe(1)
+  })
+
   it('delays a feedback loop by exactly one tick', () => {
     // A counter: add(1, last tick's total) looping back through an Abs
     const g = new Graph()

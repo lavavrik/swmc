@@ -44,8 +44,8 @@ test.beforeEach(async ({ page }) => {
 test('opens a saved microcontroller from ?open=', async ({ page }) => {
   await page.goto('/?open=hybrid-car')
   await expect(page.locator('.name-field')).toHaveValue('Hybrid Car')
-  await expect(nodes(page)).toHaveCount(25)
-  await expect(page.locator('.statusbar')).toContainText('25 components')
+  await expect(nodes(page)).toHaveCount(24)
+  await expect(page.locator('.statusbar')).toContainText('24 components')
   await expect(page.locator('.pin-row .port-swatch-in')).toHaveCount(4)
   await expect(page.locator('.pin-row .port-swatch-out')).toHaveCount(4)
 })
@@ -164,6 +164,15 @@ test('pans the workspace with the middle button', async ({ page }) => {
   await page.mouse.up({ button: 'middle' })
   const after = await nodes(page).first().boundingBox()
   expect(after!.x).toBeGreaterThan(before!.x)
+})
+
+test('offers a file you can drag onto a folder', async ({ page }) => {
+  await page.locator('.name-field').fill('Drag Me')
+  const chip = page.locator('.statusbar .xml-drag')
+  await expect(chip).toHaveAttribute('draggable', 'true')
+  await expect(chip).toHaveText('drag-me.xml')
+  await page.getByTitle('Save or export this microcontroller').click()
+  await expect(page.locator('.dialog .xml-drag')).toHaveText('Export .xml')
 })
 
 test('saves a microcontroller to the library and opens it again', async ({ page }) => {

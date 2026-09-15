@@ -203,6 +203,17 @@ describe('a microcontroller saved by the game', () => {
     expect(doc.nodes.find((n) => n.id === 'c55')?.properties.channel).toBe(0)
   })
 
+  it('minifies Lua on export and leaves the document untouched', () => {
+    const source = String(doc.nodes.find((n) => n.type === 'data.luaScript')?.properties.script ?? '')
+    expect(source.length).toBeGreaterThan(3000)
+    const xml = serializeMicrocontroller(doc)
+    expect(xml.length).toBeLessThan(fixture('thermostat-v3').length)
+    expect(xml).toContain('function onDraw()')
+    expect(String(doc.nodes.find((n) => n.type === 'data.luaScript')?.properties.script)).toBe(
+      source,
+    )
+  })
+
   it('reads a script and its properties', () => {
     const script = doc.nodes.find((n) => n.type === 'data.luaScript')
     expect(String(script?.properties.script)).toContain('function onDraw()')
@@ -211,7 +222,7 @@ describe('a microcontroller saved by the game', () => {
   })
 
   it('round-trips without losing anything it understood', () => {
-    const again = unwrap(parseMicrocontroller(serializeMicrocontroller(doc)))
+    const again = unwrap(parseMicrocontroller(serializeMicrocontroller(doc, { minifyLua: false })))
     expect(again.nodes).toEqual(doc.nodes)
     expect(again.wires.map((w) => ({ from: w.from, to: w.to }))).toEqual(
       doc.wires.map((w) => ({ from: w.from, to: w.to })),
