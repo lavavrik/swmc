@@ -1,7 +1,9 @@
 /**
- * Cloud library account. Session is an HttpOnly cookie on the API origin.
+ * Cloud library account. CloudHost OIDC is Bearer on the API; homemade
+ * email/password still uses an HttpOnly cookie (local / tests).
  */
-import { apiBaseUrl } from './config'
+import { apiFetch } from './http'
+import { clearOidcTokens, completeOidcLogin } from './oidc'
 
 export interface Account {
   readonly id: string
@@ -9,7 +11,14 @@ export interface Account {
 }
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`${apiBaseUrl()}${path}`, { credentials: 'include', ...init })
+  return apiFetch(path, init)
+}
+
+export async function finishOidcLogin(code: string, state: string): Promise<Account> {
+  await completeOidcLogin(code, state)
+  const account = await me()
+  if (!account) throw new Error('signed in but the library did not accept the token')
+  return account
 }
 
 export async function me(): Promise<Account | null> {
@@ -46,6 +55,7 @@ export async function login(email: string, password: string): Promise<Account> {
 }
 
 export async function logout(): Promise<void> {
+  clearOidcTokens()
   const res = await request('/auth/logout', { method: 'POST' })
   if (!res.ok && res.status !== 204) throw new Error(`logout failed (${res.status})`)
 }

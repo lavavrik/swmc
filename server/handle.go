@@ -40,9 +40,24 @@ func Init() error {
 		initErr = err
 		return err
 	}
-	app = newApp(store, os.Getenv("ALLOWED_ORIGIN"))
+	app = newApp(store, os.Getenv("ALLOWED_ORIGIN"), oidcFromEnv())
 	slog.Info("swmc library ready")
 	return nil
+}
+
+func oidcFromEnv() AccessVerifier {
+	issuer := os.Getenv("OIDC_ISSUER")
+	clientID := os.Getenv("OIDC_CLIENT_ID")
+	if issuer == "" || clientID == "" {
+		return nil
+	}
+	v, err := NewVerifier(issuer, clientID)
+	if err != nil {
+		slog.Error("oidc verifier", "err", err)
+		return nil
+	}
+	slog.Info("oidc verifier ready", "issuer", issuer)
+	return v
 }
 
 // Handle is the required cloudhost entry point.
@@ -61,11 +76,12 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 type App struct {
 	store         *Store
 	allowedOrigin string
+	oidc          AccessVerifier
 	mux           *http.ServeMux
 }
 
-func newApp(store *Store, allowedOrigin string) *App {
-	a := &App{store: store, allowedOrigin: allowedOrigin}
+func newApp(store *Store, allowedOrigin string, oidc AccessVerifier) *App {
+	a := &App{store: store, allowedOrigin: allowedOrigin, oidc: oidc}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", a.root)
 	mux.HandleFunc("POST /auth/register", a.register)
@@ -109,6 +125,21 @@ func (a *App) setCORS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) currentUser(r *http.Request) (User, bool) {
+	if raw := bearer(r); raw != "" {
+		if a.oidc == nil {
+			return User{}, false
+		}
+		claims, err := a.oidc.Verify(r.Context(), raw)
+		if err != nil {
+			return User{}, false
+		}
+		u, err := a.store.UpsertOIDCUser(r.Context(), claims.Sub, claims.Email)
+		if err != nil {
+			slog.Error("oidc user", "err", err)
+			return User{}, false
+		}
+		return u, true
+	}
 	c, err := r.Cookie(cookieName)
 	if err != nil || c.Value == "" {
 		return User{}, false

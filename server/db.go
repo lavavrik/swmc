@@ -116,7 +116,8 @@ func (s *Store) CreateUser(ctx context.Context, email, password string) (User, s
 
 func (s *Store) Authenticate(ctx context.Context, email, password string) (User, string, error) {
 	email = normalizeEmail(email)
-	var id, hash string
+	var id string
+	var hash *string
 	err := s.pool.QueryRow(ctx,
 		`SELECT id::text, password_hash FROM users WHERE lower(email) = $1`,
 		email,
@@ -127,7 +128,7 @@ func (s *Store) Authenticate(ctx context.Context, email, password string) (User,
 	if err != nil {
 		return User{}, "", err
 	}
-	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
+	if hash == nil || bcrypt.CompareHashAndPassword([]byte(*hash), []byte(password)) != nil {
 		return User{}, "", errBadLogin
 	}
 	token, err := s.createSession(ctx, id)
@@ -183,4 +184,73 @@ func (s *Store) DeleteSession(ctx context.Context, token string) error {
 	sum := sha256.Sum256([]byte(token))
 	_, err := s.pool.Exec(ctx, `DELETE FROM sessions WHERE token_hash = $1`, sum[:])
 	return err
+}
+
+func uniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "users_email_lower") ||
+		strings.Contains(msg, "users_oidc_sub") ||
+		strings.Contains(msg, "unique")
+}
+
+// UpsertOIDCUser finds or creates the library account for a Home user.
+// sub is Home users.id (OIDC `sub`); it is stable across logins.
+func (s *Store) UpsertOIDCUser(ctx context.Context, sub, email string) (User, error) {
+	email = normalizeEmail(email)
+	if strings.TrimSpace(sub) == "" {
+		return User{}, errBadEmail
+	}
+	if !validEmail(email) {
+		return User{}, errBadEmail
+	}
+	var u User
+	err := s.pool.QueryRow(ctx, `
+		SELECT id::text, email FROM users WHERE oidc_sub = $1`,
+		sub,
+	).Scan(&u.ID, &u.Email)
+	if err == nil {
+		if u.Email != email {
+			_, _ = s.pool.Exec(ctx, `UPDATE users SET email = $2 WHERE id = $1::uuid`, u.ID, email)
+			u.Email = email
+		}
+		return u, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return User{}, err
+	}
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO users (email, oidc_sub) VALUES ($1, $2)
+		RETURNING id::text, email`,
+		email, sub,
+	).Scan(&u.ID, &u.Email)
+	if err == nil {
+		return u, nil
+	}
+	if uniqueViolation(err) {
+		err = s.pool.QueryRow(ctx, `
+			SELECT id::text, email FROM users WHERE oidc_sub = $1`,
+			sub,
+		).Scan(&u.ID, &u.Email)
+		if err == nil {
+			return u, nil
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return User{}, err
+		}
+	} else {
+		return User{}, err
+	}
+	err = s.pool.QueryRow(ctx, `
+		UPDATE users SET oidc_sub = $2
+		WHERE lower(email) = $1 AND oidc_sub IS NULL
+		RETURNING id::text, email`,
+		email, sub,
+	).Scan(&u.ID, &u.Email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, errEmailTaken
+	}
+	return u, err
 }

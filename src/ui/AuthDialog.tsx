@@ -3,6 +3,8 @@
  */
 import { useState } from 'react'
 import { login, register, type Account } from '@/io/auth'
+import { oidcEnabled } from '@/io/config'
+import { startOidcLogin } from '@/io/oidc'
 
 export function AuthDialog({
   onClose,
@@ -31,6 +33,17 @@ export function AuthDialog({
     }
   }
 
+  const cloudhost = async () => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await startOidcLogin()
+    } catch (error) {
+      setProblem(String(error))
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
@@ -40,42 +53,66 @@ export function AuthDialog({
             Close
           </button>
         </header>
-        <p className="dialog-note">Each account has its own microcontrollers.</p>
-        <div className="dialog-row">
-          <label>
-            <span>Email</span>
-            <input
-              autoFocus
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-        </div>
-        <div className="dialog-row">
-          <label>
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void submit('login')
-              }}
-            />
-          </label>
-          <button
-            className="text-button primary"
-            disabled={busy}
-            onClick={() => void submit('login')}
-          >
-            Sign in
-          </button>
-          <button className="text-button" disabled={busy} onClick={() => void submit('register')}>
-            Create account
-          </button>
-        </div>
-        {problem && <p className="dialog-problem">{problem}</p>}
+        {oidcEnabled() ? (
+          <>
+            <p className="dialog-note">
+              Sign in with your CloudHost account. Each account has its own microcontrollers.
+            </p>
+            <div className="dialog-row">
+              <button
+                className="text-button primary"
+                disabled={busy}
+                onClick={() => void cloudhost()}
+              >
+                Sign in with CloudHost
+              </button>
+            </div>
+            {problem && <p className="dialog-problem">{problem}</p>}
+          </>
+        ) : (
+          <>
+            <p className="dialog-note">Each account has its own microcontrollers.</p>
+            <div className="dialog-row">
+              <label>
+                <span>Email</span>
+                <input
+                  autoFocus
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="dialog-row">
+              <label>
+                <span>Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void submit('login')
+                  }}
+                />
+              </label>
+              <button
+                className="text-button primary"
+                disabled={busy}
+                onClick={() => void submit('login')}
+              >
+                Sign in
+              </button>
+              <button
+                className="text-button"
+                disabled={busy}
+                onClick={() => void submit('register')}
+              >
+                Create account
+              </button>
+            </div>
+            {problem && <p className="dialog-problem">{problem}</p>}
+          </>
+        )}
       </div>
     </div>
   )

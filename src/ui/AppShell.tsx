@@ -19,7 +19,8 @@ import { Toolbar } from './Toolbar'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useSimulationDriver } from '@/sim/useSimulationDriver'
 import { cloudLibrary } from '@/io/config'
-import { logout, me, type Account } from '@/io/auth'
+import { finishOidcLogin, logout, me, type Account } from '@/io/auth'
+import { oidcCallbackParams } from '@/io/oidc'
 import { installLuaRunner } from '@/lua/runner'
 
 installLuaRunner()
@@ -36,6 +37,20 @@ export function AppShell() {
   const [account, setAccount] = useState<Account | null>(null)
 
   useEffect(() => {
+    const cb = oidcCallbackParams(window.location.search)
+    if (cb) {
+      const clean = `${window.location.pathname}${window.location.hash}`
+      if ('error' in cb) {
+        useEditorStore.setState({ problem: `sign in: ${cb.error}` })
+        window.history.replaceState({}, '', clean)
+        return
+      }
+      void finishOidcLogin(cb.code, cb.state)
+        .then(setAccount)
+        .catch((error) => useEditorStore.setState({ problem: String(error) }))
+        .finally(() => window.history.replaceState({}, '', clean))
+      return
+    }
     if (!cloudLibrary()) return
     void me().then(setAccount, () => setAccount(null))
   }, [])

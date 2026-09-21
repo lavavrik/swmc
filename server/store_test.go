@@ -49,6 +49,43 @@ const sampleXML = `<?xml version="1.0" encoding="UTF-8"?>
 </microprocessor>
 `
 
+func TestUpsertOIDCUser(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	first, err := s.UpsertOIDCUser(ctx, "sub-1", "Orb@Example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := s.UpsertOIDCUser(ctx, "sub-1", "orb@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ID != again.ID {
+		t.Fatalf("id changed: %s vs %s", first.ID, again.ID)
+	}
+	if again.Email != "orb@example.com" {
+		t.Fatalf("email: %s", again.Email)
+	}
+
+	other, err := s.UpsertOIDCUser(ctx, "sub-2", "other@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other.ID == first.ID {
+		t.Fatal("distinct Home users must not share a library account")
+	}
+
+	existing := testUser(t, s, "legacy@example.com")
+	linked, err := s.UpsertOIDCUser(ctx, "sub-legacy", "legacy@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked.ID != existing.ID {
+		t.Fatalf("email match should attach oidc_sub, got %s want %s", linked.ID, existing.ID)
+	}
+}
+
 func TestPutGetListDelete(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()

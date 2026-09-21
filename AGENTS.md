@@ -70,6 +70,6 @@ Reverse is Motor Reverse; an extra `1:1` / `-1:1` box is optional.
 - Engine controllers take on/off (run) plus throttle 0..1.
 - Motors take throttle 0..1; reverse is a separate on/off.
 
-The **live editor** is https://swmc.example.com — same `/?open=<slug>` after a deploy. Cloud library is per-account (email + password, Postgres). Agents still **author** in this repo (`npm run mc`); the hosted SPA does not run the CLI.
+The **live editor** is https://swmc.example.com — same `/?open=<slug>` after a deploy. Cloud library is per CloudHost account (OIDC, Postgres). Agents still **author** in this repo (`npm run mc`); the hosted SPA does not run the CLI.
 
 Details: `docs/agents.md`.

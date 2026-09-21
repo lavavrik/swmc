@@ -9,6 +9,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  sessionStorage.clear()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   fetchMock.mockReset()
@@ -56,6 +57,21 @@ describe('cloud library client', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(init.method).toBe('PUT')
     expect(init.body).toBe('<microprocessor name="Test Rig"/>')
+  })
+
+  it('sends a stored CloudHost access token', async () => {
+    sessionStorage.setItem(
+      'swmc_oidc',
+      JSON.stringify({
+        access_token: 'atk',
+        refresh_token: 'r',
+        expires_at: Math.floor(Date.now() / 1000) + 600,
+      }),
+    )
+    fetchMock.mockResolvedValue(new Response('[]', { status: 200 }))
+    await listRemote()
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(new Headers(init.headers).get('Authorization')).toBe('Bearer atk')
   })
 
   it('treats a 401 as unauthorized', async () => {

@@ -2,9 +2,10 @@
  * HTTP client for the cloudhost function that holds the project library.
  *
  * The function stores the same XML the game would load. List is JSON; a
- * single project is the XML itself. Writes send the token; reads do not.
+ * single project is the XML itself. Signed-in calls send the CloudHost
+ * access token as Bearer.
  */
-import { apiBaseUrl } from './config'
+import { apiFetch } from './http'
 
 interface Summary {
   readonly id: string
@@ -19,7 +20,7 @@ const jsonHeaders = (): Record<string, string> => ({ Accept: 'application/json' 
 const xmlHeaders = (): Record<string, string> => ({ 'Content-Type': 'application/xml' })
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(`${apiBaseUrl()}${path}`, { credentials: 'include', ...init })
+  const res = await apiFetch(path, init)
   if (res.status === 401) throw new Error('cloud library: sign in first')
   return res
 }

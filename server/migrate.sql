@@ -1,10 +1,16 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
+  oidc_sub TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower ON users (lower(email));
+
+-- Existing databases were created with password_hash NOT NULL and no oidc_sub.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS oidc_sub TEXT;
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_oidc_sub ON users (oidc_sub) WHERE oidc_sub IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash BYTEA PRIMARY KEY,

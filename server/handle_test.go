@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,7 +12,16 @@ import (
 
 func testApp(t *testing.T) *App {
 	t.Helper()
-	return newApp(testStore(t), "http://localhost:5173")
+	return newApp(testStore(t), "http://localhost:5173", nil)
+}
+
+type stubOIDC struct {
+	claims OIDCClaims
+	err    error
+}
+
+func (s stubOIDC) Verify(context.Context, string) (OIDCClaims, error) {
+	return s.claims, s.err
 }
 
 func do(app *App, method, path, body string, cookies []*http.Cookie, contentType string) *httptest.ResponseRecorder {
@@ -126,6 +137,52 @@ func TestRegisterValidation(t *testing.T) {
 	rec = do(a, http.MethodPost, "/auth/register", `{"email":"ok@example.com","password":"short"}`, nil, "application/json")
 	if rec.Code != 400 {
 		t.Fatalf("short password: %d", rec.Code)
+	}
+}
+
+func TestOIDCBearerLibrary(t *testing.T) {
+	a := testApp(t)
+	a.oidc = stubOIDC{claims: OIDCClaims{Sub: "home-user-1", Email: "orb@example.com"}}
+
+	rec := do(a, http.MethodGet, "/microcontrollers", "", nil, "")
+	if rec.Code != 401 {
+		t.Fatalf("list anon: %d", rec.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodPut, "/microcontrollers/oidc-rig", strings.NewReader(sampleXML))
+	req.Header.Set("Authorization", "Bearer fake")
+	req.Header.Set("Content-Type", "application/xml")
+	req.Header.Set("Origin", "http://localhost:5173")
+	rec = httptest.NewRecorder()
+	a.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("PUT bearer: %d %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer fake")
+	req.Header.Set("Origin", "http://localhost:5173")
+	rec = httptest.NewRecorder()
+	a.ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("me: %d %s", rec.Code, rec.Body.String())
+	}
+	var u User
+	if err := json.NewDecoder(rec.Body).Decode(&u); err != nil {
+		t.Fatal(err)
+	}
+	if u.Email != "orb@example.com" {
+		t.Fatalf("email: %s", u.Email)
+	}
+
+	a.oidc = stubOIDC{err: errors.New("nope")}
+	req = httptest.NewRequest(http.MethodGet, "/microcontrollers", nil)
+	req.Header.Set("Authorization", "Bearer fake")
+	req.Header.Set("Origin", "http://localhost:5173")
+	rec = httptest.NewRecorder()
+	a.ServeHTTP(rec, req)
+	if rec.Code != 401 {
+		t.Fatalf("bad bearer: %d", rec.Code)
 	}
 }
 
