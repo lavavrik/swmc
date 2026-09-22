@@ -6,13 +6,12 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { setLuaTickHook } from '@/library/hooks'
 import { LuaRuntime } from '@/lua/runtime'
 import { expect as unwrap } from '@/model/result'
-import type { CompositeValue } from '@/library/types'
-import type { NodeId, PropertyValue } from '@/model/types'
+import type { CompositeValue, SignalValue } from '@/library/types'
+import type { NodeId } from '@/model/types'
 import { buildRecipe } from './build'
 import { formatFromPath, parseRecipeText } from './parse'
 import { runSim } from './run'
 
-let luaReady = false
 let luaFresh = true
 
 beforeAll(async () => {
@@ -30,7 +29,6 @@ beforeAll(async () => {
       frame: null,
     }
   })
-  luaReady = true
 }, 30_000)
 
 const load = () => {
@@ -48,12 +46,19 @@ const built = load()
 function pins(
   inputs: Record<string, string>,
   ticks = 1,
-): Record<string, PropertyValue | undefined> {
+): Record<string, SignalValue | undefined> {
   luaFresh = true
   const result = unwrap(runSim(built.doc, ticks, inputs, built.ids as ReadonlyMap<string, NodeId>))
-  const out: Record<string, PropertyValue | undefined> = {}
-  for (const pin of result.pins) out[pin.id] = pin.value as PropertyValue | undefined
+  const out: Record<string, SignalValue | undefined> = {}
+  for (const pin of result.pins) out[pin.id] = pin.value
   return out
+}
+
+function composite(value: SignalValue | undefined): CompositeValue {
+  if (!value || typeof value !== 'object' || !('numbers' in value)) {
+    throw new Error('expected a composite pin')
+  }
+  return value
 }
 
 const drive = {
@@ -118,7 +123,7 @@ describe('hybrid full', () => {
 
   it('packs engine RPS, physics speed, battery and gear onto the instruments composite', () => {
     const p = pins({ ...drive, engine_rps: '12', battery: '0.5', physics: '13=20', speed: '17' }, 80)
-    const inst = p.instruments as CompositeValue
+    const inst = composite(p.instruments)
     expect(inst.numbers[0]).toBe(12)
     expect(inst.numbers[1]).toBe(20)
     expect(inst.numbers[2]).toBe(0.5)

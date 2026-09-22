@@ -138,7 +138,7 @@ export function AppShell() {
         <ProjectDialog
           mode={dialog}
           onClose={() => setDialog(null)}
-          onSignIn={!account && canSignIn() ? () => setAuthOpen(true) : undefined}
+          {...(!account && canSignIn() ? { onSignIn: () => setAuthOpen(true) } : {})}
           account={account}
         />
       )}
