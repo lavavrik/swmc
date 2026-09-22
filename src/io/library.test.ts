@@ -11,6 +11,7 @@ import {
   saveProject,
   xmlFile,
 } from './library'
+import { setSessionAccount } from './auth'
 import { serializeMicrocontroller } from './microcontroller'
 
 const sample = (name: string) => {
@@ -20,7 +21,12 @@ const sample = (name: string) => {
 }
 
 beforeEach(async () => {
+  setSessionAccount(null)
   for (const project of await listProjects()) await deleteProject(project.id)
+})
+
+afterEach(() => {
+  setSessionAccount(null)
 })
 
 describe('project library', () => {
@@ -89,6 +95,7 @@ describe('cloud library', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://api.example')
     vi.stubEnv('VITE_API_TOKEN', 'secret')
     vi.stubGlobal('fetch', fetchMock)
+    setSessionAccount({ id: 'user-1', email: 'a@example.com' })
   })
 
   afterEach(() => {
@@ -118,5 +125,12 @@ describe('cloud library', () => {
     )
     const loaded = unwrap(await loadProject('autopilot'))
     expect(loaded.meta.name).toBe('Autopilot')
+  })
+
+  it('stays on IndexedDB when the API is configured but nobody is signed in', async () => {
+    setSessionAccount(null)
+    await saveProject(sample('Local Only'), 1000)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect((await listProjects())[0]?.name).toBe('Local Only')
   })
 })

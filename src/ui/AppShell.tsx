@@ -18,7 +18,7 @@ import { StatusBar } from './StatusBar'
 import { Toolbar } from './Toolbar'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useSimulationDriver } from '@/sim/useSimulationDriver'
-import { cloudLibrary } from '@/io/config'
+import { canSignIn, cloudLibrary } from '@/io/config'
 import { finishOidcLogin, logout, me, type Account } from '@/io/auth'
 import { oidcCallbackParams } from '@/io/oidc'
 import { installLuaRunner } from '@/lua/runner'
@@ -54,6 +54,11 @@ export function AppShell() {
     if (!cloudLibrary()) return
     void me().then(setAccount, () => setAccount(null))
   }, [])
+
+  const onAccount = () => {
+    if (account) void logout().then(() => setAccount(null))
+    else setAuthOpen(true)
+  }
 
   // Folders chosen on an earlier visit are picked up quietly
   useEffect(() => {
@@ -113,6 +118,7 @@ export function AppShell() {
         onSaveProject={() => setDialog('save')}
         showTooltips={showTooltips}
         onToggleTooltips={() => setShowTooltips((v) => !v)}
+        {...(canSignIn() ? { accountLabel: account?.email ?? 'Sign in', onAccount } : {})}
       />
       <div
         className="workspace"
@@ -126,20 +132,16 @@ export function AppShell() {
         <PinPanel />
         {monitorPort && <MonitorPanel port={monitorPort} onClose={() => watchVideo(null)} />}
       </div>
-      <StatusBar
-        onOpenPicker={() => setPickerOpen(true)}
-        {...(cloudLibrary()
-          ? {
-              accountLabel: account?.email ?? 'Sign in',
-              onAccount: () => {
-                if (account) void logout().then(() => setAccount(null))
-                else setAuthOpen(true)
-              },
-            }
-          : {})}
-      />
+      <StatusBar onOpenPicker={() => setPickerOpen(true)} />
       {pickerOpen && <ComponentPicker onClose={() => setPickerOpen(false)} />}
-      {dialog && <ProjectDialog mode={dialog} onClose={() => setDialog(null)} />}
+      {dialog && (
+        <ProjectDialog
+          mode={dialog}
+          onClose={() => setDialog(null)}
+          onSignIn={!account && canSignIn() ? () => setAuthOpen(true) : undefined}
+          account={account}
+        />
+      )}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} onSignedIn={setAccount} />}
       {gameFilesOpen && <GameFilesDialog onClose={() => setGameFilesOpen(false)} />}
       {editingScript && <LuaEditor node={editingScript} onClose={() => openScript(null)} />}

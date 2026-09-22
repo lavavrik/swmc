@@ -26,6 +26,8 @@ export function Toolbar({
   onSaveProject,
   showTooltips,
   onToggleTooltips,
+  accountLabel,
+  onAccount,
 }: {
   onOpenPicker: () => void
   onOpenPins: () => void
@@ -34,6 +36,8 @@ export function Toolbar({
   onSaveProject: () => void
   showTooltips: boolean
   onToggleTooltips: () => void
+  accountLabel?: string
+  onAccount?: () => void
 }) {
   const load = useEditorStore((s) => s.load)
   const undo = useEditorStore((s) => s.undo)
@@ -77,6 +81,19 @@ export function Toolbar({
       <RoundButton icon="copy" title="Copy (Ctrl+C)" onClick={copy} disabled={!hasSelection} />
       <RoundButton icon="cut" title="Cut (Ctrl+X)" onClick={cut} disabled={!hasSelection} />
       <RoundButton icon="paste" title="Paste (Ctrl+V)" onClick={paste} disabled={!hasClipboard} />
+      {onAccount && (
+        <button
+          className="text-button account-button toolbar-account"
+          title={
+            accountLabel && accountLabel !== 'Sign in'
+              ? 'Sign out of the cloud library'
+              : 'Sign in to save projects to your CloudHost account'
+          }
+          onClick={onAccount}
+        >
+          {accountLabel ?? 'Sign in'}
+        </button>
+      )}
     </div>
   )
 }

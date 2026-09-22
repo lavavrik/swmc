@@ -28,6 +28,11 @@ export function oidcEnabled(): boolean {
   return oidcClientId() !== ''
 }
 
+/** Sign-in is available; the builder still works without it. */
+export function canSignIn(): boolean {
+  return oidcEnabled() || cloudLibrary()
+}
+
 /** Exact string registered on the CloudHost public client. Trailing slash is required. */
 export function oidcRedirectUri(): string {
   return `${window.location.origin}/`

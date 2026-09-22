@@ -19,6 +19,10 @@
   width: 18px;
 }
 
+.toolbar-account {
+  margin-left: auto;
+}
+
 .round-button {
   width: 46px;
   height: 46px;

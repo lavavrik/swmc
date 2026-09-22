@@ -5,12 +5,13 @@
  * what the game would load — there is no second serialization format to keep in
  * step, and an export is a straight copy of the stored text.
  *
- * By default that store is IndexedDB, in this browser. When the build is
- * pointed at the cloudhost function (`VITE_API_BASE_URL`), the same functions
- * talk to that instead — one library, still XML.
+ * By default that store is IndexedDB, in this browser. Sign-in is optional:
+ * while an CloudHost account is present the same functions talk to the
+ * cloud library instead (still XML, one namespace per account).
  */
 import type { Microcontroller } from '@/model/types'
 import { err, type Result } from '@/model/result'
+import { sessionAccount } from './auth'
 import { cloudLibrary } from './config'
 import { PROJECTS, transact } from './database'
 import { parseMicrocontroller, serializeMicrocontroller } from './microcontroller'
@@ -29,6 +30,11 @@ export interface StoredProject extends ProjectSummary {
   readonly xml: string
 }
 
+/** Cloud library for the signed-in account. Unsigned sessions stay on IndexedDB. */
+export function accountLibrary(): boolean {
+  return cloudLibrary() && sessionAccount() !== null
+}
+
 /** Ids are derived from the name so saving the same project twice replaces it. */
 export function projectId(name: string): string {
   const slug = name
@@ -39,7 +45,7 @@ export function projectId(name: string): string {
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
-  if (cloudLibrary()) {
+  if (accountLibrary()) {
     return (await listRemote()).map((p) => ({
       id: p.id,
       name: p.name,
@@ -70,7 +76,7 @@ export async function saveProject(doc: Microcontroller, now: number): Promise<St
     componentCount: doc.nodes.length,
     xml,
   }
-  if (cloudLibrary()) {
+  if (accountLibrary()) {
     const saved = await putRemote(project.id, xml)
     return {
       ...project,
@@ -85,7 +91,7 @@ export async function saveProject(doc: Microcontroller, now: number): Promise<St
 }
 
 export async function loadProject(id: string): Promise<Result<Microcontroller>> {
-  if (cloudLibrary()) {
+  if (accountLibrary()) {
     const xml = await getRemote(id)
     if (xml === null) return err(`no saved project called ${id}`)
     return parseMicrocontroller(xml)
@@ -98,7 +104,7 @@ export async function loadProject(id: string): Promise<Result<Microcontroller>> 
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  if (cloudLibrary()) {
+  if (accountLibrary()) {
     await deleteRemote(id)
     return
   }

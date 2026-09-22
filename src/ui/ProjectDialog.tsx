@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useEditorStore } from '@/editor/store'
-import { cloudLibrary } from '@/io/config'
+import { type Account } from '@/io/auth'
 import {
   deleteProject,
   importFile,
@@ -24,7 +24,17 @@ export type ProjectDialogMode = 'open' | 'save'
 
 const formatDate = (ms: number) => new Date(ms).toLocaleString()
 
-export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onClose: () => void }) {
+export function ProjectDialog({
+  mode,
+  onClose,
+  onSignIn,
+  account,
+}: {
+  mode: ProjectDialogMode
+  onClose: () => void
+  onSignIn?: () => void
+  account?: Account | null
+}) {
   const doc = useEditorStore((s) => s.doc)
   const load = useEditorStore((s) => s.load)
   const setMeta = useEditorStore((s) => s.setMeta)
@@ -41,7 +51,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
     listProjects().then(setProjects, (error: unknown) => setProblem(String(error)))
   }, [])
 
-  useEffect(refresh, [refresh])
+  useEffect(refresh, [refresh, account?.id])
 
   // Whatever the player's own folder holds, if they have pointed us at one
   useEffect(() => {
@@ -125,7 +135,7 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
               />
             </label>
             <button className="text-button primary" onClick={() => void save()}>
-              {cloudLibrary() ? 'Save to my library' : 'Save to library'}
+              {account ? 'Save to my account' : 'Save to this browser'}
             </button>
             <XmlDragHandle doc={{ ...doc, meta: { ...doc.meta, name, description } }}>
               Export .xml
@@ -186,7 +196,16 @@ export function ProjectDialog({ mode, onClose }: { mode: ProjectDialogMode; onCl
             </>
           )}
 
-          <h3>{cloudLibrary() ? 'Cloud library' : 'Library'}</h3>
+          <h3>{account ? `Account · ${account.email}` : 'This browser'}</h3>
+          {onSignIn && (
+            <p className="dialog-note plain">
+              Signed-out projects stay in this browser.{' '}
+              <button type="button" className="text-button" onClick={onSignIn}>
+                Sign in
+              </button>{' '}
+              to save them to your CloudHost account.
+            </p>
+          )}
           {projects.length === 0 && <p className="picker-empty">Nothing saved yet.</p>}
           {projects.map((project) => (
             <div key={project.id} className="project-row">
