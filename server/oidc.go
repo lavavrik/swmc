@@ -46,10 +46,11 @@ const jwtSkew = 60 * time.Second
 // would be cross-site. The SPA sends Authorization: Bearer instead; we
 // verify locally against JWKS and never share Home's HS256 JWT_SECRET.
 type Verifier struct {
-	issuer   string
-	audience string
-	jwksURL  string
-	client   *http.Client
+	issuer      string
+	audience    string
+	jwksURL     string
+	userinfoURL string
+	client      *http.Client
 
 	mu      sync.Mutex
 	keys    map[string]*rsa.PublicKey
@@ -65,11 +66,12 @@ func NewVerifier(issuer, audience string) (*Verifier, error) {
 		return nil, errors.New("OIDC_ISSUER and OIDC_CLIENT_ID are required together")
 	}
 	return &Verifier{
-		issuer:   issuer,
-		audience: audience,
-		jwksURL:  issuer + "/oidc/jwks",
-		client:   &http.Client{Timeout: 10 * time.Second},
-		keys:     map[string]*rsa.PublicKey{},
+		issuer:      issuer,
+		audience:    audience,
+		jwksURL:     issuer + "/oidc/jwks",
+		userinfoURL: issuer + "/oidc/userinfo",
+		client:      &http.Client{Timeout: 10 * time.Second},
+		keys:        map[string]*rsa.PublicKey{},
 	}, nil
 }
 
@@ -115,6 +117,7 @@ func (v *Verifier) Verify(ctx context.Context, token string) (OIDCClaims, error)
 		Exp      int64    `json:"exp"`
 		Nbf      int64    `json:"nbf"`
 		Email    string   `json:"email"`
+		Username string   `json:"preferred_username"`
 		TokenUse string   `json:"token_use"`
 	}
 	if json.Unmarshal(payload, &c) != nil {
@@ -133,7 +136,59 @@ func (v *Verifier) Verify(ctx context.Context, token string) (OIDCClaims, error)
 	if c.Nbf != 0 && now.Before(time.Unix(c.Nbf, 0).Add(-jwtSkew)) {
 		return OIDCClaims{}, errBadClaims
 	}
-	return OIDCClaims{Sub: c.Sub, Email: c.Email}, nil
+	// Home access tokens often omit email (it sits on the id token /
+	// userinfo). The library still needs a unique address.
+	email := oidcEmail(c.Sub, c.Email)
+	if !validEmail(c.Email) && validEmail(c.Username) {
+		email = oidcEmail(c.Sub, c.Username)
+	}
+	if !validEmail(c.Email) && !validEmail(c.Username) && v.userinfoURL != "" {
+		if got := v.lookupEmail(ctx, token); validEmail(got) {
+			email = normalizeEmail(got)
+		}
+	}
+	return OIDCClaims{Sub: c.Sub, Email: email}, nil
+}
+
+func oidcEmail(sub, email string) string {
+	email = normalizeEmail(email)
+	if validEmail(email) {
+		return email
+	}
+	return strings.ToLower(strings.TrimSpace(sub)) + "@oidc.example.com"
+}
+
+func shouldReplaceEmail(have, want string) bool {
+	if have == want || !validEmail(want) {
+		return false
+	}
+	if strings.HasSuffix(want, "@oidc.example.com") {
+		return false
+	}
+	return true
+}
+
+func (v *Verifier) lookupEmail(ctx context.Context, token string) string {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.userinfoURL, nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := v.client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return ""
+	}
+	var body struct {
+		Email string `json:"email"`
+	}
+	if json.NewDecoder(io.LimitReader(res.Body, 1<<16)).Decode(&body) != nil {
+		return ""
+	}
+	return body.Email
 }
 
 func (v *Verifier) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {

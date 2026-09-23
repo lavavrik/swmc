@@ -84,6 +84,14 @@ func TestUpsertOIDCUser(t *testing.T) {
 	if linked.ID != existing.ID {
 		t.Fatalf("email match should attach oidc_sub, got %s want %s", linked.ID, existing.ID)
 	}
+
+	anon, err := s.UpsertOIDCUser(ctx, "sub-no-mail", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if anon.Email != "sub-no-mail@oidc.example.com" {
+		t.Fatalf("synthetic email: %s", anon.Email)
+	}
 }
 
 func TestPutGetListDelete(t *testing.T) {

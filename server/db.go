@@ -199,20 +199,17 @@ func uniqueViolation(err error) bool {
 // UpsertOIDCUser finds or creates the library account for a Home user.
 // sub is Home users.id (OIDC `sub`); it is stable across logins.
 func (s *Store) UpsertOIDCUser(ctx context.Context, sub, email string) (User, error) {
-	email = normalizeEmail(email)
 	if strings.TrimSpace(sub) == "" {
 		return User{}, errBadEmail
 	}
-	if !validEmail(email) {
-		return User{}, errBadEmail
-	}
+	email = oidcEmail(sub, email)
 	var u User
 	err := s.pool.QueryRow(ctx, `
 		SELECT id::text, email FROM users WHERE oidc_sub = $1`,
 		sub,
 	).Scan(&u.ID, &u.Email)
 	if err == nil {
-		if u.Email != email {
+		if shouldReplaceEmail(u.Email, email) {
 			_, _ = s.pool.Exec(ctx, `UPDATE users SET email = $2 WHERE id = $1::uuid`, u.ID, email)
 			u.Email = email
 		}

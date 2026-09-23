@@ -37,6 +37,7 @@ func TestVerifierAcceptsAccessToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	v.jwksURL = jwks.URL
+	v.userinfoURL = ""
 	v.client = jwks.Client()
 
 	tok := mint(t, key, "test", map[string]any{
@@ -79,6 +80,7 @@ func TestVerifierRejectsWrongAudAlgAndExpired(t *testing.T) {
 		t.Fatal(err)
 	}
 	v.jwksURL = jwks.URL
+	v.userinfoURL = ""
 	v.client = jwks.Client()
 
 	claims := map[string]any{
@@ -100,6 +102,61 @@ func TestVerifierRejectsWrongAudAlgAndExpired(t *testing.T) {
 	claims["exp"] = time.Now().Add(-2 * time.Minute).Unix()
 	if _, err := v.Verify(context.Background(), mint(t, key, "test", claims)); err == nil {
 		t.Fatal("expired")
+	}
+}
+
+func TestVerifierFillsEmailWhenAccessTokenOmitsIt(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/jwks", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"keys": []map[string]string{{
+				"kty": "RSA",
+				"kid": "test",
+				"n":   base64.RawURLEncoding.EncodeToString(key.N.Bytes()),
+				"e":   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(key.PublicKey.E)).Bytes()),
+			}},
+		})
+	})
+	mux.HandleFunc("/userinfo", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{"email": "from-info@example.com"})
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	v, err := NewVerifier("https://example.com", "client-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	v.jwksURL = srv.URL + "/jwks"
+	v.userinfoURL = srv.URL + "/userinfo"
+	v.client = srv.Client()
+
+	claims := map[string]any{
+		"iss":       "https://example.com",
+		"sub":       "user-1",
+		"aud":       "client-1",
+		"token_use": "access",
+		"exp":       time.Now().Add(time.Minute).Unix(),
+	}
+	got, err := v.Verify(context.Background(), mint(t, key, "test", claims))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Email != "from-info@example.com" {
+		t.Fatalf("userinfo email: %s", got.Email)
+	}
+
+	v.userinfoURL = ""
+	got, err = v.Verify(context.Background(), mint(t, key, "test", claims))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Email != "user-1@oidc.example.com" {
+		t.Fatalf("synthetic email: %s", got.Email)
 	}
 }
 
