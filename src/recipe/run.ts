@@ -93,52 +93,77 @@ export function runSim(
   inputs: Readonly<Record<string, string>>,
   names?: ReadonlyMap<string, NodeId>,
 ): Result<SimResult> {
+  const steps = runScenario(doc, [{ ticks, set: inputs }], names)
+  return steps.ok ? ok(steps.value[0]!) : steps
+}
+
+/** One stretch of a scenario: set these pins, then run this many ticks. */
+export interface SimPhase {
+  readonly ticks: number
+  readonly set: Readonly<Record<string, string>>
+}
+
+/**
+ * Runs the phases one after another on one simulation, so state (latches,
+ * timers, Lua globals) carries over. Pins not set in a phase keep their
+ * value from the one before. One result per phase, taken at its end.
+ */
+export function runScenario(
+  doc: Microcontroller,
+  phases: readonly SimPhase[],
+  names?: ReadonlyMap<string, NodeId>,
+): Result<SimResult[]> {
   const aliases = pinAliases(doc, names)
   const sim = new Simulation(doc)
-
-  for (const [key, raw] of Object.entries(inputs)) {
-    const id = aliases.get(key) ?? aliases.get(key.toLowerCase())
-    if (!id) {
-      const known = doc.ioOrder
-        .map((pinId) => {
-          const n = doc.nodes.find((node) => node.id === pinId)
-          return n ? String(n.properties.label || pinId) : pinId
-        })
-        .join(', ')
-      return err(`no pin "${key}". pins: ${known || '(none)'}`)
-    }
-    const node = doc.nodes.find((n) => n.id === id)
-    if (!node) return err(`no pin "${key}"`)
-    const signal = node.type.split('.')[2] as SignalType
-    if (!node.type.startsWith('io.in.')) return err(`"${key}" is not an input pin`)
-    const value = parseSignalValue(signal, raw)
-    if (!value.ok) return err(`${key}: ${value.error}`)
-    sim.setInput(id, value.value)
-  }
-
-  sim.run(Math.max(0, ticks))
-
   const reverse = new Map<NodeId, string>()
   if (names) for (const [name, id] of names) reverse.set(id, name)
+  const results: SimResult[] = []
 
-  const pins: SimPin[] = doc.ioOrder.flatMap((id) => {
-    const node = doc.nodes.find((n) => n.id === id)
-    if (!node) return []
-    const [, direction, signal] = node.type.split('.') as ['io', 'in' | 'out', SignalType]
-    const value =
-      direction === 'in' ? sim.outputValue({ node: id, kind: 'out', index: 0 }) : sim.getOutput(id)
-    return [
-      {
-        id: reverse.get(id) ?? id,
-        label: String(node.properties.label ?? ''),
-        direction,
-        signal,
-        value,
-      },
-    ]
-  })
+  for (const phase of phases) {
+    for (const [key, raw] of Object.entries(phase.set)) {
+      const id = aliases.get(key) ?? aliases.get(key.toLowerCase())
+      if (!id) {
+        const known = doc.ioOrder
+          .map((pinId) => {
+            const n = doc.nodes.find((node) => node.id === pinId)
+            return n ? String(n.properties.label || pinId) : pinId
+          })
+          .join(', ')
+        return err(`no pin "${key}". pins: ${known || '(none)'}`)
+      }
+      const node = doc.nodes.find((n) => n.id === id)
+      if (!node) return err(`no pin "${key}"`)
+      const signal = node.type.split('.')[2] as SignalType
+      if (!node.type.startsWith('io.in.')) return err(`"${key}" is not an input pin`)
+      const value = parseSignalValue(signal, raw)
+      if (!value.ok) return err(`${key}: ${value.error}`)
+      sim.setInput(id, value.value)
+    }
 
-  return ok({ ticks: sim.tickCount, pins })
+    sim.run(Math.max(0, phase.ticks))
+
+    const pins: SimPin[] = doc.ioOrder.flatMap((id) => {
+      const node = doc.nodes.find((n) => n.id === id)
+      if (!node) return []
+      const [, direction, signal] = node.type.split('.') as ['io', 'in' | 'out', SignalType]
+      const value =
+        direction === 'in'
+          ? sim.outputValue({ node: id, kind: 'out', index: 0 })
+          : sim.getOutput(id)
+      return [
+        {
+          id: reverse.get(id) ?? id,
+          label: String(node.properties.label ?? ''),
+          direction,
+          signal,
+          value,
+        },
+      ]
+    })
+    results.push({ ticks: sim.tickCount, pins })
+  }
+
+  return ok(results)
 }
 
 export function formatSimResult(result: SimResult): string {

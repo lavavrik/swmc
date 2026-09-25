@@ -5,14 +5,19 @@
 When the user wants a microcontroller (engine, hybrid, throttle, logic pack),
 do **not** write Stormworks XML by hand.
 
+If the `swmc` MCP server is connected (tools `build_microcontroller`,
+`simulate`, `get_microcontroller`, …), use it: it does the same as the steps
+below and saves where the user's editor opens it. Setup is in
+`docs/agents.md`; this repo's `.mcp.json` starts it in folder mode.
+
 1. `npm run mc -- catalog --json` — type ids, port slugs, property keys.
 2. Write `recipes/<slug>.yaml`. Copy the shape of `recipes/hybrid-full.yaml`.
 3. `npm run mc -- build recipes/<slug>.yaml --open` → `microcontrollers/<slug>.xml` and the editor at `/?open=<slug>`.
 4. `npm run mc -- sim recipes/<slug>.yaml --ticks 60 --set pin=value`.
 
-Prefer node-graph recipes when the result must be simulated here. Prefer one
-Lua Script plus composite pins when the graph would be large or needs a
-display — Lua is not executed by `mc sim` (the interpreter is browser/wasm).
+Prefer node-graph recipes for small logic. Prefer one Lua Script plus
+composite pins when the graph would be large or needs a display. `mc sim` and
+the MCP `simulate` tool run Lua `onTick` (not `onDraw`).
 
 The tick engine is the microcontroller only. Engine RPS, battery charge and
 wheels are pin values you set, not a vehicle plant.

@@ -11,6 +11,7 @@ import { basename, dirname, extname, resolve } from 'node:path'
 import { argv, env, exit, platform, stderr, stdout } from 'node:process'
 import { parseMicrocontroller, serializeMicrocontroller } from '@/io/microcontroller'
 import { buildRecipe } from './build'
+import { withLua } from './lua'
 import { componentCatalog } from './catalog'
 import { formatFromPath, parseRecipeText } from './parse'
 import { formatSimResult, runSim } from './run'
@@ -23,7 +24,7 @@ const USAGE = `Usage:
   npm run mc -- sim <recipe-or-xml> [--ticks N] [--set pin=value]... [--json]
   npm run mc -- telem [--port N]`
 
-function main(args: string[]): number {
+async function main(args: string[]): Promise<number> {
   const cmd = args[0]
   if (!cmd || cmd === '-h' || cmd === '--help') {
     stdout.write(`${USAGE}\n`)
@@ -34,7 +35,7 @@ function main(args: string[]): number {
     if (cmd === 'catalog') return catalogCmd(args.slice(1))
     if (cmd === 'build') return buildCmd(args.slice(1))
     if (cmd === 'open') return openCmd(args.slice(1))
-    if (cmd === 'sim') return simCmd(args.slice(1))
+    if (cmd === 'sim') return await simCmd(args.slice(1))
     stderr.write(`unknown command "${cmd}"\n${USAGE}\n`)
     return 1
   } catch (cause) {
@@ -112,7 +113,7 @@ function openInEditor(slug: string): number {
   return 0
 }
 
-function simCmd(args: string[]): number {
+async function simCmd(args: string[]): Promise<number> {
   const flags = parseFlags(args)
   const file = flags.rest[0]
   if (!file) {
@@ -144,11 +145,12 @@ function simCmd(args: string[]): number {
       stderr.write(`${parsed.error}\n`)
       return 1
     }
-    result = runSim(parsed.value, ticks, sets)
+    const doc = parsed.value
+    result = await simWithLua(doc, () => runSim(doc, ticks, sets))
   } else {
     const built = loadRecipe(file)
     for (const warning of built.warnings) stderr.write(`warning: ${warning}\n`)
-    result = runSim(built.doc, ticks, sets, built.ids)
+    result = await simWithLua(built.doc, () => runSim(built.doc, ticks, sets, built.ids))
   }
   if (!result.ok) {
     stderr.write(`${result.error}\n`)
@@ -157,6 +159,12 @@ function simCmd(args: string[]): number {
   if (flags.has('json')) stdout.write(`${JSON.stringify(result.value, null, 2)}\n`)
   else stdout.write(`${formatSimResult(result.value)}\n`)
   return 0
+}
+
+async function simWithLua<T>(doc: Parameters<typeof withLua>[0], fn: () => T): Promise<T> {
+  const run = await withLua(doc, fn)
+  for (const [node, error] of run.errors) stderr.write(`lua ${node}: ${error}\n`)
+  return run.result
 }
 
 function telemCmd(args: string[]): number {
@@ -245,5 +253,5 @@ if (args[0] === 'telem') {
     exit(1)
   }
 } else {
-  exit(main(args))
+  void main(args).then(exit)
 }

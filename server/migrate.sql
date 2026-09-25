@@ -33,3 +33,21 @@ CREATE TABLE IF NOT EXISTS projects (
   UNIQUE (user_id, slug)
 );
 CREATE INDEX IF NOT EXISTS projects_user_updated ON projects (user_id, updated_at DESC);
+
+-- Agents (MCP) save the recipe beside the XML so the next edit starts from
+-- the same names. The editor saves XML only; updated_at moving past
+-- recipe_updated_at means the recipe is behind the XML.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS recipe TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS recipe_updated_at TIMESTAMPTZ;
+
+-- Personal access tokens for agents. Only the hash is kept.
+CREATE TABLE IF NOT EXISTS api_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  prefix TEXT NOT NULL,
+  token_hash BYTEA NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS api_tokens_user ON api_tokens (user_id);

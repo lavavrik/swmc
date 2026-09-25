@@ -3,13 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@/editor/Canvas'
 import { useEditorStore } from '@/editor/store'
 import { importFile } from '@/io/library'
-import { fetchMicrocontroller, openParam, xmlPathFromOpen } from '@/io/openQuery'
+import { clearWantedOpen, openMicrocontroller, wantedOpen } from '@/io/openQuery'
 import { ComponentPicker } from './ComponentPicker'
 import { LuaEditor } from './LuaEditor'
 import { MonitorPanel } from './MonitorPanel'
 import { PinEditor } from './PinEditor'
 import { GameFilesDialog } from './GameFilesDialog'
 import { restoreFolders } from './gameFilesStore'
+import { AccountDialog } from './AccountDialog'
 import { AuthDialog } from './AuthDialog'
 import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
 import { PinPanel } from './PinPanel'
@@ -35,6 +36,9 @@ export function AppShell() {
   const [gameFilesOpen, setGameFilesOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [account, setAccount] = useState<Account | null>(null)
+  // Whether the cloud library has said who is signed in yet
+  const [accountKnown, setAccountKnown] = useState(!cloudLibrary())
+  const [agentOpen, setAgentOpen] = useState(false)
 
   useEffect(() => {
     const cb = oidcCallbackParams(window.location.search)
@@ -48,15 +52,20 @@ export function AppShell() {
       void finishOidcLogin(cb.code, cb.state)
         .then(setAccount)
         .catch((error) => useEditorStore.setState({ problem: String(error) }))
-        .finally(() => window.history.replaceState({}, '', clean))
+        .finally(() => {
+          window.history.replaceState({}, '', clean)
+          setAccountKnown(true)
+        })
       return
     }
     if (!cloudLibrary()) return
-    void me().then(setAccount, () => setAccount(null))
+    void me()
+      .then(setAccount, () => setAccount(null))
+      .finally(() => setAccountKnown(true))
   }, [])
 
   const onAccount = () => {
-    if (account) void logout().then(() => setAccount(null))
+    if (account) setAgentOpen(true)
     else setAuthOpen(true)
   }
 
@@ -81,24 +90,36 @@ export function AppShell() {
   const load = useEditorStore((s) => s.load)
   const zoomToFit = useEditorStore((s) => s.zoomToFit)
 
-  // `?open=hybrid-car` loads the XML the CLI wrote under microcontrollers/
+  // `?open=hybrid-car` loads that microcontroller: from the signed-in cloud
+  // library, where the MCP server saves, else the XML the CLI wrote under
+  // microcontrollers/. Waits until the library has said who is signed in.
+  const [wanted] = useState(() => wantedOpen(window.location.search))
+  const opened = useRef(false)
   useEffect(() => {
-    const wanted = openParam(window.location.search)
-    if (!wanted) return
-    const path = xmlPathFromOpen(wanted)
-    if (!path.ok) {
-      useEditorStore.setState({ problem: path.error })
-      return
-    }
-    void fetchMicrocontroller(path.value).then((result) => {
-      if (!result.ok) {
-        useEditorStore.setState({ problem: result.error })
-        return
-      }
-      load(result.value)
-      requestAnimationFrame(() => zoomToFit(viewSize()))
-    })
-  }, [load, zoomToFit, viewSize])
+    if (!wanted || !accountKnown || opened.current) return
+    opened.current = true
+    void openMicrocontroller(wanted, { enabled: cloudLibrary(), signedIn: account !== null }).then(
+      (result) => {
+        if (!result.ok) {
+          useEditorStore.setState({ problem: result.error })
+          if (result.needsSignIn === true) {
+            // Try again once they have signed in
+            opened.current = false
+            setAuthOpen(true)
+          } else {
+            clearWantedOpen()
+          }
+          return
+        }
+        clearWantedOpen()
+        const url = new URL(window.location.href)
+        url.searchParams.set('open', wanted)
+        window.history.replaceState({}, '', url)
+        load(result.value)
+        requestAnimationFrame(() => zoomToFit(viewSize()))
+      },
+    )
+  }, [wanted, accountKnown, account, load, zoomToFit, viewSize])
 
   const onDrop = async (event: React.DragEvent) => {
     event.preventDefault()
@@ -140,6 +161,16 @@ export function AppShell() {
           onClose={() => setDialog(null)}
           {...(!account && canSignIn() ? { onSignIn: () => setAuthOpen(true) } : {})}
           account={account}
+        />
+      )}
+      {agentOpen && account && (
+        <AccountDialog
+          account={account}
+          onClose={() => setAgentOpen(false)}
+          onSignOut={() => {
+            setAgentOpen(false)
+            void logout().then(() => setAccount(null))
+          }}
         />
       )}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} onSignedIn={setAccount} />}

@@ -92,6 +92,10 @@ func newApp(store *Store, allowedOrigin string, oidc AccessVerifier) *App {
 	mux.HandleFunc("GET /microcontrollers/{id}", a.get)
 	mux.HandleFunc("PUT /microcontrollers/{id}", a.put)
 	mux.HandleFunc("DELETE /microcontrollers/{id}", a.del)
+	mux.HandleFunc("GET /microcontrollers/{id}/recipe", a.getRecipe)
+	mux.HandleFunc("GET /tokens", a.listTokens)
+	mux.HandleFunc("POST /tokens", a.createToken)
+	mux.HandleFunc("DELETE /tokens/{id}", a.deleteToken)
 	a.mux = mux
 	return a
 }
@@ -124,31 +128,53 @@ func (a *App) setCORS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 }
 
+// authVia says how a request proved who it is. Personal access tokens
+// cannot mint or revoke tokens.
+type authVia int
+
+const (
+	viaSession authVia = iota
+	viaOIDC
+	viaToken
+)
+
 func (a *App) currentUser(r *http.Request) (User, bool) {
+	u, _, ok := a.authenticate(r)
+	return u, ok
+}
+
+func (a *App) authenticate(r *http.Request) (User, authVia, bool) {
 	if raw := bearer(r); raw != "" {
+		if isAPIToken(raw) {
+			u, err := a.store.UserForToken(r.Context(), raw)
+			if err != nil {
+				return User{}, viaToken, false
+			}
+			return u, viaToken, true
+		}
 		if a.oidc == nil {
-			return User{}, false
+			return User{}, viaOIDC, false
 		}
 		claims, err := a.oidc.Verify(r.Context(), raw)
 		if err != nil {
-			return User{}, false
+			return User{}, viaOIDC, false
 		}
 		u, err := a.store.UpsertOIDCUser(r.Context(), claims.Sub, claims.Email)
 		if err != nil {
 			slog.Error("oidc user", "err", err)
-			return User{}, false
+			return User{}, viaOIDC, false
 		}
-		return u, true
+		return u, viaOIDC, true
 	}
 	c, err := r.Cookie(cookieName)
 	if err != nil || c.Value == "" {
-		return User{}, false
+		return User{}, viaSession, false
 	}
 	u, err := a.store.UserForSession(r.Context(), c.Value)
 	if err != nil {
-		return User{}, false
+		return User{}, viaSession, false
 	}
-	return u, true
+	return u, viaSession, true
 }
 
 func (a *App) requireUser(w http.ResponseWriter, r *http.Request) (User, bool) {
@@ -284,17 +310,38 @@ func (a *App) get(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, xml)
 }
 
+// putBody is the JSON form of PUT /microcontrollers/:id, used by agents
+// to save the recipe with the XML it built.
+type putBody struct {
+	XML    string  `json:"xml"`
+	Recipe *string `json:"recipe"`
+}
+
 func (a *App) put(w http.ResponseWriter, r *http.Request) {
 	u, ok := a.requireUser(w, r)
 	if !ok {
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxXMLBytes+1))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxXMLBytes+maxRecipeBytes+1<<12))
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "bad body")
 		return
 	}
-	sum, err := a.store.Put(r.Context(), u.ID, r.PathValue("id"), string(body))
+	var sum Summary
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		var in putBody
+		if json.Unmarshal(body, &in) != nil {
+			writeErr(w, http.StatusBadRequest, "bad body")
+			return
+		}
+		if in.Recipe != nil {
+			sum, err = a.store.PutWithRecipe(r.Context(), u.ID, r.PathValue("id"), in.XML, *in.Recipe)
+		} else {
+			sum, err = a.store.Put(r.Context(), u.ID, r.PathValue("id"), in.XML)
+		}
+	} else {
+		sum, err = a.store.Put(r.Context(), u.ID, r.PathValue("id"), string(body))
+	}
 	switch {
 	case errors.Is(err, errBadID):
 		writeErr(w, http.StatusBadRequest, "bad id")
@@ -306,6 +353,97 @@ func (a *App) put(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "save failed")
 	default:
 		writeJSON(w, http.StatusOK, sum)
+	}
+}
+
+func (a *App) getRecipe(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireUser(w, r)
+	if !ok {
+		return
+	}
+	recipe, sum, err := a.store.GetRecipe(r.Context(), u.ID, r.PathValue("id"))
+	switch {
+	case errors.Is(err, errBadID):
+		writeErr(w, http.StatusBadRequest, "bad id")
+	case errors.Is(err, errNotFound):
+		writeErr(w, http.StatusNotFound, "no recipe")
+	case err != nil:
+		writeErr(w, http.StatusInternalServerError, "load failed")
+	default:
+		writeJSON(w, http.StatusOK, struct {
+			Summary
+			Recipe string `json:"recipe"`
+		}{sum, recipe})
+	}
+}
+
+// requireBrowser is requireUser minus personal access tokens: a leaked
+// agent token must not be able to mint more.
+func (a *App) requireBrowser(w http.ResponseWriter, r *http.Request) (User, bool) {
+	u, via, ok := a.authenticate(r)
+	if !ok {
+		writeErr(w, http.StatusUnauthorized, "unauthorized")
+		return User{}, false
+	}
+	if via == viaToken {
+		writeErr(w, http.StatusForbidden, "sign in to the editor to manage tokens")
+		return User{}, false
+	}
+	return u, true
+}
+
+func (a *App) listTokens(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireBrowser(w, r)
+	if !ok {
+		return
+	}
+	all, err := a.store.ListTokens(r.Context(), u.ID)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "list failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, all)
+}
+
+func (a *App) createToken(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireBrowser(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<12)).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+		writeErr(w, http.StatusBadRequest, "bad body")
+		return
+	}
+	t, raw, err := a.store.CreateToken(r.Context(), u.ID, body.Name)
+	switch {
+	case errors.Is(err, errTooManyTokens):
+		writeErr(w, http.StatusConflict, "too many tokens; revoke one first")
+	case err != nil:
+		writeErr(w, http.StatusInternalServerError, "create failed")
+	default:
+		writeJSON(w, http.StatusCreated, struct {
+			APIToken
+			Token string `json:"token"`
+		}{t, raw})
+	}
+}
+
+func (a *App) deleteToken(w http.ResponseWriter, r *http.Request) {
+	u, ok := a.requireBrowser(w, r)
+	if !ok {
+		return
+	}
+	err := a.store.DeleteToken(r.Context(), u.ID, r.PathValue("id"))
+	switch {
+	case errors.Is(err, errNotFound):
+		writeErr(w, http.StatusNotFound, "not found")
+	case err != nil:
+		writeErr(w, http.StatusInternalServerError, "delete failed")
+	default:
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

@@ -56,3 +56,39 @@ export async function deleteRemote(id: string): Promise<void> {
   if (res.status === 404) return
   if (!res.ok) throw new Error(`cloud library: delete failed (${res.status})`)
 }
+
+/** A personal access token for an agent. The secret is only in `created`. */
+export interface AgentToken {
+  readonly id: string
+  readonly name: string
+  readonly prefix: string
+  readonly createdAt: number
+  readonly lastUsedAt?: number
+}
+
+export async function listTokens(): Promise<AgentToken[]> {
+  const res = await request('/tokens', { headers: jsonHeaders() })
+  if (!res.ok) throw new Error(`agent tokens: list failed (${res.status})`)
+  return (await res.json()) as AgentToken[]
+}
+
+export async function createToken(name: string): Promise<AgentToken & { token: string }> {
+  const res = await request('/tokens', {
+    method: 'POST',
+    headers: { ...jsonHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(`agent tokens: ${body.error ?? `create failed (${res.status})`}`)
+  }
+  return (await res.json()) as AgentToken & { token: string }
+}
+
+export async function revokeToken(id: string): Promise<void> {
+  const res = await request(`/tokens/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: jsonHeaders(),
+  })
+  if (!res.ok && res.status !== 404) throw new Error(`agent tokens: revoke failed (${res.status})`)
+}

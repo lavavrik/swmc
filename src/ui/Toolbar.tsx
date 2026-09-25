@@ -86,7 +86,7 @@ export function Toolbar({
           className="text-button account-button toolbar-account"
           title={
             accountLabel && accountLabel !== 'Sign in'
-              ? 'Sign out of the cloud library'
+              ? 'Account, agent access and sign out'
               : 'Sign in to save projects to your CloudHost account'
           }
           onClick={onAccount}

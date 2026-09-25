@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "swmc": {
+      "command": "npx",
+      "args": ["tsx", "--tsconfig", "tsconfig.app.json", "src/mcp/server.ts"],
+      "env": {
+        "SWMC_TOKEN": "${SWMC_TOKEN:-}"
+      }
+    }
+  }
+}

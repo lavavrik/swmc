@@ -12,6 +12,12 @@ const savedXml = join(root, 'microcontrollers')
 function serveSavedMicrocontrollers(): Plugin {
   const send: Connect.NextHandleFunction = (req, res, next) => {
     const url = req.url?.split('?')[0] ?? ''
+    // The bundled MCP server (`npm run build:mcp`), for Agent access in dev
+    if (url === '/swmc-mcp.mjs' && existsSync(join(root, 'dist', 'swmc-mcp.mjs'))) {
+      res.setHeader('Content-Type', 'text/javascript; charset=utf-8')
+      res.end(readFileSync(join(root, 'dist', 'swmc-mcp.mjs')))
+      return
+    }
     const match = /^\/microcontrollers\/([A-Za-z0-9._-]+\.xml)$/.exec(url)
     if (!match) {
       next()
