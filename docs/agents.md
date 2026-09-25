@@ -276,25 +276,3 @@ library, as it would in the editor.
 | `SWMC_TOKEN`   | Set: save to the cloud library. Unset: save to a folder                                              |
 | `SWMC_API_URL` | Library API. Default `https://api.swmc.example.com`                                         |
 | `SWMC_URL`     | Editor that links point to. Default: the hosted editor with a token, `http://localhost:5173` without |
-| `SWMC_DIR`     | Folder mode root. Default: the working directory                                                     |
-
-To test against a library running locally (`server/README.md`), set
-`SWMC_API_URL=http://localhost:8080` and `SWMC_URL=http://localhost:5173`.
-The Agent access dialog adds both when it isn't the hosted editor.
-
-### For developers
-
-- `src/mcp/`: the server (`server.ts`), the tools (`tools.ts`), where saves
-  go (`library.ts`), and the guide the agent reads (`guide.ts`). Keep
-  `guide.ts` in step with `AGENTS.md`.
-- `src/recipe/decompile.ts` turns XML back into a recipe.
-  `src/recipe/lua.ts` runs Lua under Node for `simulate` and `mc sim`.
-- `scripts/build-mcp.mjs` bundles the server and the Lua WebAssembly into
-  `dist/swmc-mcp.mjs`. `npm run build` runs it, and `make deploy` uploads the
-  file next to `index.html`.
-- `src/mcp/examples.generated.ts` is a copy of `recipes/`. Run
-  `npm run gen:mcp-examples` after changing a recipe; a test fails until
-  you do.
-- API: `server/tokens.go` handles personal access tokens.
-  `GET /microcontrollers/:id/recipe` and the JSON form of `PUT` are
-  described in `server/README.md`.
