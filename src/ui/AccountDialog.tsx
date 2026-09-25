@@ -40,10 +40,12 @@ export function AccountDialog({
   account,
   onClose,
   onSignOut,
+  onOpenHelp,
 }: {
   account: Account
   onClose: () => void
   onSignOut: () => void
+  onOpenHelp: () => void
 }) {
   const [tokens, setTokens] = useState<AgentToken[]>([])
   const [name, setName] = useState('Claude Code')
@@ -99,7 +101,10 @@ export function AccountDialog({
           <p className="agent-text">
             Connect Claude Code, Codex or any MCP client, then ask it for a microcontroller. It
             builds and simulates it, saves it to this library, and gives you a link that opens it
-            here.
+            here.{' '}
+            <button className="link-button" onClick={onOpenHelp}>
+              Setup guide and how it works
+            </button>
           </p>
           <div className="dialog-row agent-create">
             <label>

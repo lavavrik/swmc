@@ -1,5 +1,7 @@
 # Using swmc with an AI agent (MCP)
 
+<!-- The editor shows this file under AI agents (src/ui/HelpDialog.tsx). -->
+
 swmc includes an [MCP](https://modelcontextprotocol.io) server. MCP is the
 standard way to give an AI agent extra tools. Once Claude Code, Codex, Claude
 Desktop, Cursor or another MCP client is connected to it, you can ask for a

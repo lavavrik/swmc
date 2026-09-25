@@ -12,6 +12,8 @@ import { GameFilesDialog } from './GameFilesDialog'
 import { restoreFolders } from './gameFilesStore'
 import { AccountDialog } from './AccountDialog'
 import { AuthDialog } from './AuthDialog'
+import { HelpDialog } from './HelpDialog'
+import { HELP_AGENTS, HELP_PARAM } from './helpGuide'
 import { ProjectDialog, type ProjectDialogMode } from './ProjectDialog'
 import { PinPanel } from './PinPanel'
 import { PropertyPanel } from './PropertyPanel'
@@ -39,6 +41,17 @@ export function AppShell() {
   // Whether the cloud library has said who is signed in yet
   const [accountKnown, setAccountKnown] = useState(!cloudLibrary())
   const [agentOpen, setAgentOpen] = useState(false)
+  // `?help=agents` is a link to the agent guide
+  const [helpOpen, setHelpOpenState] = useState(
+    () => new URLSearchParams(window.location.search).get(HELP_PARAM) === HELP_AGENTS,
+  )
+  const setHelpOpen = useCallback((open: boolean) => {
+    setHelpOpenState(open)
+    const url = new URL(window.location.href)
+    if (open) url.searchParams.set(HELP_PARAM, HELP_AGENTS)
+    else url.searchParams.delete(HELP_PARAM)
+    window.history.replaceState({}, '', url)
+  }, [])
 
   useEffect(() => {
     const cb = oidcCallbackParams(window.location.search)
@@ -139,6 +152,7 @@ export function AppShell() {
         onSaveProject={() => setDialog('save')}
         showTooltips={showTooltips}
         onToggleTooltips={() => setShowTooltips((v) => !v)}
+        onOpenHelp={() => setHelpOpen(true)}
         {...(canSignIn() ? { accountLabel: account?.email ?? 'Sign in', onAccount } : {})}
       />
       <div
@@ -167,12 +181,17 @@ export function AppShell() {
         <AccountDialog
           account={account}
           onClose={() => setAgentOpen(false)}
+          onOpenHelp={() => {
+            setAgentOpen(false)
+            setHelpOpen(true)
+          }}
           onSignOut={() => {
             setAgentOpen(false)
             void logout().then(() => setAccount(null))
           }}
         />
       )}
+      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} onSignedIn={setAccount} />}
       {gameFilesOpen && <GameFilesDialog onClose={() => setGameFilesOpen(false)} />}
       {editingScript && <LuaEditor node={editingScript} onClose={() => openScript(null)} />}

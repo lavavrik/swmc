@@ -28,6 +28,7 @@ export function Toolbar({
   onToggleTooltips,
   accountLabel,
   onAccount,
+  onOpenHelp,
 }: {
   onOpenPicker: () => void
   onOpenPins: () => void
@@ -38,6 +39,7 @@ export function Toolbar({
   onToggleTooltips: () => void
   accountLabel?: string
   onAccount?: () => void
+  onOpenHelp: () => void
 }) {
   const load = useEditorStore((s) => s.load)
   const undo = useEditorStore((s) => s.undo)
@@ -81,6 +83,13 @@ export function Toolbar({
       <RoundButton icon="copy" title="Copy (Ctrl+C)" onClick={copy} disabled={!hasSelection} />
       <RoundButton icon="cut" title="Cut (Ctrl+X)" onClick={cut} disabled={!hasSelection} />
       <RoundButton icon="paste" title="Paste (Ctrl+V)" onClick={paste} disabled={!hasClipboard} />
+      <button
+        className="text-button toolbar-help"
+        title="Build microcontrollers with Claude Code, Codex or another AI agent"
+        onClick={onOpenHelp}
+      >
+        AI agents
+      </button>
       {onAccount && (
         <button
           className="text-button account-button toolbar-account"
