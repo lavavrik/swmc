@@ -273,6 +273,6 @@ library, as it would in the editor.
 
 | Variable       | Meaning                                                                                              |
 | -------------- | ---------------------------------------------------------------------------------------------------- |
-| `SWMC_TOKEN`   | Set: save to the cloud library. Unset: save to a folder                                              |
+| `SWMC_TOKEN`   | Authenticates to the cloud library. Get one from Agent access                                        |
 | `SWMC_API_URL` | Library API. Default `https://api.swmc.example.com`                                         |
-| `SWMC_URL`     | Editor that links point to. Default: the hosted editor with a token, `http://localhost:5173` without |
+| `SWMC_URL`     | Editor that links point to. Default: the hosted editor                                               |
