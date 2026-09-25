@@ -15,8 +15,7 @@ library, and replies with a link that opens it in the editor. From the
 editor you export the XML into Stormworks as usual.
 
 - [Before you start](#before-you-start)
-- [Install: hosted editor](#install-hosted-editor): most people want this
-- [Install: from a checkout of this repository](#install-from-a-checkout)
+- [Install: hosted editor](#install-hosted-editor)
 - [Using it](#using-it)
 - [How it works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
@@ -135,29 +134,6 @@ microcontroller.
 run the download command from step 2 again. Your token and agent config
 stay the same.
 
-## Install from a checkout
-
-Use this if you work on swmc itself, or want the files on disk instead of in
-the cloud.
-
-```bash
-git clone https://github.com/lavavrik/swmc && cd swmc
-npm install
-npm run dev     # the editor at http://localhost:5173, for the links the agent returns
-```
-
-**Claude Code** picks the server up from the repository's `.mcp.json`. Run
-`claude` in the folder and approve the `swmc` server when asked. Nothing
-else is needed.
-
-**Other clients**: register `npm run --silent mcp` with the repository as the
-working directory. Keep `--silent`: the protocol runs over stdout, and npm's
-own output would corrupt it.
-
-In this mode the agent saves into the checkout: `microcontrollers/<slug>.xml`
-and `recipes/<slug>.yaml`. Its links point at `http://localhost:5173`. To save
-to the cloud library instead, export `SWMC_TOKEN` before starting the agent.
-
 ## Using it
 
 Talk to the agent about the vehicle, not about the tools. Good requests say
@@ -264,8 +240,6 @@ library, as it would in the editor.
 | The link says "no microcontroller called … in your library"           | The browser is signed in to a different CloudHost account from the one that made the token.                                                                                              |
 | "… already exists … call again with replace: true"                    | The agent tried to create something that exists. Tell it whether to update that one or save a copy under a new name.                                                                    |
 | An agent edit lost changes you made in the editor                     | Save in the editor before asking the agent. It only sees what is saved in the library.                                                                                                  |
-| (from a checkout) the server exits or the client reports invalid JSON | Something is writing to stdout. Use `npm run --silent mcp`, not `npm run mcp`.                                                                                                          |
-| (from a checkout) the links 404 at localhost:5173                     | Run `npm run dev`.                                                                                                                                                                      |
 
 ## Tokens and security
 
