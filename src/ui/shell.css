@@ -1,6 +1,10 @@
 .shell {
   display: grid;
   grid-template-rows: var(--toolbar-height) 1fr var(--statusbar-height);
+  /* One column the width of the window. Left to size itself, the column grew
+     to the status bar's min-content and pushed the toolbar's right edge off
+     screen. */
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
 }
 
@@ -13,6 +17,11 @@
   padding: 0 18px;
   background: var(--chrome);
   border-bottom: 1px solid var(--chrome-border);
+  overflow-x: auto;
+}
+
+.toolbar > * {
+  flex-shrink: 0;
 }
 
 .toolbar-gap {
@@ -69,6 +78,8 @@
   align-items: center;
   gap: 18px;
   padding: 0 18px;
+  /* Narrower than everything fits: scroll rather than hide the end */
+  overflow-x: auto;
   background: var(--chrome);
   border-top: 1px solid var(--chrome-border);
 }
@@ -104,6 +115,7 @@
 
 .status-message {
   flex: 1;
+  min-width: 120px;
   font-size: 13px;
   color: var(--chrome-text-dim);
 }
@@ -542,12 +554,13 @@
 
 .name-field {
   width: 180px;
-  flex: 0 0 auto;
+  min-width: 110px;
+  flex: 0 1 auto;
 }
 
 .description-field {
   flex: 1;
-  min-width: 140px;
+  min-width: 100px;
   max-width: 320px;
 }
 
