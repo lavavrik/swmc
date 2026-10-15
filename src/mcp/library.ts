@@ -38,6 +38,11 @@ export interface Stored {
 export interface Library {
   /** Shown to the agent: where saves go. */
   readonly where: string
+  /**
+   * Keeps scripts readable, as the editor's own library does (export minifies).
+   * False where the saved XML is the game file itself.
+   */
+  readonly readableLua: boolean
   list(): Promise<Entry[]>
   get(slug: string): Promise<Stored | null>
   put(slug: string, xml: string, recipe?: string): Promise<Entry>
@@ -64,6 +69,7 @@ function editorLink(base: string, slug: string): string {
 
 export class CloudLibrary implements Library {
   readonly where: string
+  readonly readableLua = true
 
   constructor(
     private readonly api: string,
@@ -145,6 +151,7 @@ export class CloudLibrary implements Library {
 
 export class FolderLibrary implements Library {
   readonly where: string
+  readonly readableLua = false
   private readonly xmlDir: string
   private readonly recipeDir: string
 

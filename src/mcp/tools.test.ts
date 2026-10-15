@@ -165,6 +165,27 @@ describe('CloudLibrary', () => {
     expect(body.xml).toContain('<microprocessor')
   })
 
+  it('saves readable Lua, since the editor opens what it saved', async () => {
+    const hybrid = readFileSync(join(process.cwd(), 'recipes/hybrid-full.yaml'), 'utf8')
+    let xml = ''
+    const fake: typeof fetch = async (_url, init = {}) => {
+      if (init.method === 'PUT') {
+        xml = (JSON.parse(String(init.body)) as { xml: string }).xml
+        return Response.json({ id: 'hybrid-full', name: 'Hybrid Full' })
+      }
+      return new Response('not found', { status: 404 })
+    }
+    const cloud = new CloudLibrary('https://api.test', 'swmc_abc', 'https://ui.test', fake)
+    await buildMicrocontroller(cloud, { recipe: hybrid })
+    expect(xml).toContain('drive_cl')
+
+    // The folder is the game file, minified like `mc build`
+    await buildMicrocontroller(library, { recipe: hybrid, slug: 'hybrid-full' })
+    expect(readFileSync(join(root, 'microcontrollers/hybrid-full.xml'), 'utf8')).not.toContain(
+      'drive_cl',
+    )
+  })
+
   it('explains a rejected token', async () => {
     const fake: typeof fetch = async () => new Response('{}', { status: 401 })
     const cloud = new CloudLibrary('https://api.test', 'swmc_old', 'https://ui.test', fake)

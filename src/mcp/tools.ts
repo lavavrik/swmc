@@ -104,7 +104,8 @@ export interface BuildInput {
 
 export async function buildMicrocontroller(library: Library, input: BuildInput): Promise<string> {
   const built = parseAndBuild(input.recipe)
-  const xml = serializeMicrocontroller(built.doc)
+  // The cloud library is what the editor opens, so it gets the readable Lua
+  const xml = serializeMicrocontroller(built.doc, { minifyLua: !library.readableLua })
   const components = built.doc.nodes.filter((n) => !n.type.startsWith('io.')).length
   const lines: string[] = []
   const warnings = built.warnings.map((w) => `warning: ${w}`)
