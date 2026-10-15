@@ -5,6 +5,8 @@ import {
   clearWantedOpen,
   openMicrocontroller,
   openParam,
+  projectParam,
+  searchForProject,
   wantedOpen,
   xmlPathFromOpen,
 } from './openQuery'
@@ -82,5 +84,28 @@ describe('openMicrocontroller', () => {
     const result = await openMicrocontroller('rig', { enabled: true, signedIn: false })
     expect(result).toMatchObject({ ok: false, needsSignIn: true })
     expect(String(fetchMock.mock.calls[0]![0])).toBe('/microcontrollers/rig.xml')
+  })
+})
+
+describe('projectParam', () => {
+  it('reads ?project=', () => {
+    expect(projectParam('?project=diesel')).toBe('diesel')
+    expect(projectParam('?open=diesel')).toBeNull()
+    expect(projectParam('?project=')).toBeNull()
+  })
+})
+
+describe('searchForProject', () => {
+  it('replaces ?open= so a reload does not bring the minified file back', () => {
+    expect(searchForProject('?open=diesel', 'diesel')).toBe('?project=diesel')
+  })
+
+  it('keeps unrelated parameters', () => {
+    expect(searchForProject('?help=agents&project=a', 'b')).toBe('?help=agents&project=b')
+  })
+
+  it('clears both when nothing from the library is on screen', () => {
+    expect(searchForProject('?open=diesel', null)).toBe('')
+    expect(searchForProject('?project=a&help=agents', null)).toBe('?help=agents')
   })
 })

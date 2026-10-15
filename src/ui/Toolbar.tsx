@@ -1,5 +1,6 @@
 /** The dark top bar of round buttons, mirroring the in-game toolbar. */
 import { useEditorStore } from '@/editor/store'
+import { showProjectInUrl } from '@/io/openQuery'
 import { Icon, type IconName } from './icons'
 import { createEmpty } from '@/model/ops'
 
@@ -57,7 +58,10 @@ export function Toolbar({
       <RoundButton
         icon="close"
         title="Discard and start again"
-        onClick={() => load(createEmpty())}
+        onClick={() => {
+          load(createEmpty())
+          showProjectInUrl(null)
+        }}
       />
       <RoundButton icon="confirm" title="Confirm (not yet implemented)" disabled />
       <span className="toolbar-gap" />

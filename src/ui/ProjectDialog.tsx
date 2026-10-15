@@ -15,6 +15,7 @@ import {
   saveProject,
   type ProjectSummary,
 } from '@/io/library'
+import { showProjectInUrl } from '@/io/openQuery'
 import { findDesigns, type FoundDesign } from '@/io/gameFiles'
 import { parseMicrocontroller } from '@/io/microcontroller'
 import { useGameFilesStore } from './gameFilesStore'
@@ -69,6 +70,7 @@ export function ProjectDialog({
       return
     }
     load(result.value)
+    showProjectInUrl(null)
     onClose()
   }
 
@@ -79,6 +81,7 @@ export function ProjectDialog({
       return
     }
     load(result.value)
+    showProjectInUrl(id)
     onClose()
   }
 
@@ -90,13 +93,19 @@ export function ProjectDialog({
       return
     }
     load(result.value)
+    showProjectInUrl(null)
     onClose()
   }
 
   const save = async () => {
     setMeta({ name, description })
     try {
-      await saveProject({ ...doc, meta: { ...doc.meta, name, description } }, Date.now())
+      const saved = await saveProject(
+        { ...doc, meta: { ...doc.meta, name, description } },
+        Date.now(),
+      )
+      // A reload now reopens this save rather than a minified `?open=` file
+      showProjectInUrl(saved.id)
       onClose()
     } catch (error) {
       setProblem(String(error))

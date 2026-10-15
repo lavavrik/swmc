@@ -2,8 +2,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@/editor/Canvas'
 import { useEditorStore } from '@/editor/store'
-import { importFile } from '@/io/library'
-import { clearWantedOpen, openMicrocontroller, wantedOpen } from '@/io/openQuery'
+import { importFile, loadProject } from '@/io/library'
+import {
+  clearWantedOpen,
+  openMicrocontroller,
+  projectParam,
+  showProjectInUrl,
+  wantedOpen,
+} from '@/io/openQuery'
 import { ComponentPicker } from './ComponentPicker'
 import { LuaEditor } from './LuaEditor'
 import { MonitorPanel } from './MonitorPanel'
@@ -106,7 +112,9 @@ export function AppShell() {
   // `?open=hybrid-car` loads that microcontroller: from the signed-in cloud
   // library, where the MCP server saves, else the XML the CLI wrote under
   // microcontrollers/. Waits until the library has said who is signed in.
-  const [wanted] = useState(() => wantedOpen(window.location.search))
+  const [wanted] = useState(() =>
+    projectParam(window.location.search) ? null : wantedOpen(window.location.search),
+  )
   const opened = useRef(false)
   useEffect(() => {
     if (!wanted || !accountKnown || opened.current) return
@@ -134,12 +142,31 @@ export function AppShell() {
     )
   }, [wanted, accountKnown, account, load, zoomToFit, viewSize])
 
+  // `?project=diesel` reopens what was saved to the library, readable Lua and
+  // all. Same wait: the library is the cloud or this browser by account.
+  const [project] = useState(() => projectParam(window.location.search))
+  const projectOpened = useRef(false)
+  useEffect(() => {
+    if (!project || !accountKnown || projectOpened.current) return
+    projectOpened.current = true
+    void loadProject(project).then((result) => {
+      if (!result.ok) {
+        useEditorStore.setState({ problem: result.error })
+        return
+      }
+      load(result.value)
+      requestAnimationFrame(() => zoomToFit(viewSize()))
+    })
+  }, [project, accountKnown, load, zoomToFit, viewSize])
+
   const onDrop = async (event: React.DragEvent) => {
     event.preventDefault()
     const file = event.dataTransfer.files[0]
     if (!file) return
     const result = await importFile(file)
-    if (result.ok) load(result.value)
+    if (!result.ok) return
+    load(result.value)
+    showProjectInUrl(null)
   }
 
   return (

@@ -3,7 +3,13 @@
  *
  * The CLI writes XML under `microcontrollers/`, and the MCP server saves to
  * the signed-in cloud library; both point the editor at this query. Only a
- * slug is accepted — no paths.
+ * slug is accepted — no paths. The bundled XML is the game artifact, so its
+ * Lua is minified.
+ *
+ * `?project=hybrid-car` is a project in the library (this browser, or the cloud
+ * account). Saving or opening from the library switches the URL to it, so a
+ * reload shows what was saved — readable Lua and all — rather than an `?open=`
+ * file that may be the minified export, or not the copy that was saved.
  */
 import { err, ok, type Result } from '@/model/result'
 import type { Microcontroller } from '@/model/types'
@@ -25,6 +31,35 @@ export function openParam(search: string): string | null {
   const value = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get('open')
   if (value === null || value.trim() === '') return null
   return value
+}
+
+export function projectParam(search: string): string | null {
+  const value = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get(
+    'project',
+  )
+  if (value === null || value.trim() === '') return null
+  return value
+}
+
+/** `search` pointing at library project `id`, or at nothing when `id` is null. */
+export function searchForProject(search: string, id: string | null): string {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  params.delete('open')
+  params.delete('project')
+  if (id !== null) params.set('project', id)
+  const text = params.toString()
+  return text.length > 0 ? `?${text}` : ''
+}
+
+/**
+ * Records in the URL which library project is on screen (null: none — a new,
+ * imported or dropped document), without adding a history entry.
+ */
+export function showProjectInUrl(id: string | null): void {
+  const { pathname, search, hash } = window.location
+  const next = searchForProject(search, id)
+  if (next !== search)
+    window.history.replaceState(window.history.state, '', `${pathname}${next}${hash}`)
 }
 
 export async function fetchMicrocontroller(path: string): Promise<Result<Microcontroller>> {
