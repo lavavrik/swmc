@@ -9,7 +9,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   fetchMock.mockReset()
@@ -60,7 +60,7 @@ describe('cloud library client', () => {
   })
 
   it('sends a stored CloudHost access token', async () => {
-    sessionStorage.setItem(
+    localStorage.setItem(
       'swmc_oidc',
       JSON.stringify({
         access_token: 'atk',

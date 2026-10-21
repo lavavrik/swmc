@@ -2,9 +2,23 @@
  * CloudHost OIDC (authorization code + PKCE) for the cloud library.
  *
  * The SPA is a public client. Home mints RS256 access tokens; the API
- * verifies them against JWKS. Tokens live in sessionStorage because the
- * UI and API are different *.example.com hosts — an HttpOnly cookie on
- * the API origin would be cross-site.
+ * verifies them against JWKS. Tokens live in web storage because the UI
+ * and API are different *.example.com hosts — an HttpOnly cookie on the API
+ * origin would be cross-site.
+ *
+ * Session lifetime (SWMC-3): the tokens are in localStorage, not
+ * sessionStorage, so a reload, a new tab (editor links from the MCP server
+ * open one) or a browser restart stays signed in. Access tokens last 15
+ * minutes; the refresh token (30 days, rotated on every use) renews them.
+ * Only the issuer rejecting the refresh token signs you out — a network
+ * error or a 5xx keeps the session for the next try.
+ *
+ * Home revokes the whole refresh-token family when a rotated token is used
+ * twice, so tabs must not refresh at the same time: the refresh runs under
+ * a Web Lock and re-reads storage first, picking up what another tab got.
+ *
+ * The PKCE pending state stays in sessionStorage: the redirect comes back
+ * to the tab that started it.
  */
 import { oidcClientId, oidcIssuer, oidcRedirectUri } from './config'
 
@@ -28,6 +42,9 @@ interface Tokens {
   readonly refresh_token: string
   readonly expires_at: number
 }
+
+/** The issuer said no (400/401): the refresh token is dead, sign out. */
+class RejectedGrant extends Error {}
 
 let discovery: Discovery | null = null
 let inflightRefresh: Promise<string | null> | null = null
@@ -88,41 +105,81 @@ export async function completeOidcLogin(code: string, state: string): Promise<vo
 }
 
 export function clearOidcTokens(): void {
+  localStorage.removeItem(tokensKey)
   sessionStorage.removeItem(tokensKey)
   sessionStorage.removeItem(pendingKey)
 }
 
+/** Tokens are stored — signed in, even if the access token needs renewing. */
+export function hasOidcSession(): boolean {
+  return readTokens() !== null
+}
+
+/**
+ * The API turned the stored access token down although it looked fresh (a
+ * clock ahead of the issuer's): renew it on the next getAccessToken().
+ */
+export function expireOidcAccessToken(): void {
+  const tokens = readTokens()
+  if (tokens) storeTokens({ ...tokens, expires_at: 0 })
+}
+
+/**
+ * A usable access token, refreshing it first when it is about to expire.
+ * null means signed out — or, after a transient refresh failure, not right
+ * now (the stored tokens are kept).
+ */
 export async function getAccessToken(): Promise<string | null> {
   const tokens = readTokens()
   if (!tokens) return null
-  if (tokens.expires_at > now() + 60) return tokens.access_token
+  if (fresh(tokens)) return tokens.access_token
   if (!tokens.refresh_token) {
     clearOidcTokens()
     return null
   }
   if (!inflightRefresh) {
-    inflightRefresh = refresh(tokens.refresh_token).finally(() => {
+    inflightRefresh = withRefreshLock(refresh).finally(() => {
       inflightRefresh = null
     })
   }
   return inflightRefresh
 }
 
-async function refresh(refreshToken: string): Promise<string | null> {
+function fresh(tokens: Tokens): boolean {
+  return tokens.expires_at > now() + 60
+}
+
+/** Serialise refreshes across tabs where the browser has Web Locks. */
+function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks
+  if (!locks) return fn()
+  return locks.request(`${tokensKey}_refresh`, fn) as Promise<T>
+}
+
+async function refresh(): Promise<string | null> {
+  // Another tab may have refreshed while we waited for the lock; its
+  // rotated refresh token replaced ours, which is now spent.
+  const tokens = readTokens()
+  if (!tokens) return null
+  if (fresh(tokens)) return tokens.access_token
+  if (!tokens.refresh_token) {
+    clearOidcTokens()
+    return null
+  }
   try {
     const disc = await loadDiscovery()
-    const tokens = await tokenRequest(
+    const next = await tokenRequest(
       disc.token_endpoint,
       new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: refreshToken,
+        refresh_token: tokens.refresh_token,
         client_id: oidcClientId(),
       }),
     )
-    storeTokens(tokens)
-    return tokens.access_token
-  } catch {
-    clearOidcTokens()
+    storeTokens(next)
+    return next.access_token
+  } catch (error) {
+    if (error instanceof RejectedGrant) clearOidcTokens()
     return null
   }
 }
@@ -148,6 +205,11 @@ async function tokenRequest(url: string, body: URLSearchParams): Promise<Tokens>
     error?: string
     error_description?: string
   }
+  if (res.status === 400 || res.status === 401) {
+    throw new RejectedGrant(
+      json.error_description ?? json.error ?? `token request rejected (${res.status})`,
+    )
+  }
   if (!res.ok || !json.access_token) {
     throw new Error(json.error_description ?? json.error ?? `token request failed (${res.status})`)
   }
@@ -159,7 +221,13 @@ async function tokenRequest(url: string, body: URLSearchParams): Promise<Tokens>
 }
 
 function readTokens(): Tokens | null {
-  const raw = sessionStorage.getItem(tokensKey)
+  // Builds before SWMC-3 kept tokens in sessionStorage; carry them over
+  const legacy = sessionStorage.getItem(tokensKey)
+  if (legacy !== null) {
+    sessionStorage.removeItem(tokensKey)
+    if (localStorage.getItem(tokensKey) === null) localStorage.setItem(tokensKey, legacy)
+  }
+  const raw = localStorage.getItem(tokensKey)
   if (!raw) return null
   try {
     return JSON.parse(raw) as Tokens
@@ -169,7 +237,7 @@ function readTokens(): Tokens | null {
 }
 
 function storeTokens(tokens: Tokens): void {
-  sessionStorage.setItem(tokensKey, JSON.stringify(tokens))
+  localStorage.setItem(tokensKey, JSON.stringify(tokens))
 }
 
 async function newPending(): Promise<Pending> {

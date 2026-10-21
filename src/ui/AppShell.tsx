@@ -28,7 +28,7 @@ import { Toolbar } from './Toolbar'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { useSimulationDriver } from '@/sim/useSimulationDriver'
 import { canSignIn, cloudLibrary } from '@/io/config'
-import { finishOidcLogin, logout, me, type Account } from '@/io/auth'
+import { finishOidcLogin, logout, restoreAccount, type Account } from '@/io/auth'
 import { oidcCallbackParams } from '@/io/oidc'
 import { installLuaRunner } from '@/lua/runner'
 
@@ -78,7 +78,7 @@ export function AppShell() {
       return
     }
     if (!cloudLibrary()) return
-    void me()
+    void restoreAccount()
       .then(setAccount, () => setAccount(null))
       .finally(() => setAccountKnown(true))
   }, [])

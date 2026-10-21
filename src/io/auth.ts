@@ -3,7 +3,7 @@
  * email/password still uses an HttpOnly cookie (local / tests).
  */
 import { apiFetch } from './http'
-import { clearOidcTokens, completeOidcLogin } from './oidc'
+import { clearOidcTokens, completeOidcLogin, expireOidcAccessToken, hasOidcSession } from './oidc'
 
 export interface Account {
   readonly id: string
@@ -32,15 +32,45 @@ export async function finishOidcLogin(code: string, state: string): Promise<Acco
   return account
 }
 
+/**
+ * Who the API says is signed in. null is a definite "nobody"; a throw means
+ * it could not tell (API down, issuer unreachable) and the stored CloudHost
+ * session is kept — see restoreAccount.
+ */
 export async function me(): Promise<Account | null> {
-  const res = await request('/auth/me')
+  let res = await request('/auth/me')
+  if (res.status === 401 && hasOidcSession()) {
+    // Renew once: the token may only have looked fresh to this clock
+    expireOidcAccessToken()
+    res = await request('/auth/me')
+  }
   if (res.status === 401) {
+    // Tokens still stored here means the refresh failed for a passing
+    // reason; a rejected refresh token has already been cleared.
+    if (hasOidcSession()) throw new Error('could not renew the CloudHost sign-in')
     session = null
     return null
   }
   if (!res.ok) throw new Error(`account: ${res.status}`)
   session = (await res.json()) as Account
   return session
+}
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/**
+ * me() on page load, retrying a cold or unreachable API (SWMC-3) so a
+ * reload does not look signed out. Three tries, 1 s then 2 s apart.
+ */
+export async function restoreAccount(wait = sleep): Promise<Account | null> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await me()
+    } catch (error) {
+      if (attempt >= 2) throw error
+      await wait(1000 * 2 ** attempt)
+    }
+  }
 }
 
 export async function register(email: string, password: string): Promise<Account> {
