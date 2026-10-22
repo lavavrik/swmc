@@ -106,17 +106,26 @@
   }
 }
 
+/*
+ * The march is stepped at 20 frames a second (32 steps per 1.6s period) rather
+ * than run `linear`. SVG transforms are not composited, so every animation
+ * frame re-rasterises the whole canvas: a linear march repainted at the
+ * monitor's refresh rate and cost 20–50% of a CPU core on an idle editor
+ * (diesel, ~130 arrows). Stepped, it is about 1%. `steps(n)` jumps at the end
+ * of each step, so it never reaches the final keyframe and the loop stays
+ * seamless. See docs/performance.md.
+ */
 .wire-flow {
-  animation: wire-flow 1.6s linear infinite;
+  animation: wire-flow 1.6s steps(32) infinite;
 }
 
 /* Kept in step with the march by sharing its duration and timing */
 .wire-arrow.leading {
-  animation: arrow-enter 1.6s linear infinite;
+  animation: arrow-enter 1.6s steps(32) infinite;
 }
 
 .wire-arrow.solo {
-  animation: arrow-solo 1.6s linear infinite;
+  animation: arrow-solo 1.6s steps(32) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
