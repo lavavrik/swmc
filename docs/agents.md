@@ -82,6 +82,16 @@ claude mcp add swmc --scope user -e SWMC_TOKEN=swmc_… -- node ~/.swmc/swmc-mcp
 `--scope user` makes it available in every project. Check it with
 `claude mcp list`, or run `/mcp` inside Claude Code.
 
+If you installed Node with **nvm or fnm**, use the full path to `node`
+instead of a bare `node`, here and in every config below. The client starts
+the server with the environment it was launched with, where `node` is often
+not on `PATH`. Get the path from `which node` in a terminal. With fnm, that
+path is under `/run/user/<uid>/fnm_multishells/…` and only exists for that
+shell, so use the installed copy instead:
+`~/.local/share/fnm/node-versions/<version>/installation/bin/node`
+(`fnm list` shows the versions). With nvm it is
+`~/.nvm/versions/node/<version>/bin/node`.
+
 **Codex**
 
 ```bash
@@ -231,15 +241,17 @@ library, as it would in the editor.
 
 ## Troubleshooting
 
-| Symptom                                                               | Cause and fix                                                                                                                                                                           |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The agent doesn't list any swmc tools                                 | Run `claude mcp list` or `codex mcp list`. Check that `node --version` is 20+ and that the path to `swmc-mcp.mjs` is absolute and exists. Restart the client after changing its config. |
-| "the swmc library refused SWMC_TOKEN"                                 | The token was revoked or mistyped. Create a new one in Agent access and update the agent config.                                                                                        |
-| The first request takes a second or two                               | The library sleeps when idle and wakes on the first request. This is normal.                                                                                                            |
-| The link says "sign in to open … from your cloud library"             | You are signed out in this browser. Sign in; the microcontroller opens afterwards.                                                                                                      |
-| The link says "no microcontroller called … in your library"           | The browser is signed in to a different CloudHost account from the one that made the token.                                                                                              |
-| "… already exists … call again with replace: true"                    | The agent tried to create something that exists. Tell it whether to update that one or save a copy under a new name.                                                                    |
-| An agent edit lost changes you made in the editor                     | Save in the editor before asking the agent. It only sees what is saved in the library.                                                                                                  |
+| Symptom                                                     | Cause and fix                                                                                                                                                                                   |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The agent doesn't list any swmc tools                       | Run `claude mcp list` or `codex mcp list`. Check that `node --version` is 20+ and that the path to `swmc-mcp.mjs` is absolute and exists. Restart the client after changing its config.         |
+| `ENOENT: Executable not found in $PATH: node`               | The client cannot find `node`, usually because nvm or fnm only puts it on `PATH` in an interactive shell. Replace `node` with its absolute path (see [step 3](#3-register-it-with-your-agent)). |
+| Claude Code says only `Connection closed` for swmc          | The server exited at once. Check that the `swmc-mcp.mjs` path exists (download it again if not) and that `node` is found, then run the same command in a terminal to see the error.             |
+| "the swmc library refused SWMC_TOKEN"                       | The token was revoked or mistyped. Create a new one in Agent access and update the agent config.                                                                                                |
+| The first request takes a second or two                     | The library sleeps when idle and wakes on the first request. This is normal.                                                                                                                    |
+| The link says "sign in to open … from your cloud library"   | You are signed out in this browser. Sign in; the microcontroller opens afterwards.                                                                                                              |
+| The link says "no microcontroller called … in your library" | The browser is signed in to a different CloudHost account from the one that made the token.                                                                                                      |
+| "… already exists … call again with replace: true"          | The agent tried to create something that exists. Tell it whether to update that one or save a copy under a new name.                                                                            |
+| An agent edit lost changes you made in the editor           | Save in the editor before asking the agent. It only sees what is saved in the library.                                                                                                          |
 
 ## Tokens and security
 
@@ -258,21 +270,21 @@ library, as it would in the editor.
 
 ### Tools
 
-| Tool                     | What it does                                                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `guide`                  | Recipe format, simulation rules, Stormworks vehicle conventions                                                     |
-| `example_recipe`         | A complete recipe: throttle-limiter, hybrid-car, hybrid-full, diesel                                                |
-| `list_components`        | Type ids, port slugs, property keys; filter by words or category                                                    |
-| `build_microcontroller`  | Recipe → XML, saved with its recipe; returns the editor link. `replace: true` overwrites, `save: false` only checks |
-| `simulate`               | Tick a recipe or a saved microcontroller through stages of pin values; Lua `onTick` runs                            |
-| `list_microcontrollers`  | The library, newest first                                                                                           |
-| `get_microcontroller`    | A saved one as a recipe to edit (its own, or read back from the XML), or as raw XML                                 |
-| `delete_microcontroller` | Remove one                                                                                                          |
+| Tool                     | What it does                                                                                                                                                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `guide`                  | Recipe format, simulation rules, Stormworks vehicle conventions                                                                                                                                                |
+| `example_recipe`         | A complete recipe: throttle-limiter, hybrid-car, hybrid-full, diesel                                                                                                                                           |
+| `list_components`        | Type ids, port slugs, property keys; filter by words or category                                                                                                                                               |
+| `build_microcontroller`  | Recipe → XML, saved with its recipe; returns the editor link. `replace: true` overwrites, `save: false` only checks. `recipe_path` reads the recipe from a file; warns if the minified Lua behaves differently |
+| `simulate`               | Tick a recipe or a saved microcontroller through stages of pin values; Lua `onTick` runs, also minified. `minified: true` reports the run the game would do                                                    |
+| `list_microcontrollers`  | The library, newest first                                                                                                                                                                                      |
+| `get_microcontroller`    | A saved one as a recipe to edit (its own, or read back from the XML), as saved XML, or as `export` (Lua minified, what the game loads)                                                                         |
+| `delete_microcontroller` | Remove one                                                                                                                                                                                                     |
 
 ### Environment variables
 
-| Variable       | Meaning                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| `SWMC_TOKEN`   | Authenticates to the cloud library. Get one from Agent access                                        |
-| `SWMC_API_URL` | Library API. Default `https://api.swmc.example.com`                                         |
-| `SWMC_URL`     | Editor that links point to. Default: the hosted editor                                               |
+| Variable       | Meaning                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `SWMC_TOKEN`   | Authenticates to the cloud library. Get one from Agent access |
+| `SWMC_API_URL` | Library API. Default `https://api.swmc.example.com`  |
+| `SWMC_URL`     | Editor that links point to. Default: the hosted editor        |

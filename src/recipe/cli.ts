@@ -9,11 +9,15 @@ import { spawn } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, resolve } from 'node:path'
 import { argv, env, exit, platform, stderr, stdout } from 'node:process'
-import { parseMicrocontroller, serializeMicrocontroller } from '@/io/microcontroller'
+import {
+  parseMicrocontroller,
+  serializeMicrocontroller,
+  withMinifiedLua,
+} from '@/io/microcontroller'
 import { buildRecipe } from './build'
 import { withLua } from './lua'
 import { componentCatalog } from './catalog'
-import { formatFromPath, parseRecipeText } from './parse'
+import { loadRecipeFile } from './files'
 import { formatSimResult, runSim } from './run'
 import { startTelemServer } from './telem'
 
@@ -21,7 +25,7 @@ const USAGE = `Usage:
   npm run mc -- catalog [--json] [--all]
   npm run mc -- build <recipe> [-o path|-] [--open]
   npm run mc -- open <slug-or-xml>
-  npm run mc -- sim <recipe-or-xml> [--ticks N] [--set pin=value]... [--json]
+  npm run mc -- sim <recipe-or-xml> [--ticks N] [--set pin=value]... [--minified] [--json]
   npm run mc -- telem [--port N]`
 
 async function main(args: string[]): Promise<number> {
@@ -138,6 +142,8 @@ async function simCmd(args: string[]): Promise<number> {
   const path = resolve(file)
   const text = readFileSync(path, 'utf8')
   const isXml = extname(path).toLowerCase() === '.xml' || text.trimStart().startsWith('<')
+  // --minified runs the Lua as the export writes it, which is what the game runs
+  const asRun = flags.has('minified') ? withMinifiedLua : <T>(doc: T) => doc
   let result
   if (isXml) {
     const parsed = parseMicrocontroller(text)
@@ -145,12 +151,13 @@ async function simCmd(args: string[]): Promise<number> {
       stderr.write(`${parsed.error}\n`)
       return 1
     }
-    const doc = parsed.value
+    const doc = asRun(parsed.value)
     result = await simWithLua(doc, () => runSim(doc, ticks, sets))
   } else {
     const built = loadRecipe(file)
     for (const warning of built.warnings) stderr.write(`warning: ${warning}\n`)
-    result = await simWithLua(built.doc, () => runSim(built.doc, ticks, sets, built.ids))
+    const doc = asRun(built.doc)
+    result = await simWithLua(doc, () => runSim(doc, ticks, sets, built.ids))
   }
   if (!result.ok) {
     stderr.write(`${result.error}\n`)
@@ -179,10 +186,9 @@ function telemCmd(args: string[]): number {
 }
 
 function loadRecipe(file: string) {
-  const path = resolve(file)
-  const parsed = parseRecipeText(readFileSync(path, 'utf8'), formatFromPath(path))
-  if (!parsed.ok) throw new Error(parsed.error)
-  const built = buildRecipe(parsed.value)
+  const loaded = loadRecipeFile(file)
+  if (!loaded.ok) throw new Error(loaded.error)
+  const built = buildRecipe(loaded.value.recipe)
   if (!built.ok) throw new Error(built.error)
   return built.value
 }
@@ -218,7 +224,7 @@ function parseFlags(args: string[]): {
     }
     const name = arg.replace(/^--?/, '')
     const next = args[i + 1]
-    if (name === 'json' || name === 'all' || name === 'open') {
+    if (name === 'json' || name === 'all' || name === 'open' || name === 'minified') {
       bools.add(name)
       continue
     }

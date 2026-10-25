@@ -94,6 +94,40 @@ describe('renaming', () => {
     expect(minify('local t = { alpha = beta, [gamma] = delta }')).toBe('local a={alpha=b,[c]=d}')
   })
 
+  it('keeps the keys of a table split by semicolons', () => {
+    expect(minify('local t = { alpha = 1; beta = 2 }')).toBe('local a={alpha=1;beta=2}')
+  })
+
+  it('renames variables assigned inside a function held in a table', () => {
+    // Inside the function body, `; x =` and `, x =` are statements, not entries
+    expect(minify('local x=0 local t={f=function() y=1; x=2 end}')).toBe(
+      'local a=0 local b={f=function()c=1;a=2 end}',
+    )
+    expect(minify('local x,y=0,0 local t={f=function() x,y=1,2 end}')).toBe(
+      'local a,b=0,0 local c={f=function()a,b=1,2 end}',
+    )
+    expect(minify('local x=0 local t={f=function() if true then x=1 end end}')).toBe(
+      'local a=0 local b={f=function()if true then a=1 end end}',
+    )
+  })
+
+  it('renames inside every kind of block nested in a table', () => {
+    const source =
+      'local x,y=0,0 local t={f=function() do y=1; x=2 end while true do y=1; x=2 end ' +
+      'for i=1,2 do y=1; x=2 end repeat y=1; x=2 until true ' +
+      'if a then y=1 elseif b then y=1; x=2 else y=1; x=2 end end, k=1}'
+    const result = minify(source)
+    expect(result).not.toMatch(/\bx\b|\by\b/)
+    // the table key after the function is still a key
+    expect(result).toMatch(/,k=1}$/)
+  })
+
+  it('still sees the keys of a table built inside a function in a table', () => {
+    expect(minify('local t={f=function() local u={alpha=1; beta=2} end}')).toBe(
+      'local a={f=function()local b={alpha=1;beta=2}end}',
+    )
+  })
+
   it('never touches reserved words, the standard library or the game’s API', () => {
     const source =
       'function onTick() local reading = math.floor(input.getNumber(1)) output.setNumber(1, reading) end'

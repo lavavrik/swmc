@@ -317,6 +317,20 @@ function withMinifiedScript(
   return { ...properties, script: result.code }
 }
 
+/**
+ * The document with every Lua script as the export writes it, so it can be
+ * ticked as the game will run it.
+ */
+export function withMinifiedLua(doc: Microcontroller): Microcontroller {
+  if (!doc.nodes.some((n) => n.type === 'data.luaScript')) return doc
+  return {
+    ...doc,
+    nodes: doc.nodes.map((n) =>
+      n.type === 'data.luaScript' ? { ...n, properties: withMinifiedScript(n.properties) } : n,
+    ),
+  }
+}
+
 export function serializeMicrocontroller(
   doc: Microcontroller,
   options: { minifyLua?: boolean } = {},

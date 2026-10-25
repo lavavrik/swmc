@@ -1,0 +1,773 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="Oil Rig Controller" description="No description set." width="5" length="5" id_counter="62" id_counter_node="21">
+	<nodes>
+		<n id="1" component_id="3">
+			<node label="Start" mode="1" description="The input signal to be processed."/>
+		</n>
+		<n id="2" component_id="4">
+			<node label="Drill Clamped" mode="1" description="The input signal to be processed.">
+				<position x="1"/>
+			</node>
+		</n>
+		<n id="3" component_id="5">
+			<node label="Connector Clamped" mode="1" description="The input signal to be processed.">
+				<position x="2"/>
+			</node>
+		</n>
+		<n id="4" component_id="6">
+			<node label="Connector Aligned" mode="1" description="The input signal to be processed.">
+				<position x="3"/>
+			</node>
+		</n>
+		<n id="5" component_id="8">
+			<node label="Select Track Position" mode="1" type="1" description="The input signal to be processed.">
+				<position z="1"/>
+			</node>
+		</n>
+		<n id="6" component_id="10">
+			<node label="Grab Track Position" mode="1" type="1" description="The input signal to be processed.">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+		<n id="7" component_id="12">
+			<node label="Busy" description="The input signal to be processed.">
+				<position z="2"/>
+			</node>
+		</n>
+		<n id="8" component_id="16">
+			<node label="Ready" description="The input signal to be processed.">
+				<position x="1" z="2"/>
+			</node>
+		</n>
+		<n id="9" component_id="18">
+			<node label="Drill Clamp" description="The input signal to be processed.">
+				<position x="2" z="2"/>
+			</node>
+		</n>
+		<n id="10" component_id="20">
+			<node label="Connector Clamp" description="The input signal to be processed.">
+				<position x="3" z="2"/>
+			</node>
+		</n>
+		<n id="11" component_id="22">
+			<node label="Connector Toggle" description="The input signal to be processed.">
+				<position x="4" z="2"/>
+			</node>
+		</n>
+		<n id="12" component_id="24">
+			<node label="Select Track - Up" description="The input signal to be processed.">
+				<position z="3"/>
+			</node>
+		</n>
+		<n id="13" component_id="26">
+			<node label="Select Track - Down" description="The input signal to be processed.">
+				<position z="4"/>
+			</node>
+		</n>
+		<n id="14" component_id="28">
+			<node label="Grab Track - Up" description="The input signal to be processed.">
+				<position x="1" z="3"/>
+			</node>
+		</n>
+		<n id="15" component_id="30">
+			<node label="Grab Track - Down" description="The input signal to be processed.">
+				<position x="1" z="4"/>
+			</node>
+		</n>
+		<n id="16" component_id="33">
+			<node label="Drill Clamp Velocity" type="1" description="The input signal to be processed.">
+				<position x="2" z="3"/>
+			</node>
+		</n>
+		<n id="17" component_id="36">
+			<node label="Connector Clamp Velocity" type="1" description="The input signal to be processed.">
+				<position x="2" z="4"/>
+			</node>
+		</n>
+		<n id="18" component_id="39">
+			<node label="Total Drill Size" type="1" description="The input signal to be processed.">
+				<position x="3" z="3"/>
+			</node>
+		</n>
+		<n id="19" component_id="42">
+			<node label="Rods Left" type="1" description="The input signal to be processed.">
+				<position x="3" z="4"/>
+			</node>
+		</n>
+		<n id="20" component_id="61">
+			<node label="Debug Out" type="6" description="The input signal to be processed."/>
+		</n>
+		<n id="21" component_id="62">
+			<node label="Auto Mode" mode="1" description="The input signal to be processed.">
+				<position x="4"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data>
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c type="56">
+				<object id="2" script='bz="&gt;"
+by="-"
+
+A=150
+k=true
+ag=math
+q=nil
+_=false
+aB=input
+ay=output
+ap=screen
+j=ap.drawText
+f=ap.setColor
+H=ay.setNumber
+h=ay.setBool
+aw=aB.getNumber
+D=aB.getBool
+local aV=1
+local bx=2
+local bl=3
+local aN=4
+local bj=5
+local aE=1
+local bg=2
+local ba=1
+local bo=2
+local bm=3
+local bt=4
+local bu=5
+local bd=6
+local bq=7
+local aF=8
+local aS=9
+local aT=10
+local bi=1
+local bk=2
+local bn=3
+local bw=4
+local bc=.0
+local aK=.5
+local aA=.0
+local aj=.0
+local Z=1.25
+local L=.0
+local aO=-.5
+local bs=.03
+local at=.05
+local ar=.004
+local aY=2
+local aJ=_
+local aL=_
+local be=1
+local ab=.5
+local aI=-1.0
+local bf=30
+local U=1
+local aX=550
+local aQ=800
+local aZ=300
+local bb=10
+local aM=60
+local bv=30
+local aC=300
+local aU=3000
+local K=30
+local ak=10
+local l=_
+local x=_
+local c=1
+local u=0
+local a=0
+local Q=_
+local ad=_
+local Y=_
+local r,s=q,q
+local az,af=0,0
+local aD,am=_,_
+local o,g=0,0
+local v,E,B=_,_,_
+local X,V,S=_,_,_
+local C,w=0,0
+local function z(m,F)return F~=q and ag.abs(m-F)&lt;=at end
+local function ax(m,F,bh,aR,P)if F==q then return _,_,m,_ end
+local G=F-m
+local I=m-aR
+local T=G&lt;0 and-G or G
+local O=I&lt;0 and-I or I
+if P then
+if T&gt;at then P=_ else return _,_,m,k end
+elseif T&lt;=bs and O&lt;=ar then
+return _,_,m,k
+end
+local ao=G&gt;0 and 1 or-1
+local aG=((I&gt;0)==(G&gt;0))and O&gt;ar
+local aP=(aG and T&lt;O*aY)and-ao or ao
+local M=aP&gt;0
+if bh then M=not M end
+return M,not M,m,P
+end
+local n={{e="move to selected rod",b=function()r=bc+a*aK end,i=function()return z(C,r)end},{e="extend grab to rod",b=function()s=Z end,i=function()return z(w,Z)end},{e="grip the rod",b=function()E=k end,i=function()return V end,p=aC},{e="retract grab",b=function()s=L end,i=function()return z(w,L)end},{e="carry rod to well",b=function()r=aA end,i=function()return z(C,aA)end},{e="lower rod onto string",b=function()o=0; g=ab; s=aO end,p=function()return a==0 and aZ or bb end},{e="wait for aligned",aq=function()return a==0 end,b=function()g=0; o=aI end,ac=function()local y=u-1
+local aH=ag.floor(y/(U*2))v=not(aH&lt;bf and y%(U*2)&lt;U)end,i=function()return S end,p=aU},{e="connect rods",b=function()if a&gt;0 then v=k end; o=0; g=ab; B=k end,p=aM},{e="clamp rod in drill",b=function()g=0; v=k end,i=function()return X end,p=aC},{e="release rod",b=function()g=0; E=_; B=_ end,p=bv},{e="feed rod down",b=function()E=_; B=_; g=0; o=be end,p=function()return a==0 and aX or aQ end},{e="home &amp; finish",b=function()o=0; g=0; B=_; r=aj; s=L end,i=function()return z(C,aj)and z(w,L)end}}local function al(d)local y=d.p
+return type(y)=="function" and y()or y
+end
+local function aa(aW)c,u=aW,0
+while c&lt;=#n and n[c].aq and n[c].aq()do
+c=c+1
+end
+if c&gt;#n then
+l=_
+a=a+1
+elseif n[c].b then
+n[c].b()end
+end
+function onTick()X=D(bx)V=D(bl)S=D(aN)C=aw(aE)w=aw(bg)local W=D(aV)local J=D(bj)Y=J
+if(W and not Q)or(J and not ad)then x=_ end
+if not l and not x and a&lt;K and((W and not Q)or J)then
+l=k
+aa(1)end
+Q,ad=W,J
+if l then
+local d=n[c]u=u+1
+if d.ac then d.ac()end
+local ae=d.i and d.i()local av=al(d)if ae or(av and u&gt;=av)then
+if d.i and not ae then
+l,x=_,k
+o,g=0,0
+v=k
+r,s=q,q
+else
+aa(c+1)end
+end
+end
+local au,ah,as,an
+au,ah,az,aD=ax(C,r,aJ,az,aD)as,an,af,am=ax(w,s,aL,af,am)h(ba,l)h(bo,not l and a&lt;K)h(aT,x)h(bm,v)h(bt,E)h(bu,B)h(bd,au)h(bq,ah)h(aF,as)h(aS,an)H(bi,o)H(bk,g)H(bn,a*ak)H(bw,K-a)end
+local function N(ai)return ai==q and by or string.format("%.2f",ai)end
+local function t(bp,br,b_,R)f(R and 70 or 80,R and 220 or 80,R and 120 or 80)j(bp,br,b_)end
+function onDraw()if x then f(255,70,70)elseif l then f(70,220,120)else f(0,200,255)end
+j(1,1,x and "FAULT" or(l and "RUNNING" or "READY"))if Y then f(210,160,0); j(74,1,"AUTO")end
+local d=n[c]f(225,225,225)j(1,8,"S"..c.." "..(d and d.e or by))if d then
+f(A,A,A)j(1,15,"t "..u.."/"..(al(d)or by))end
+f(205,205,130)j(1,23,"SEL "..N(C)..bz..N(r))j(1,30,"GRB "..N(w)..bz..N(s))t(1,38,"CLMP",X)t(28,38,"ROD",V)t(48,38,"ALGN",S)t(1,45,"gClmp",v)t(32,45,"gRod",E)t(58,45,"cnct",B)f(A,A,A)j(1,52,"cv "..o.."  nv "..g)f(180,180,180)j(1,59,"rod "..a.."  left "..(K-a).."  "..(a*ak).."m")end
+'>
+					<pos x="-0.5" y="1"/>
+					<in1 component_id="44"/>
+				</object>
+			</c>
+			<c type="41">
+				<object id="43" count="5">
+					<pos x="-3"/>
+					<in1 component_id="3"/>
+					<in2 component_id="4"/>
+					<in3 component_id="5"/>
+					<in4 component_id="6"/>
+					<in5 component_id="62"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="44" count="2">
+					<pos x="-1.75" y="0.75"/>
+					<inc component_id="43"/>
+					<in1 component_id="8"/>
+					<in2 component_id="10"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="45">
+					<pos x="0.75" y="3.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="46" i="1">
+					<pos x="0.75" y="2.75"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="47" i="2">
+					<pos x="0.75" y="2.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="48" i="3">
+					<pos x="0.75" y="1.75"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="49" i="4">
+					<pos x="0.75" y="1.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="50" i="5">
+					<pos x="0.75" y="0.75"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="51" i="6">
+					<pos x="0.75" y="0.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="52" i="7">
+					<pos x="0.75" y="-0.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="29">
+				<object id="53" i="8">
+					<pos x="0.75" y="-0.75"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="55">
+					<pos x="0.75" y="-1.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="56" i="1">
+					<pos x="0.75" y="-1.75"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="57" i="2">
+					<pos x="0.75" y="-2.25"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="31">
+				<object id="58" i="3">
+					<pos x="0.75" y="-2.75"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c>
+				<object id="3">
+					<pos x="-4.25" y="1"/>
+				</object>
+			</c>
+			<c>
+				<object id="4">
+					<pos x="-4.25" y="0.5"/>
+				</object>
+			</c>
+			<c>
+				<object id="5">
+					<pos x="-4.25"/>
+				</object>
+			</c>
+			<c>
+				<object id="6">
+					<pos x="-4.25" y="-0.5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="8">
+					<pos x="-4.25" y="-1.5"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="10">
+					<pos x="-4.25" y="-2"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="12">
+					<pos x="2" y="3.25"/>
+					<in1 component_id="45"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="16">
+					<pos x="2" y="2.75"/>
+					<in1 component_id="46"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="18">
+					<pos x="2" y="2.25"/>
+					<in1 component_id="47"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="20">
+					<pos x="2" y="1.75"/>
+					<in1 component_id="48"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="22">
+					<pos x="2" y="1.25"/>
+					<in1 component_id="49"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="24">
+					<pos x="2" y="0.75"/>
+					<in1 component_id="50"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="26">
+					<pos x="2" y="0.25"/>
+					<in1 component_id="51"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="28">
+					<pos x="2" y="-0.25"/>
+					<in1 component_id="52"/>
+				</object>
+			</c>
+			<c type="1">
+				<object id="30">
+					<pos x="2" y="-0.75"/>
+					<in1 component_id="53"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="33">
+					<pos x="2" y="-1.25"/>
+					<in1 component_id="55"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="36">
+					<pos x="2" y="-1.75"/>
+					<in1 component_id="56"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="39">
+					<pos x="2" y="-2.25"/>
+					<in1 component_id="57"/>
+				</object>
+			</c>
+			<c type="3">
+				<object id="42">
+					<pos x="2" y="-2.75"/>
+					<in1 component_id="58"/>
+				</object>
+			</c>
+			<c type="7">
+				<object id="61">
+					<pos x="3.25" y="1"/>
+					<in1 component_id="2" node_index="1"/>
+				</object>
+			</c>
+			<c>
+				<object id="62">
+					<pos x="-4.25" y="-1"/>
+				</object>
+			</c>
+		</components_bridge>
+		<groups/>
+		<component_states>
+			<c0 id="2" script='bz="&gt;"
+by="-"
+
+A=150
+k=true
+ag=math
+q=nil
+_=false
+aB=input
+ay=output
+ap=screen
+j=ap.drawText
+f=ap.setColor
+H=ay.setNumber
+h=ay.setBool
+aw=aB.getNumber
+D=aB.getBool
+local aV=1
+local bx=2
+local bl=3
+local aN=4
+local bj=5
+local aE=1
+local bg=2
+local ba=1
+local bo=2
+local bm=3
+local bt=4
+local bu=5
+local bd=6
+local bq=7
+local aF=8
+local aS=9
+local aT=10
+local bi=1
+local bk=2
+local bn=3
+local bw=4
+local bc=.0
+local aK=.5
+local aA=.0
+local aj=.0
+local Z=1.25
+local L=.0
+local aO=-.5
+local bs=.03
+local at=.05
+local ar=.004
+local aY=2
+local aJ=_
+local aL=_
+local be=1
+local ab=.5
+local aI=-1.0
+local bf=30
+local U=1
+local aX=550
+local aQ=800
+local aZ=300
+local bb=10
+local aM=60
+local bv=30
+local aC=300
+local aU=3000
+local K=30
+local ak=10
+local l=_
+local x=_
+local c=1
+local u=0
+local a=0
+local Q=_
+local ad=_
+local Y=_
+local r,s=q,q
+local az,af=0,0
+local aD,am=_,_
+local o,g=0,0
+local v,E,B=_,_,_
+local X,V,S=_,_,_
+local C,w=0,0
+local function z(m,F)return F~=q and ag.abs(m-F)&lt;=at end
+local function ax(m,F,bh,aR,P)if F==q then return _,_,m,_ end
+local G=F-m
+local I=m-aR
+local T=G&lt;0 and-G or G
+local O=I&lt;0 and-I or I
+if P then
+if T&gt;at then P=_ else return _,_,m,k end
+elseif T&lt;=bs and O&lt;=ar then
+return _,_,m,k
+end
+local ao=G&gt;0 and 1 or-1
+local aG=((I&gt;0)==(G&gt;0))and O&gt;ar
+local aP=(aG and T&lt;O*aY)and-ao or ao
+local M=aP&gt;0
+if bh then M=not M end
+return M,not M,m,P
+end
+local n={{e="move to selected rod",b=function()r=bc+a*aK end,i=function()return z(C,r)end},{e="extend grab to rod",b=function()s=Z end,i=function()return z(w,Z)end},{e="grip the rod",b=function()E=k end,i=function()return V end,p=aC},{e="retract grab",b=function()s=L end,i=function()return z(w,L)end},{e="carry rod to well",b=function()r=aA end,i=function()return z(C,aA)end},{e="lower rod onto string",b=function()o=0; g=ab; s=aO end,p=function()return a==0 and aZ or bb end},{e="wait for aligned",aq=function()return a==0 end,b=function()g=0; o=aI end,ac=function()local y=u-1
+local aH=ag.floor(y/(U*2))v=not(aH&lt;bf and y%(U*2)&lt;U)end,i=function()return S end,p=aU},{e="connect rods",b=function()if a&gt;0 then v=k end; o=0; g=ab; B=k end,p=aM},{e="clamp rod in drill",b=function()g=0; v=k end,i=function()return X end,p=aC},{e="release rod",b=function()g=0; E=_; B=_ end,p=bv},{e="feed rod down",b=function()E=_; B=_; g=0; o=be end,p=function()return a==0 and aX or aQ end},{e="home &amp; finish",b=function()o=0; g=0; B=_; r=aj; s=L end,i=function()return z(C,aj)and z(w,L)end}}local function al(d)local y=d.p
+return type(y)=="function" and y()or y
+end
+local function aa(aW)c,u=aW,0
+while c&lt;=#n and n[c].aq and n[c].aq()do
+c=c+1
+end
+if c&gt;#n then
+l=_
+a=a+1
+elseif n[c].b then
+n[c].b()end
+end
+function onTick()X=D(bx)V=D(bl)S=D(aN)C=aw(aE)w=aw(bg)local W=D(aV)local J=D(bj)Y=J
+if(W and not Q)or(J and not ad)then x=_ end
+if not l and not x and a&lt;K and((W and not Q)or J)then
+l=k
+aa(1)end
+Q,ad=W,J
+if l then
+local d=n[c]u=u+1
+if d.ac then d.ac()end
+local ae=d.i and d.i()local av=al(d)if ae or(av and u&gt;=av)then
+if d.i and not ae then
+l,x=_,k
+o,g=0,0
+v=k
+r,s=q,q
+else
+aa(c+1)end
+end
+end
+local au,ah,as,an
+au,ah,az,aD=ax(C,r,aJ,az,aD)as,an,af,am=ax(w,s,aL,af,am)h(ba,l)h(bo,not l and a&lt;K)h(aT,x)h(bm,v)h(bt,E)h(bu,B)h(bd,au)h(bq,ah)h(aF,as)h(aS,an)H(bi,o)H(bk,g)H(bn,a*ak)H(bw,K-a)end
+local function N(ai)return ai==q and by or string.format("%.2f",ai)end
+local function t(bp,br,b_,R)f(R and 70 or 80,R and 220 or 80,R and 120 or 80)j(bp,br,b_)end
+function onDraw()if x then f(255,70,70)elseif l then f(70,220,120)else f(0,200,255)end
+j(1,1,x and "FAULT" or(l and "RUNNING" or "READY"))if Y then f(210,160,0); j(74,1,"AUTO")end
+local d=n[c]f(225,225,225)j(1,8,"S"..c.." "..(d and d.e or by))if d then
+f(A,A,A)j(1,15,"t "..u.."/"..(al(d)or by))end
+f(205,205,130)j(1,23,"SEL "..N(C)..bz..N(r))j(1,30,"GRB "..N(w)..bz..N(s))t(1,38,"CLMP",X)t(28,38,"ROD",V)t(48,38,"ALGN",S)t(1,45,"gClmp",v)t(32,45,"gRod",E)t(58,45,"cnct",B)f(A,A,A)j(1,52,"cv "..o.."  nv "..g)f(180,180,180)j(1,59,"rod "..a.."  left "..(K-a).."  "..(a*ak).."m")end
+'>
+				<pos x="-0.5" y="1"/>
+				<in1 component_id="44"/>
+			</c0>
+			<c1 id="43" count="5">
+				<pos x="-3"/>
+				<in1 component_id="3"/>
+				<in2 component_id="4"/>
+				<in3 component_id="5"/>
+				<in4 component_id="6"/>
+				<in5 component_id="62"/>
+			</c1>
+			<c2 id="44" count="2">
+				<pos x="-1.75" y="0.75"/>
+				<inc component_id="43"/>
+				<in1 component_id="8"/>
+				<in2 component_id="10"/>
+			</c2>
+			<c3 id="45">
+				<pos x="0.75" y="3.25"/>
+				<in1 component_id="2"/>
+			</c3>
+			<c4 id="46" i="1">
+				<pos x="0.75" y="2.75"/>
+				<in1 component_id="2"/>
+			</c4>
+			<c5 id="47" i="2">
+				<pos x="0.75" y="2.25"/>
+				<in1 component_id="2"/>
+			</c5>
+			<c6 id="48" i="3">
+				<pos x="0.75" y="1.75"/>
+				<in1 component_id="2"/>
+			</c6>
+			<c7 id="49" i="4">
+				<pos x="0.75" y="1.25"/>
+				<in1 component_id="2"/>
+			</c7>
+			<c8 id="50" i="5">
+				<pos x="0.75" y="0.75"/>
+				<in1 component_id="2"/>
+			</c8>
+			<c9 id="51" i="6">
+				<pos x="0.75" y="0.25"/>
+				<in1 component_id="2"/>
+			</c9>
+			<c10 id="52" i="7">
+				<pos x="0.75" y="-0.25"/>
+				<in1 component_id="2"/>
+			</c10>
+			<c11 id="53" i="8">
+				<pos x="0.75" y="-0.75"/>
+				<in1 component_id="2"/>
+			</c11>
+			<c12 id="55">
+				<pos x="0.75" y="-1.25"/>
+				<in1 component_id="2"/>
+			</c12>
+			<c13 id="56" i="1">
+				<pos x="0.75" y="-1.75"/>
+				<in1 component_id="2"/>
+			</c13>
+			<c14 id="57" i="2">
+				<pos x="0.75" y="-2.25"/>
+				<in1 component_id="2"/>
+			</c14>
+			<c15 id="58" i="3">
+				<pos x="0.75" y="-2.75"/>
+				<in1 component_id="2"/>
+			</c15>
+		</component_states>
+		<component_bridge_states>
+			<c0 id="3">
+				<pos x="-4.25" y="1"/>
+			</c0>
+			<c1 id="4">
+				<pos x="-4.25" y="0.5"/>
+			</c1>
+			<c2 id="5">
+				<pos x="-4.25"/>
+			</c2>
+			<c3 id="6">
+				<pos x="-4.25" y="-0.5"/>
+			</c3>
+			<c4 id="8">
+				<pos x="-4.25" y="-1.5"/>
+			</c4>
+			<c5 id="10">
+				<pos x="-4.25" y="-2"/>
+			</c5>
+			<c6 id="12">
+				<pos x="2" y="3.25"/>
+				<in1 component_id="45"/>
+			</c6>
+			<c7 id="16">
+				<pos x="2" y="2.75"/>
+				<in1 component_id="46"/>
+			</c7>
+			<c8 id="18">
+				<pos x="2" y="2.25"/>
+				<in1 component_id="47"/>
+			</c8>
+			<c9 id="20">
+				<pos x="2" y="1.75"/>
+				<in1 component_id="48"/>
+			</c9>
+			<c10 id="22">
+				<pos x="2" y="1.25"/>
+				<in1 component_id="49"/>
+			</c10>
+			<c11 id="24">
+				<pos x="2" y="0.75"/>
+				<in1 component_id="50"/>
+			</c11>
+			<c12 id="26">
+				<pos x="2" y="0.25"/>
+				<in1 component_id="51"/>
+			</c12>
+			<c13 id="28">
+				<pos x="2" y="-0.25"/>
+				<in1 component_id="52"/>
+			</c13>
+			<c14 id="30">
+				<pos x="2" y="-0.75"/>
+				<in1 component_id="53"/>
+			</c14>
+			<c15 id="33">
+				<pos x="2" y="-1.25"/>
+				<in1 component_id="55"/>
+			</c15>
+			<c16 id="36">
+				<pos x="2" y="-1.75"/>
+				<in1 component_id="56"/>
+			</c16>
+			<c17 id="39">
+				<pos x="2" y="-2.25"/>
+				<in1 component_id="57"/>
+			</c17>
+			<c18 id="42">
+				<pos x="2" y="-2.75"/>
+				<in1 component_id="58"/>
+			</c18>
+			<c19 id="61">
+				<pos x="3.25" y="1"/>
+				<in1 component_id="2" node_index="1"/>
+			</c19>
+			<c20 id="62">
+				<pos x="-4.25" y="-1"/>
+			</c20>
+		</component_bridge_states>
+		<group_states/>
+	</group>
+</microprocessor>
+

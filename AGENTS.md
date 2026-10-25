@@ -17,7 +17,10 @@ below and saves where the user's editor opens it. Setup is in
 
 Prefer node-graph recipes for small logic. Prefer one Lua Script plus
 composite pins when the graph would be large or needs a display. `mc sim` and
-the MCP `simulate` tool run Lua `onTick` (not `onDraw`).
+the MCP `simulate` tool run Lua `onTick` (not `onDraw`). A large script can sit
+in its own file (`script_file: ctrl.lua` on the node, relative to the recipe).
+The export minifies Lua and the game runs that: `mc sim --minified` runs it the
+same way, and the MCP tools warn when the minified script behaves differently.
 
 The tick engine is the microcontroller only. Engine RPS, battery charge and
 wheels are pin values you set, not a vehicle plant.

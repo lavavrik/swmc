@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readFileSync, rmSync, utimesSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -133,6 +133,76 @@ wires:
 `
     const out = await simulate(library, { recipe, phases: [{ ticks: 3, set: { data_in: 0.3 } }] })
     expect(out).toMatch(/data_out\s+composite n1=0\.6/)
+  }, 30_000)
+
+  it('reads a recipe and its script from files', async () => {
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src/double.lua'),
+      'local factor = 2\nfunction onTick() output.setNumber(1, input.getNumber(2) * factor) end\n',
+    )
+    writeFileSync(
+      join(root, 'double.yaml'),
+      `name: Lua Double
+pins:
+  - { id: data_in, dir: in, signal: composite }
+  - { id: data_out, dir: out, signal: composite }
+nodes:
+  - { id: ctrl, type: data.luaScript, script_file: src/double.lua }
+wires:
+  - { from: data_in, to: ctrl.composite }
+  - { from: ctrl.composite, to: data_out }
+`,
+    )
+    const recipe_path = join(root, 'double.yaml')
+
+    const out = await simulate(library, {
+      recipe_path,
+      minified: true,
+      phases: [{ ticks: 3, set: { data_in: 0.3 } }],
+    })
+    expect(out).toMatch(/data_out\s+composite n1=0\.6/)
+    expect(out).toContain('Lua ran minified')
+    expect(out).not.toContain('does not behave like')
+
+    const built = await buildMicrocontroller(library, { recipe_path })
+    expect(built).toContain('as lua-double')
+    expect(built).not.toContain('warning')
+    // The saved recipe carries the script, since the editor cannot read the file
+    const saved = await getMicrocontroller(library, { slug: 'lua-double', as: 'saved_recipe' })
+    expect(saved).toContain('local factor = 2')
+    expect(saved).not.toContain('script_file')
+
+    await expect(
+      buildMicrocontroller(library, { recipe_path, recipe: LIMITER, save: false }),
+    ).rejects.toThrow(/not both/)
+    await expect(
+      buildMicrocontroller(library, { recipe_path: join(root, 'missing.yaml') }),
+    ).rejects.toThrow(/could not read/)
+  }, 30_000)
+
+  it('returns the XML the export writes, with the Lua minified', async () => {
+    const hybrid = readFileSync(join(process.cwd(), 'recipes/hybrid-full.yaml'), 'utf8')
+    const stored = { xml: '', recipe: hybrid }
+    const readable = {
+      where: 'memory',
+      readableLua: true,
+      list: async () => [],
+      get: async () => stored,
+      put: async (_slug: string, xml: string) => {
+        stored.xml = xml
+        return { slug: 'hybrid-full', name: 'Hybrid Full' }
+      },
+      delete: async () => false,
+      editorUrl: (s: string) => s,
+    }
+    await buildMicrocontroller(readable, { recipe: hybrid, replace: true })
+    expect(await getMicrocontroller(readable, { slug: 'hybrid-full', as: 'xml' })).toContain(
+      'drive_cl',
+    )
+    const exported = await getMicrocontroller(readable, { slug: 'hybrid-full', as: 'export' })
+    expect(exported).toContain('<microprocessor')
+    expect(exported).not.toContain('drive_cl')
   }, 30_000)
 
   it('filters the catalogue', () => {

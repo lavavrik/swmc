@@ -144,6 +144,9 @@ function* shortNames(): Generator<string> {
   }
 }
 
+/** Words that open a block closed by `end`, or by `until` for `repeat`. */
+const BLOCK_OPENERS = new Set(['function', 'do', 'if', 'repeat'])
+
 const NAME_START = /[A-Za-z_]/
 const NAME_PART = /[A-Za-z0-9_]/
 const DIGIT = /[0-9]/
@@ -221,7 +224,11 @@ function readQuoted(source: string, at: number): { end: number; text: string } {
 
 function tokenize(source: string): Token[] {
   const tokens: Token[] = []
-  /** Which brackets are open, so a name inside `{ }` can be seen as a key. */
+  /**
+   * Which brackets and blocks are open, so a name directly inside `{ }` can be
+   * seen as a key. A block is on the stack too, as `end`, so that a function
+   * written inside a table constructor is not mistaken for part of it.
+   */
   const brackets: string[] = []
   let i = 0
   let newline = false
@@ -284,8 +291,13 @@ function tokenize(source: string): Token[] {
       // A name straight after a dot or a colon is a field, not a variable
       const isField =
         previous?.kind === 'symbol' && (previous.text === '.' || previous.text === ':')
-      push('name', source.slice(start, i))
+      const name = source.slice(start, i)
+      push('name', name)
       if (isField) markFixed()
+      // `while` and `for` open their block with `do`, and `elseif` and `else`
+      // carry on the block their `if` opened
+      else if (BLOCK_OPENERS.has(name)) brackets.push('end')
+      else if (name === 'end' || name === 'until') brackets.pop()
       continue
     }
 

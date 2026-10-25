@@ -52,6 +52,8 @@ wires:
 
 - Prefer nodes for small logic.
 - Use one \`data.luaScript\` (property \`script\`) with composite pins when the graph would be large or needs a display (\`onDraw\`). The limit is 4096 characters (8192 with the Space DLC). \`simulate\` runs Lua \`onTick\` too.
+- A large script can live in its own file: \`script_file: ctrl.lua\` instead of \`script\`, and pass \`recipe_path\` (a file on the machine running this server) instead of \`recipe\` to \`build_microcontroller\` and \`simulate\`. \`script_file\` is relative to the recipe's folder. The saved recipe carries the script inline.
+- The export minifies Lua, and that is what the game runs. \`build_microcontroller\` and \`simulate\` also tick the minified script and warn if it behaves differently; \`simulate\` with \`minified: true\` reports that run, and \`get_microcontroller\` with \`as: "export"\` returns the exported XML.
 
 ## simulate
 

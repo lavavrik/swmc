@@ -2,15 +2,20 @@
  * The MCP tools, as plain functions over a `Library`. `server.ts` wires them
  * to the protocol; the tests call them directly.
  */
-import { parseMicrocontroller, serializeMicrocontroller } from '@/io/microcontroller'
+import { cwd } from 'node:process'
+import {
+  parseMicrocontroller,
+  serializeMicrocontroller,
+  withMinifiedLua,
+} from '@/io/microcontroller'
 import { formatSignal } from '@/sim/format'
 import type { Microcontroller, NodeId } from '@/model/types'
 import { buildRecipe, type BuildResult } from '@/recipe/build'
 import { componentCatalog, type CatalogComponent } from '@/recipe/catalog'
 import { decompile, recipeYaml } from '@/recipe/decompile'
+import { loadRecipeFile, loadRecipeText, type LoadedRecipe } from '@/recipe/files'
 import { withLua } from '@/recipe/lua'
-import { parseRecipeText } from '@/recipe/parse'
-import { runScenario, type SimPhase } from '@/recipe/run'
+import { runScenario, type SimPhase, type SimResult } from '@/recipe/run'
 import { EXAMPLES } from './examples.generated'
 import { GUIDE } from './guide'
 import { SLUG, slugify, type Library } from './library'
@@ -69,14 +74,98 @@ function compactComponent(c: CatalogComponent): string {
   return lines.join('\n')
 }
 
-function parseAndBuild(recipe: string): BuildResult {
-  const text = recipe.trim()
-  const format = text.startsWith('{') ? 'json' : 'yaml'
-  const parsed = parseRecipeText(text, format)
-  if (!parsed.ok) throw new ToolError(`recipe: ${parsed.error}`)
-  const built = buildRecipe(parsed.value)
+/** Where a recipe comes from: its text, or a file on this machine. */
+export interface RecipeSource {
+  readonly recipe?: string | undefined
+  /** Read by this process. Relative paths are from its working directory. */
+  readonly recipe_path?: string | undefined
+}
+
+/**
+ * The recipe's text with any `script_file` read in, from `recipe` (whose
+ * script files are relative to the working directory) or `recipe_path`
+ * (relative to the recipe's folder). Null when neither is given.
+ */
+function loadSource(input: RecipeSource): LoadedRecipe | null {
+  if (input.recipe !== undefined && input.recipe_path !== undefined) {
+    throw new ToolError('pass recipe or recipe_path, not both')
+  }
+  let loaded
+  if (input.recipe_path !== undefined) {
+    loaded = loadRecipeFile(input.recipe_path)
+  } else if (input.recipe !== undefined) {
+    const format = input.recipe.trimStart().startsWith('{') ? 'json' : 'yaml'
+    loaded = loadRecipeText(input.recipe, format, cwd())
+  } else {
+    return null
+  }
+  if (!loaded.ok) throw new ToolError(`recipe: ${loaded.error}`)
+  return loaded.value
+}
+
+function build(recipe: LoadedRecipe): BuildResult {
+  const built = buildRecipe(recipe.recipe)
   if (!built.ok) throw new ToolError(`recipe: ${built.error}`)
   return built.value
+}
+
+function parseAndBuild(recipe: string): BuildResult {
+  const loaded = loadSource({ recipe })
+  if (!loaded) throw new ToolError('pass a recipe')
+  return build(loaded)
+}
+
+const hasLua = (doc: Microcontroller) => doc.nodes.some((n) => n.type === 'data.luaScript')
+
+interface PhaseRun {
+  readonly steps: readonly SimResult[]
+  readonly errors: ReadonlyMap<NodeId, string>
+}
+
+async function runPhases(
+  doc: Microcontroller,
+  phases: readonly SimPhase[],
+  ids?: ReadonlyMap<string, NodeId>,
+): Promise<PhaseRun> {
+  const run = await withLua(doc, () => runScenario(doc, phases, ids))
+  if (!run.result.ok) throw new ToolError(run.result.error)
+  return { steps: run.result.value, errors: run.errors }
+}
+
+/**
+ * Where the readable run and the minified one part ways, or null when they
+ * agree. The game runs the minified script, so a difference is a minifier bug
+ * the readable run cannot show.
+ */
+function minifiedDifference(readable: PhaseRun, minified: PhaseRun): string | null {
+  for (const [node, error] of minified.errors) {
+    if (!readable.errors.has(node)) return `the minified ${node} fails: ${error}`
+  }
+  for (let i = 0; i < readable.steps.length; i++) {
+    const a = readable.steps[i]!
+    const b = minified.steps[i]
+    for (const pin of a.pins) {
+      const other = b?.pins.find((p) => p.id === pin.id)
+      if (JSON.stringify(other?.value) === JSON.stringify(pin.value)) continue
+      const shown = (v: SimResult['pins'][number]['value']) =>
+        v === undefined ? '—' : formatValue(v)
+      return `at the end of phase ${i + 1}, ${pin.id} is ${shown(pin.value)} as written but ${shown(other?.value)} minified`
+    }
+  }
+  return null
+}
+
+const MINIFY_WARNING =
+  'warning: the minified Lua (what the export and the game run) does not behave like the script as written'
+
+/** A short run with every input at rest, both ways, for build to check. */
+async function checkMinified(built: BuildResult): Promise<string | null> {
+  if (!hasLua(built.doc)) return null
+  const phases: SimPhase[] = [{ ticks: 120, set: {} }]
+  const readable = await runPhases(built.doc, phases, built.ids)
+  const minified = await runPhases(withMinifiedLua(built.doc), phases, built.ids)
+  const difference = minifiedDifference(readable, minified)
+  return difference ? `${MINIFY_WARNING}: ${difference}. Run simulate with minified: true.` : null
 }
 
 function pinSummary(doc: Microcontroller, ids?: ReadonlyMap<string, NodeId>): string {
@@ -95,20 +184,23 @@ function pinSummary(doc: Microcontroller, ids?: ReadonlyMap<string, NodeId>): st
     .join('\n')
 }
 
-export interface BuildInput {
-  readonly recipe: string
+export interface BuildInput extends RecipeSource {
   readonly slug?: string | undefined
   readonly replace?: boolean | undefined
   readonly save?: boolean | undefined
 }
 
 export async function buildMicrocontroller(library: Library, input: BuildInput): Promise<string> {
-  const built = parseAndBuild(input.recipe)
+  const loaded = loadSource(input)
+  if (!loaded) throw new ToolError('pass a recipe or a recipe_path')
+  const built = build(loaded)
   // The cloud library is what the editor opens, so it gets the readable Lua
   const xml = serializeMicrocontroller(built.doc, { minifyLua: !library.readableLua })
   const components = built.doc.nodes.filter((n) => !n.type.startsWith('io.')).length
   const lines: string[] = []
   const warnings = built.warnings.map((w) => `warning: ${w}`)
+  const minifyWarning = await checkMinified(built)
+  if (minifyWarning) warnings.push(minifyWarning)
 
   if (input.save === false) {
     lines.push(`Recipe OK: "${built.doc.meta.name}", ${components} components. Not saved.`)
@@ -122,7 +214,7 @@ export async function buildMicrocontroller(library: Library, input: BuildInput):
         `"${slug}" already exists in ${library.where}. To update it, call again with replace: true (fetch it first with get_microcontroller if you have not). To keep both, pass a different slug.`,
       )
     }
-    await library.put(slug, xml, input.recipe)
+    await library.put(slug, xml, loaded.text)
     lines.push(`Saved "${built.doc.meta.name}" as ${slug} in ${library.where}.`)
     lines.push(`Open in the editor: ${library.editorUrl(slug)}`)
     lines.push(
@@ -138,9 +230,10 @@ export async function buildMicrocontroller(library: Library, input: BuildInput):
   return [...lines, ...warnings].join('\n')
 }
 
-export interface SimulateInput {
-  readonly recipe?: string | undefined
+export interface SimulateInput extends RecipeSource {
   readonly slug?: string | undefined
+  /** Run the Lua as the export minifies it, which is what the game runs. */
+  readonly minified?: boolean | undefined
   readonly phases: readonly {
     readonly ticks: number
     readonly set?: Readonly<Record<string, string | number | boolean>> | undefined
@@ -151,8 +244,9 @@ export async function simulate(library: Library, input: SimulateInput): Promise<
   let doc: Microcontroller
   let ids: ReadonlyMap<string, NodeId> | undefined
   const notes: string[] = []
-  if (input.recipe !== undefined) {
-    const built = parseAndBuild(input.recipe)
+  const loaded = loadSource(input)
+  if (loaded) {
+    const built = build(loaded)
     doc = built.doc
     ids = built.ids
   } else if (input.slug !== undefined) {
@@ -168,7 +262,7 @@ export async function simulate(library: Library, input: SimulateInput): Promise<
       doc = parsed.value
     }
   } else {
-    throw new ToolError('pass a recipe or a slug')
+    throw new ToolError('pass a recipe, a recipe_path or a slug')
   }
   if (input.phases.length === 0) throw new ToolError('pass at least one phase')
 
@@ -176,11 +270,15 @@ export async function simulate(library: Library, input: SimulateInput): Promise<
     ticks: Math.max(0, Math.min(100_000, Math.round(p.ticks))),
     set: Object.fromEntries(Object.entries(p.set ?? {}).map(([k, v]) => [k, String(v)])),
   }))
-  const run = await withLua(doc, () => runScenario(doc, phases, ids))
-  if (!run.result.ok) throw new ToolError(run.result.error)
+  const readable = await runPhases(doc, phases, ids)
+  const minified = hasLua(doc) ? await runPhases(withMinifiedLua(doc), phases, ids) : readable
+  const run = input.minified === true ? minified : readable
   for (const [node, error] of run.errors) notes.push(`lua error in ${node}: ${error}`)
+  if (input.minified === true && hasLua(doc)) notes.push('Lua ran minified, as the game runs it.')
+  const difference = minifiedDifference(readable, minified)
+  if (difference) notes.push(`${MINIFY_WARNING}: ${difference}.`)
 
-  const blocks = run.result.value.map((step, i) => {
+  const blocks = run.steps.map((step, i) => {
     const rows = step.pins.map((pin) => {
       const name = pin.id === pin.label || !pin.label ? pin.id : `${pin.id} "${pin.label}"`
       const value = pin.value === undefined ? '—' : formatValue(pin.value)
@@ -220,7 +318,7 @@ export async function listMicrocontrollers(library: Library): Promise<string> {
 
 export interface GetInput {
   readonly slug: string
-  readonly as?: 'recipe' | 'saved_recipe' | 'xml' | undefined
+  readonly as?: 'recipe' | 'saved_recipe' | 'xml' | 'export' | undefined
 }
 
 export async function getMicrocontroller(library: Library, input: GetInput): Promise<string> {
@@ -229,6 +327,12 @@ export async function getMicrocontroller(library: Library, input: GetInput): Pro
   const url = library.editorUrl(input.slug)
   const as = input.as ?? 'recipe'
   if (as === 'xml') return stored.xml
+  if (as === 'export') {
+    // What the editor's export writes, scripts minified: the file the game loads
+    const parsed = parseMicrocontroller(stored.xml)
+    if (!parsed.ok) throw new ToolError(`${input.slug}: ${parsed.error}`)
+    return serializeMicrocontroller(parsed.value, { minifyLua: true })
+  }
   if (as === 'saved_recipe') {
     if (stored.recipe === undefined) throw new ToolError(`"${input.slug}" has no saved recipe`)
     return stored.recipe

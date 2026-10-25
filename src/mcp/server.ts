@@ -45,6 +45,13 @@ async function reply(work: () => string | Promise<string>): Promise<ToolResult> 
   }
 }
 
+const recipePath = z
+  .string()
+  .optional()
+  .describe(
+    'Instead of recipe: a recipe file on this machine, read by the server (relative paths are from its working directory). Its script_file paths are relative to its folder.',
+  )
+
 const slug = z
   .string()
   .regex(/^[a-z0-9-]{1,64}$/)
@@ -106,9 +113,10 @@ export function createServer(library: Library): McpServer {
     {
       title: 'Build and save',
       description:
-        'Build a recipe into Stormworks XML and save it with its recipe to the library. Returns the editor link, pins and warnings; on a mistake returns what to fix. Refuses to overwrite an existing slug unless replace is true.',
+        'Build a recipe into Stormworks XML and save it with its recipe to the library. Returns the editor link, pins and warnings; on a mistake returns what to fix. Refuses to overwrite an existing slug unless replace is true. With Lua, it also ticks the script as written and minified (as the export writes it) and warns if they differ. A data.luaScript node can take script_file: path/to/script.lua instead of script; it is read in and saved inline.',
       inputSchema: {
-        recipe: z.string().describe('The recipe, YAML or JSON text'),
+        recipe: z.string().optional().describe('The recipe, YAML or JSON text'),
+        recipe_path: recipePath,
         slug: slug.optional().describe('Library id. Defaults to the name, slugified'),
         replace: z.boolean().optional().describe('Overwrite an existing microcontroller'),
         save: z.boolean().optional().describe('false: validate only, save nothing'),
@@ -123,10 +131,15 @@ export function createServer(library: Library): McpServer {
     {
       title: 'Simulate',
       description:
-        'Tick a recipe (or a saved microcontroller) at 60 Hz with pin values you choose, over one or more phases on the same simulation, and read every pin at the end of each phase. Lua onTick runs. There is no vehicle model: sensor inputs are whatever you set.',
+        'Tick a recipe (or a saved microcontroller) at 60 Hz with pin values you choose, over one or more phases on the same simulation, and read every pin at the end of each phase. Lua onTick runs, as written and also minified as the export writes it; a warning says if the two differ. There is no vehicle model: sensor inputs are whatever you set.',
       inputSchema: {
         recipe: z.string().optional().describe('Recipe text to simulate without saving'),
+        recipe_path: recipePath,
         slug: slug.optional().describe('Or a saved microcontroller'),
+        minified: z
+          .boolean()
+          .optional()
+          .describe('Report the run with the Lua minified, exactly as the game runs it'),
         phases: z
           .array(
             z.object({
@@ -160,10 +173,10 @@ export function createServer(library: Library): McpServer {
     {
       title: 'Get',
       description:
-        'A saved microcontroller as a recipe to edit and rebuild. If it was made or changed in the editor, the recipe is read back from its XML. as: "xml" for the raw XML.',
+        'A saved microcontroller as a recipe to edit and rebuild. If it was made or changed in the editor, the recipe is read back from its XML. as: "xml" for the XML as saved, "export" for the XML the editor exports (Lua minified), which is what the game loads.',
       inputSchema: {
         slug,
-        as: z.enum(['recipe', 'saved_recipe', 'xml']).optional(),
+        as: z.enum(['recipe', 'saved_recipe', 'xml', 'export']).optional(),
       },
       annotations: { readOnlyHint: true },
     },
