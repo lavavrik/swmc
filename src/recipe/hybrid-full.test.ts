@@ -43,10 +43,7 @@ const load = () => {
 
 const built = load()
 
-function pins(
-  inputs: Record<string, string>,
-  ticks = 1,
-): Record<string, SignalValue | undefined> {
+function pins(inputs: Record<string, string>, ticks = 1): Record<string, SignalValue | undefined> {
   luaFresh = true
   const result = unwrap(runSim(built.doc, ticks, inputs, built.ids as ReadonlyMap<string, NodeId>))
   const out: Record<string, SignalValue | undefined> = {}
@@ -122,7 +119,10 @@ describe('hybrid full', () => {
   })
 
   it('packs engine RPS, physics speed, battery and gear onto the instruments composite', () => {
-    const p = pins({ ...drive, engine_rps: '12', battery: '0.5', physics: '13=20', speed: '17' }, 80)
+    const p = pins(
+      { ...drive, engine_rps: '12', battery: '0.5', physics: '13=20', speed: '17' },
+      80,
+    )
     const inst = composite(p.instruments)
     expect(inst.numbers[0]).toBe(12)
     expect(inst.numbers[1]).toBe(20)
@@ -280,13 +280,16 @@ describe('hybrid full', () => {
   })
 
   it('keeps the diesel clutched on while driving and charging', () => {
-    const p = pins({
-      ...drive,
-      engine_rps: '12',
-      battery: '0.5',
-      ev_mode: 'on',
-      charge_hold: 'on',
-    }, 30)
+    const p = pins(
+      {
+        ...drive,
+        engine_rps: '12',
+        battery: '0.5',
+        ev_mode: 'on',
+        charge_hold: 'on',
+      },
+      30,
+    )
     expect(p.engine).toBe(true)
     expect(p.engine_clutch).toBe(1)
     expect(p.drive_clutch).toBe(1)
@@ -306,7 +309,6 @@ describe('hybrid full', () => {
     expect(p.regen).toBe(0.8)
     expect(p.brakes).toBe(0)
   })
-
 
   it('holds first gear at a standstill', () => {
     const p = pins(drive)

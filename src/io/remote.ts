@@ -1,8 +1,8 @@
 /**
- * HTTP client for the cloudhost function that holds the project library.
+ * HTTP client for the library API (server/) that holds the project library.
  *
  * The function stores the same XML the game would load. List is JSON; a
- * single project is the XML itself. Signed-in calls send the CloudHost
+ * single project is the XML itself. Signed-in calls send the OIDC
  * access token as Bearer.
  */
 import { apiFetch } from './http'

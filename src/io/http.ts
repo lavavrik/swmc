@@ -1,5 +1,5 @@
 /**
- * Fetch against the cloud library API, attaching the CloudHost access token
+ * Fetch against the cloud library API, attaching the OIDC access token
  * when the SPA has one.
  */
 import { apiBaseUrl } from './config'

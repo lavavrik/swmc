@@ -6,7 +6,7 @@
  * step, and an export is a straight copy of the stored text.
  *
  * By default that store is IndexedDB, in this browser. Sign-in is optional:
- * while an CloudHost account is present the same functions talk to the
+ * while a signed-in account is present the same functions talk to the
  * cloud library instead (still XML, one namespace per account).
  */
 import type { Microcontroller } from '@/model/types'

@@ -30,8 +30,9 @@ You need:
   <https://nodejs.org>.
 - **An MCP client.** Any of Claude Code, Codex, Claude Desktop, Cursor, or
   another client that can run a local (stdio) MCP server.
-- **For the hosted editor, an CloudHost account** to sign in to
-  <https://swmc.example.com>.
+- **For a hosted editor, an account** on that deployment (a build with the
+  [cloud library](../server/README.md) and sign-in configured). Below,
+  `https://<editor>` stands for its address.
 
 ## Install: hosted editor
 
@@ -41,7 +42,7 @@ clone anything.
 
 ### 1. Create a token
 
-1. Open <https://swmc.example.com> and click **Sign in** (top
+1. Open `https://<editor>` and click **Sign in** (top
    right).
 2. Click your account (top right) to open **Agent access**.
 3. Name the token after the tool that will use it, such as "Claude Code on my
@@ -58,13 +59,13 @@ The server is one file, `swmc-mcp.mjs`, served by the editor.
 macOS and Linux:
 
 ```bash
-mkdir -p ~/.swmc && curl -fsSL -o ~/.swmc/swmc-mcp.mjs https://swmc.example.com/swmc-mcp.mjs
+mkdir -p ~/.swmc && curl -fsSL -o ~/.swmc/swmc-mcp.mjs https://<editor>/swmc-mcp.mjs
 ```
 
 Windows (PowerShell):
 
 ```powershell
-mkdir "$HOME\.swmc" -Force; curl.exe -fsSL -o "$HOME\.swmc\swmc-mcp.mjs" https://swmc.example.com/swmc-mcp.mjs
+mkdir "$HOME\.swmc" -Force; curl.exe -fsSL -o "$HOME\.swmc\swmc-mcp.mjs" https://<editor>/swmc-mcp.mjs
 ```
 
 ### 3. Register it with your agent
@@ -134,7 +135,7 @@ client after editing its config.
 
 Ask your agent: _"Using swmc, build a throttle limiter that clamps to 0.75
 and doubles it."_ It should answer with a link like
-`https://swmc.example.com/?open=throttle-limiter`. Open the
+`https://<editor>/?open=throttle-limiter`. Open the
 link. If you are signed out, the editor asks you to sign in, then opens the
 microcontroller.
 
@@ -193,7 +194,7 @@ agent for more changes. It picks up your edits (see
             ▼                                                             │
        swmc library API ──▶ Postgres: your microcontrollers + recipes     │
             ▲                                                             │
-            │  HTTPS, signed in with CloudHost                             │
+            │  HTTPS, signed in through OIDC                              │
        swmc editor in your browser  ◀── link ?open=<slug> ────────────────┘
 ```
 
@@ -249,7 +250,7 @@ library, as it would in the editor.
 | "the swmc library refused SWMC_TOKEN"                       | The token was revoked or mistyped. Create a new one in Agent access and update the agent config.                                                                                                |
 | The first request takes a second or two                     | The library sleeps when idle and wakes on the first request. This is normal.                                                                                                                    |
 | The link says "sign in to open … from your cloud library"   | You are signed out in this browser. Sign in; the microcontroller opens afterwards.                                                                                                              |
-| The link says "no microcontroller called … in your library" | The browser is signed in to a different CloudHost account from the one that made the token.                                                                                                      |
+| The link says "no microcontroller called … in your library" | The browser is signed in to a different account from the one that made the token.                                                                                                               |
 | "… already exists … call again with replace: true"          | The agent tried to create something that exists. Tell it whether to update that one or save a copy under a new name.                                                                            |
 | An agent edit lost changes you made in the editor           | Save in the editor before asking the agent. It only sees what is saved in the library.                                                                                                          |
 
@@ -286,5 +287,5 @@ library, as it would in the editor.
 | Variable       | Meaning                                                       |
 | -------------- | ------------------------------------------------------------- |
 | `SWMC_TOKEN`   | Authenticates to the cloud library. Get one from Agent access |
-| `SWMC_API_URL` | Library API. Default `https://api.swmc.example.com`  |
+| `SWMC_API_URL` | Library API. Default: the one the bundle was built for        |
 | `SWMC_URL`     | Editor that links point to. Default: the hosted editor        |

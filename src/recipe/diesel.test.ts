@@ -49,9 +49,7 @@ function collect(sim: Simulation): Record<string, PropertyValue | undefined> {
     if (!node?.type.startsWith('io.')) continue
     const direction = node.type.split('.')[1]
     out[name] = (
-      direction === 'in'
-        ? sim.outputValue({ node: id, kind: 'out', index: 0 })
-        : sim.getOutput(id)
+      direction === 'in' ? sim.outputValue({ node: id, kind: 'out', index: 0 }) : sim.getOutput(id)
     ) as PropertyValue | undefined
   }
   return out
@@ -376,7 +374,10 @@ describe('diesel', () => {
   it('opens regen when the battery is full', () => {
     const p = runPhases([
       { inputs: { ...idle, seat: '0.6', engine_rps: '13', shaft_rps: '13' }, ticks: 280 },
-      { inputs: { ...idle, seat: '0.57', engine_rps: '13', shaft_rps: '13', battery: '1' }, ticks: 3 },
+      {
+        inputs: { ...idle, seat: '0.57', engine_rps: '13', shaft_rps: '13', battery: '1' },
+        ticks: 3,
+      },
     ])
     expect(p.regen_clutch).toBe(0)
   })

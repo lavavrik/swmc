@@ -1,0 +1,3 @@
+server/vendor
+.claude/settings.local.json
+package-lock.json

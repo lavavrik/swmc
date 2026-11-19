@@ -100,7 +100,7 @@ export function Toolbar({
           title={
             accountLabel && accountLabel !== 'Sign in'
               ? 'Account, agent access and sign out'
-              : 'Sign in to save projects to your CloudHost account'
+              : 'Sign in to save projects to your cloud library'
           }
           onClick={onAccount}
         >

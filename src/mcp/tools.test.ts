@@ -49,7 +49,7 @@ describe('libraryFromEnv', () => {
     expect(libraryFromEnv({ SWMC_TOKEN: 'swmc_x' }, root)).toBeInstanceOf(CloudLibrary)
     expect(libraryFromEnv({}, root)).toBeInstanceOf(FolderLibrary)
     expect(libraryFromEnv({ SWMC_TOKEN: 'swmc_x' }, root).editorUrl('a')).toBe(
-      'https://swmc.example.com/?open=a',
+      'https://editor.example/?open=a',
     )
   })
 })

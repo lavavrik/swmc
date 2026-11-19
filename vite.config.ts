@@ -50,8 +50,20 @@ function serveSavedMicrocontrollers(): Plugin {
   }
 }
 
+/** The hosted editor and library a deploy bakes in; tests get fixed stand-ins. */
+const hosted = process.env.VITEST
+  ? { editor: 'https://editor.example', api: 'https://api.example' }
+  : {
+      editor: process.env.SWMC_HOSTED_EDITOR ?? '',
+      api: process.env.SWMC_HOSTED_API ?? process.env.VITE_API_BASE_URL ?? '',
+    }
+
 export default defineConfig({
   plugins: [react(), serveSavedMicrocontrollers()],
+  define: {
+    __SWMC_HOSTED_EDITOR__: JSON.stringify(hosted.editor),
+    __SWMC_HOSTED_API__: JSON.stringify(hosted.api),
+  },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

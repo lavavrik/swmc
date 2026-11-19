@@ -3,7 +3,7 @@
  */
 import { useState } from 'react'
 import { login, register, type Account } from '@/io/auth'
-import { oidcEnabled } from '@/io/config'
+import { oidcEnabled, oidcName } from '@/io/config'
 import { startOidcLogin } from '@/io/oidc'
 
 export function AuthDialog({
@@ -33,7 +33,7 @@ export function AuthDialog({
     }
   }
 
-  const cloudhost = async () => {
+  const signInWithIssuer = async () => {
     setBusy(true)
     setProblem(null)
     try {
@@ -56,15 +56,15 @@ export function AuthDialog({
         {oidcEnabled() ? (
           <>
             <p className="dialog-note">
-              Sign in with your CloudHost account. Each account has its own microcontrollers.
+              Sign in to keep your microcontrollers in the cloud library. Each account has its own.
             </p>
             <div className="dialog-row">
               <button
                 className="text-button primary"
                 disabled={busy}
-                onClick={() => void cloudhost()}
+                onClick={() => void signInWithIssuer()}
               >
-                Sign in with CloudHost
+                {oidcName() ? `Sign in with ${oidcName()}` : 'Sign in'}
               </button>
             </div>
             {problem && <p className="dialog-problem">{problem}</p>}

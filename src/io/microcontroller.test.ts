@@ -160,32 +160,37 @@ describe('round trips', () => {
   })
 })
 
-describe('a microcontroller saved by the game', () => {
-  const doc = parse('thermostat-v3')
+describe('the quirks of a file saved by the game', () => {
+  // A hand-written file in the shape the game saves: attributes it leaves out,
+  // its icon, group data and state sections, and components stacked edge to edge
+  const doc = parse('game-quirks')
 
   it('reads its metadata and pins', () => {
-    expect(doc.meta).toMatchObject({ name: 'Thermostat V3', width: 2, length: 4 })
-    expect(doc.ioOrder).toHaveLength(8)
+    expect(doc.meta).toMatchObject({ name: 'Game Quirks', width: 2, length: 2 })
+    expect(doc.ioOrder).toHaveLength(4)
     const first = doc.nodes.find((n) => n.id === doc.ioOrder[0])
     expect(first?.type).toBe('io.in.composite')
-    expect(first?.properties.label).toBe('Dispaly')
+    expect(first?.properties.label).toBe('Data')
+  })
+
+  it('reads a pin with no type as on/off', () => {
+    expect(doc.nodes.find((n) => n.id === doc.ioOrder[1])?.type).toBe('io.in.onoff')
   })
 
   it('reads every component, with nothing unrecognised', () => {
-    expect(doc.nodes).toHaveLength(51)
+    expect(doc.nodes).toHaveLength(13)
     expect(doc.nodes.filter((n) => n.type === 'unknown.component')).toEqual([])
   })
 
   it('understands a <c> with no type attribute as a NOT', () => {
-    // The game omits type="0"; the file has three of them
+    // The game omits type="0"
     expect(doc.nodes.filter((n) => n.type === 'logic.not')).toHaveLength(2)
   })
 
   it('reads the wires, including the named composite inputs', () => {
-    expect(doc.wires).toHaveLength(64)
+    expect(doc.wires).toHaveLength(14)
     // `inc` and `inoff` are the composite and start-channel inputs
-    const write = doc.nodes.find((n) => n.id === 'c12')
-    expect(write?.type).toBe('composite.writeNumber')
+    expect(doc.nodes.find((n) => n.id === 'c12')?.type).toBe('composite.writeNumber')
     expect(
       doc.wires
         .filter((w) => w.to.node === 'c12')
@@ -203,24 +208,6 @@ describe('a microcontroller saved by the game', () => {
     expect(doc.nodes.find((n) => n.id === 'c55')?.properties.channel).toBe(0)
   })
 
-  it('minifies Lua on export and leaves the document untouched', () => {
-    const source = String(doc.nodes.find((n) => n.type === 'data.luaScript')?.properties.script ?? '')
-    expect(source.length).toBeGreaterThan(3000)
-    const xml = serializeMicrocontroller(doc)
-    expect(xml.length).toBeLessThan(fixture('thermostat-v3').length)
-    expect(xml).toContain('function onDraw()')
-    expect(String(doc.nodes.find((n) => n.type === 'data.luaScript')?.properties.script)).toBe(
-      source,
-    )
-  })
-
-  it('reads a script and its properties', () => {
-    const script = doc.nodes.find((n) => n.type === 'data.luaScript')
-    expect(String(script?.properties.script)).toContain('function onDraw()')
-    const slider = doc.nodes.find((n) => n.properties.name === 'Default Temp (c)')
-    expect(slider?.properties).toMatchObject({ min: -50, max: 50, value: 16, increment: 1 })
-  })
-
   it('round-trips without losing anything it understood', () => {
     const again = unwrap(parseMicrocontroller(serializeMicrocontroller(doc, { minifyLua: false })))
     expect(again.nodes).toEqual(doc.nodes)
@@ -232,8 +219,8 @@ describe('a microcontroller saved by the game', () => {
   })
 
   it('stacks components that touch in the game so they touch here', () => {
-    // In the game these three sit in a column with their edges meeting, which
-    // only works out if a saved position names the component's bottom edge
+    // These three sit in a column with their edges meeting, which only works
+    // out if a saved position names the component's bottom edge
     const stacked = ['c12', 'c41', 'c71'].map((id) => {
       const node = doc.nodes.find((n) => n.id === id)
       if (!node) throw new Error(id)
@@ -255,9 +242,35 @@ describe('a microcontroller saved by the game', () => {
   })
 })
 
+describe('a microcontroller with a Lua script', () => {
+  const doc = parse('oil-rig-controller')
+  const scriptOf = (d: typeof doc) =>
+    String(d.nodes.find((n) => n.type === 'data.luaScript')?.properties.script ?? '')
+
+  it('reads the script', () => {
+    expect(scriptOf(doc)).toContain('function onDraw()')
+  })
+
+  it('minifies Lua on export and leaves the document untouched', () => {
+    const source = scriptOf(doc)
+    expect(source.length).toBeGreaterThan(3000)
+    const xml = serializeMicrocontroller(doc)
+    expect(xml.length).toBeLessThan(fixture('oil-rig-controller').length)
+    expect(xml).toContain('function onDraw()')
+    expect(scriptOf(doc)).toBe(source)
+  })
+
+  it('round-trips without losing anything it understood', () => {
+    const again = unwrap(parseMicrocontroller(serializeMicrocontroller(doc, { minifyLua: false })))
+    expect(again.nodes).toEqual(doc.nodes)
+    expect(again.ioOrder).toEqual(doc.ioOrder)
+    expect(again.meta).toEqual(doc.meta)
+  })
+})
+
 describe('attributes this editor does not model', () => {
   it('carries the group data attribute through a round trip', () => {
-    const doc = parse('thermostat-v3')
+    const doc = parse('game-quirks')
     expect(doc.meta.groupData).toEqual({ type: '1236352852' })
     expect(serializeMicrocontroller(doc)).toContain('type="1236352852"')
   })
@@ -265,7 +278,7 @@ describe('attributes this editor does not model', () => {
 
 describe('attributes the game leaves out', () => {
   it('reads a pulse with no mode as on-to-off, the code the game omits', () => {
-    const doc = parse('thermostat-v3')
+    const doc = parse('game-quirks')
     const pulses = doc.nodes.filter((n) => n.type === 'logic.pulse')
     expect(pulses).toHaveLength(3)
     expect(pulses.every((p) => p.properties.mode === 'onToOff')).toBe(true)

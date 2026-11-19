@@ -56,7 +56,9 @@ describe('packIoFaces', () => {
         n.id === a.id ? { ...n, properties: { ...n.properties, faceX: 2, faceZ: 1 } } : n,
       ),
     }
-    const b = unwrap(addIoNode(librarySchema, doc, { type: 'io.out.number', position: { x: 0, y: 0 } }))
+    const b = unwrap(
+      addIoNode(librarySchema, doc, { type: 'io.out.number', position: { x: 0, y: 0 } }),
+    )
     const kept = b.doc.nodes.find((n) => n.id === a.id)
     expect(kept?.properties).toMatchObject({ faceX: 2, faceZ: 1 })
   })

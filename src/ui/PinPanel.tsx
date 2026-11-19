@@ -67,7 +67,9 @@ export function PinPanel() {
               />
             )}
             {(pin.direction === 'out' ||
-              (pin.signal !== 'number' && pin.signal !== 'onoff' && pin.signal !== 'composite')) && (
+              (pin.signal !== 'number' &&
+                pin.signal !== 'onoff' &&
+                pin.signal !== 'composite')) && (
               <span className="pin-value">{formatSignal(value) || '—'}</span>
             )}
           </div>

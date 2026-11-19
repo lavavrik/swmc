@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<microprocessor name="Game Quirks" width="2" length="2" id_counter="60" id_counter_node="4" sym1="960" sym2="59360" sym3="2016" sym4="384">
+	<nodes>
+		<n id="1" component_id="1">
+			<node label="Data" mode="1" type="5" description="composite in"/>
+		</n>
+		<n id="2" component_id="2">
+			<node label="Enable" mode="1" description="on/off in, type left out">
+				<position x="1"/>
+			</node>
+		</n>
+		<n id="3" component_id="3">
+			<node label="Out" type="5" description="composite out, mode left out">
+				<position z="1"/>
+			</node>
+		</n>
+		<n id="4" component_id="4">
+			<node label="Reading" mode="1" type="1" description="number in">
+				<position x="1" z="1"/>
+			</node>
+		</n>
+	</nodes>
+	<group>
+		<data type="1236352852">
+			<inputs/>
+			<outputs/>
+		</data>
+		<components>
+			<c>
+				<object id="10">
+					<pos x="0.25" y="1.5"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c>
+				<object id="11">
+					<pos x="1.75" y="1.5"/>
+					<in1 component_id="10"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="14">
+					<pos x="0.25" y="3"/>
+					<in1 component_id="10"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="15">
+					<pos x="1.75" y="3"/>
+					<in1 component_id="11"/>
+				</object>
+			</c>
+			<c type="48">
+				<object id="16">
+					<pos x="3.25" y="3"/>
+					<in1 component_id="2"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="12" count="2" offset="6">
+					<pos x="-1.25" y="-1.75"/>
+					<inc component_id="1"/>
+					<in1 component_id="4"/>
+					<in2 component_id="71"/>
+				</object>
+			</c>
+			<c type="43">
+				<object id="41" l="Reading">
+					<pos x="-1.25" y="-2.5"/>
+					<in1 component_id="4"/>
+				</object>
+			</c>
+			<c type="35">
+				<object id="71">
+					<pos x="-1.25" y="-3"/>
+					<in1 component_id="4"/>
+				</object>
+			</c>
+			<c type="40">
+				<object id="55" count="1" offset="-1">
+					<pos x="3.25" y="-1.75"/>
+					<inc component_id="12"/>
+					<in1 component_id="4"/>
+					<inoff component_id="71"/>
+				</object>
+			</c>
+		</components>
+		<components_bridge>
+			<c type="4">
+				<object id="1">
+					<pos x="-3" y="-1.75"/>
+				</object>
+			</c>
+			<c>
+				<object id="2">
+					<pos x="-3" y="1.5"/>
+				</object>
+			</c>
+			<c type="5">
+				<object id="3">
+					<pos x="5" y="-1.75"/>
+					<in1 component_id="55"/>
+				</object>
+			</c>
+			<c type="2">
+				<object id="4">
+					<pos x="-3" y="-3"/>
+				</object>
+			</c>
+		</components_bridge>
+		<component_states>
+			<c0 id="10">
+				<pos x="0.25" y="1.5"/>
+				<in1 component_id="2"/>
+			</c0>
+		</component_states>
+		<component_bridge_states>
+			<c0 id="1">
+				<pos x="-3" y="-1.75"/>
+			</c0>
+		</component_bridge_states>
+		<group_states/>
+	</group>
+</microprocessor>

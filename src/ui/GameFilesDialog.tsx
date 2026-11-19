@@ -18,8 +18,8 @@ import {
   pasteHint,
   type SuggestedPath,
 } from '@/io/gamePaths'
-import { loadFontFrom, adoptBundledFont } from '@/lua/gameFont'
-import { tinyFont } from '@/lua/tinyFont'
+import { loadFontFrom, adoptFallbackFont } from '@/lua/gameFont'
+import { tinyFont, usingFallbackFont } from '@/lua/tinyFont'
 import { useGameFilesStore } from './gameFilesStore'
 
 /** The paths worth going to, each one click from the clipboard. */
@@ -62,10 +62,16 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
   const setDesigns = useGameFilesStore((s) => s.setDesigns)
   const [problem, setProblem] = useState<string | null>(null)
   const [face, setFace] = useState(tinyFont().face)
+  const [fallback, setFallback] = useState(usingFallbackFont())
   const [copied, setCopied] = useState<string | null>(null)
   const platform = detectPlatform()
 
-  useEffect(() => setFace(tinyFont().face), [game])
+  const refreshFont = () => {
+    setFace(tinyFont().face)
+    setFallback(usingFallbackFont())
+  }
+
+  useEffect(refreshFont, [game])
 
   const connectGame = async () => {
     const result = await connectGameFolder()
@@ -76,7 +82,7 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
     const fontProblem = await loadFontFrom(result.value.rom)
     setProblem(fontProblem)
     setGame(result.value)
-    setFace(tinyFont().face)
+    refreshFont()
   }
 
   const connectDesigns = async () => {
@@ -106,7 +112,7 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
         {!supported && (
           <p className="dialog-note">
             This browser cannot open a folder. Chrome, Edge and Arc can; Safari and Firefox do not
-            implement it yet, so the app uses what it has bundled.
+            implement it yet, so monitors use the stand-in font.
           </p>
         )}
 
@@ -117,6 +123,12 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
               The Stormworks folder, its <code>rom</code> folder, or the application itself. Used
               for the monitor font — currently {face}.
             </p>
+            {fallback && (
+              <p className="panel-hint">
+                Monitors are using a stand-in font. Link your game folder to draw them in the
+                game&rsquo;s own.
+              </p>
+            )}
             <Paths paths={gamePaths(platform)} copied={copied} onCopy={setCopied} />
             {game && <p className="folder-current">Reading {game.name}</p>}
           </div>
@@ -133,9 +145,9 @@ export function GameFilesDialog({ onClose }: { onClose: () => void }) {
                 className="text-button"
                 onClick={() => {
                   void forgetFolder('game')
-                  adoptBundledFont()
+                  adoptFallbackFont()
                   setGame(null)
-                  setFace(tinyFont().face)
+                  refreshFont()
                 }}
               >
                 Forget

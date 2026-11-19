@@ -8,7 +8,7 @@
  * any of them.
  *
  * Only Chromium-based browsers implement the directory picker. Everywhere else
- * the app falls back to what it has bundled, so this is an improvement when it
+ * the app falls back to its own stand-in font, so this is an improvement when it
  * is available rather than something to depend on.
  */
 import { err, ok, type Result } from '@/model/result'

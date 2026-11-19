@@ -1,9 +1,9 @@
 /**
- * CloudHost OIDC (authorization code + PKCE) for the cloud library.
+ * OIDC sign-in (authorization code + PKCE) for the cloud library.
  *
- * The SPA is a public client. Home mints RS256 access tokens; the API
+ * The SPA is a public client. The issuer mints RS256 access tokens; the API
  * verifies them against JWKS. Tokens live in web storage because the UI
- * and API are different *.example.com hosts — an HttpOnly cookie on the API
+ * and API can be different hosts — an HttpOnly cookie on the API
  * origin would be cross-site.
  *
  * Session lifetime (SWMC-3): the tokens are in localStorage, not
@@ -69,7 +69,7 @@ export function oidcCallbackParams(
 
 export async function startOidcLogin(): Promise<void> {
   const clientId = oidcClientId()
-  if (!clientId) throw new Error('CloudHost login is not configured')
+  if (!clientId) throw new Error('OIDC sign-in is not configured')
   const disc = await loadDiscovery()
   const pending = await newPending()
   sessionStorage.setItem(pendingKey, JSON.stringify(pending))

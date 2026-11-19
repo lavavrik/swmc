@@ -19,6 +19,7 @@ describe('account on load', () => {
 
   beforeEach(() => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://api.example')
+    vi.stubEnv('VITE_OIDC_ISSUER', 'https://id.example.com')
     vi.stubEnv('VITE_OIDC_CLIENT_ID', 'client-1')
     vi.stubGlobal('fetch', fetchMock)
   })
@@ -40,7 +41,7 @@ describe('account on load', () => {
     store('skewed', 'r1', nowSec() + 600)
     fetchMock
       .mockResolvedValueOnce(json({ error: 'unauthorized' }, 401))
-      .mockResolvedValueOnce(json({ token_endpoint: 'https://example.com/oidc/token' }))
+      .mockResolvedValueOnce(json({ token_endpoint: 'https://id.example.com/oidc/token' }))
       .mockResolvedValueOnce(json({ access_token: 'renewed', refresh_token: 'r2' }))
       .mockResolvedValueOnce(json(account))
     await expect(me()).resolves.toEqual(account)
@@ -51,7 +52,7 @@ describe('account on load', () => {
     store('skewed', 'r1', nowSec() + 600)
     fetchMock
       .mockResolvedValueOnce(json({ error: 'unauthorized' }, 401))
-      .mockResolvedValueOnce(json({ token_endpoint: 'https://example.com/oidc/token' }))
+      .mockResolvedValueOnce(json({ token_endpoint: 'https://id.example.com/oidc/token' }))
       .mockResolvedValueOnce(json({ error: 'invalid_grant' }, 400))
       .mockResolvedValueOnce(json({ error: 'unauthorized' }, 401))
     await expect(me()).resolves.toBeNull()

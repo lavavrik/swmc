@@ -126,16 +126,16 @@ describe('colour', () => {
 })
 
 describe('text', () => {
-  it('draws the game’s pixel glyphs', () => {
+  it('draws the font’s pixel glyphs', () => {
     const raster = new Raster(5, 5)
     raster.text(0, 0, 'A', WHITE)
-    expect(show(raster)).toEqual(['.##..', '#..#.', '####.', '#..#.', '#..#.'])
+    expect(show(raster)).toEqual(['.##..', '#..#.', '#..#.', '####.', '#..#.'])
   })
 
   it('advances five pixels per character', () => {
     const raster = new Raster(10, 5)
     raster.text(0, 0, 'AA', WHITE)
-    expect(show(raster)[0]).toBe('.##..a##..'.replace('a', '.'))
+    expect(show(raster)[0]).toBe('.##...##..')
   })
 
   it('honours each glyph’s own offset', () => {

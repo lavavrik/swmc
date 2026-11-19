@@ -69,9 +69,9 @@ describe('finding the game data', () => {
 describe('finding the player’s designs', () => {
   it('collects the XML a saved microcontroller folder holds', async () => {
     const designs = await findDesigns(
-      folder('microprocessors', { 'Thermostat.xml': '<microprocessor/>', 'notes.txt': 'x' }),
+      folder('microprocessors', { 'Throttle.xml': '<microprocessor/>', 'notes.txt': 'x' }),
     )
-    expect(designs.map((d) => d.file)).toEqual(['Thermostat.xml'])
+    expect(designs.map((d) => d.file)).toEqual(['Throttle.xml'])
     expect(designs[0]?.where).toBe('')
   })
 

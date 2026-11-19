@@ -23,7 +23,7 @@ Non-goals (explicitly out of scope, possibly later):
 - The vehicle editor, block placement, or anything outside a microcontroller.
 - Multiplayer/collaborative editing, accounts, sharing links.
 - A required backend. The app is still a static SPA, and the default library
-  is still IndexedDB. An optional cloudhost function can hold the same XML
+  is still IndexedDB. An optional library API can hold the same XML
   (`server/`); connecting the game folder through the File System Access API
   is unchanged — those files are read in place and nothing is uploaded.
 - Physics simulation of the vehicle a microcontroller would be attached to.
@@ -34,16 +34,16 @@ Non-goals (explicitly out of scope, possibly later):
 
 ## 2. Product decisions
 
-| Question | Decision |
-|---|---|
-| Purpose | Faithful editor first, simulation second — but the tick engine lands in phase 1 because the Lua live-run needs it |
-| Format source of truth | Public wiki and open-source community parsers, since confirmed against a microcontroller saved by the game |
-| Component coverage | The full library — 60 microcontroller component types, all categories |
-| Graph engine | Custom SVG renderer — no React Flow, no canvas immediate mode |
-| Lua editor | Monaco + full Stormworks API intellisense + wasmoon Lua execution + screen preview |
-| Runtime | Browser SPA. IndexedDB project library by default; optional cloudhost function stores the same XML. `.xml` import/export via file picker and drag-drop |
-| Simulation depth | Full graph tick engine at 60 Hz with 1-tick delay on feedback edges |
-| Visual target | Exact replica of the in-game skin (teal grid, white node cards, circular toolbar, coloured wires with arrowheads) |
+| Question               | Decision                                                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Purpose                | Faithful editor first, simulation second — but the tick engine lands in phase 1 because the Lua live-run needs it                               |
+| Format source of truth | Public wiki and open-source community parsers, since confirmed against a microcontroller saved by the game                                      |
+| Component coverage     | The full library — 60 microcontroller component types, all categories                                                                           |
+| Graph engine           | Custom SVG renderer — no React Flow, no canvas immediate mode                                                                                   |
+| Lua editor             | Monaco + full Stormworks API intellisense + wasmoon Lua execution + screen preview                                                              |
+| Runtime                | Browser SPA. IndexedDB project library by default; optional library API stores the same XML. `.xml` import/export via file picker and drag-drop |
+| Simulation depth       | Full graph tick engine at 60 Hz with 1-tick delay on feedback edges                                                                             |
+| Visual target          | Exact replica of the in-game skin (teal grid, white node cards, circular toolbar, coloured wires with arrowheads)                               |
 
 ## 3. Decomposition
 
@@ -51,13 +51,13 @@ The system is too large for one spec. It splits into five sub-projects, each
 with its own spec, plan, and implementation cycle. Build order is top to bottom;
 each depends only on those above it.
 
-| # | Sub-project | Depends on | Deliverable |
-|---|---|---|---|
-| 1 | **Graph model + SVG editor** | — | Editable graph with placeholder components: place, move, wire, select, delete, undo, copy/paste, pan/zoom |
-| 2 | **Component library** | 1 | All 60 components as declarative definitions; picker menu; property inspector |
-| 3 | **XML interop + project library** | 1, 2 | Load and save Stormworks `.xml`; IndexedDB project list |
-| 4 | **Tick engine** | 1, 2 | 60 Hz evaluation, stateful components, live signal values on wires, I/O panel |
-| 5 | **Lua subsystem** | 1, 2, 4 | Monaco + SW API intellisense, wasmoon worker, `onTick`/`onDraw`, screen preview |
+| #   | Sub-project                       | Depends on | Deliverable                                                                                               |
+| --- | --------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | **Graph model + SVG editor**      | —          | Editable graph with placeholder components: place, move, wire, select, delete, undo, copy/paste, pan/zoom |
+| 2   | **Component library**             | 1          | All 60 components as declarative definitions; picker menu; property inspector                             |
+| 3   | **XML interop + project library** | 1, 2       | Load and save Stormworks `.xml`; IndexedDB project list                                                   |
+| 4   | **Tick engine**                   | 1, 2       | 60 Hz evaluation, stateful components, live signal values on wires, I/O panel                             |
+| 5   | **Lua subsystem**                 | 1, 2, 4    | Monaco + SW API intellisense, wasmoon worker, `onTick`/`onDraw`, screen preview                           |
 
 Rationale for the order: the model must exist before anything can be described
 against it; components must exist before the XML codec has anything to map type
@@ -107,13 +107,13 @@ Five signal types, matching the game, each with its own wire colour and its own
 port-dot colour. Connections are type-checked: an output may only connect to an
 input of the same type.
 
-| Type | Meaning | Wire colour |
-|---|---|---|
-| `onoff` | Boolean | Red |
-| `number` | 32-bit float | Green |
-| `composite` | 32 numbers + 32 booleans in one channel | Purple |
-| `video` | Frame buffer channel | Blue |
-| `audio` | Audio channel | Olive |
+| Type        | Meaning                                 | Wire colour |
+| ----------- | --------------------------------------- | ----------- |
+| `onoff`     | Boolean                                 | Red         |
+| `number`    | 32-bit float                            | Green       |
+| `composite` | 32 numbers + 32 booleans in one channel | Purple      |
+| `video`     | Frame buffer channel                    | Blue        |
+| `audio`     | Audio channel                           | Olive       |
 
 Colours are sampled from the in-game editor and defined once, in
 `src/ui/theme.css`.
@@ -124,29 +124,29 @@ them, and 0-indexed internally; the conversion lives in one place.
 ### 5.2 Document
 
 ```ts
-type NodeId = string          // stable, generated on create
+type NodeId = string // stable, generated on create
 type PortId = { node: NodeId; kind: 'in' | 'out'; index: number }
 
 interface GraphNode {
   id: NodeId
-  type: ComponentTypeId       // key into the component registry
-  position: { x: number; y: number }   // grid units, integers
+  type: ComponentTypeId // key into the component registry
+  position: { x: number; y: number } // grid units, integers
   properties: Record<string, PropertyValue>
   label?: string
 }
 
 interface Wire {
   id: WireId
-  from: PortId                // always an output
-  to: PortId                  // always an input
+  from: PortId // always an output
+  to: PortId // always an input
 }
 
 interface Microcontroller {
   meta: { name: string; description: string; width: number; length: number }
   nodes: GraphNode[]
   wires: Wire[]
-  ioOrder: NodeId[]           // the microcontroller's own external pins, in order
-  idCounter: number           // kept in the document so operations stay pure
+  ioOrder: NodeId[] // the microcontroller's own external pins, in order
+  idCounter: number // kept in the document so operations stay pure
 }
 ```
 
@@ -188,17 +188,17 @@ Every component is a declarative definition — no per-component React code:
 
 ```ts
 interface ComponentDef {
-  id: ComponentTypeId          // our stable string id, e.g. 'arithmetic.add'
-  swType: number               // the game's numeric type in XML
-  category: Category           // Arithmetic | Logic | Comparison | Composite |
-                               // Video | Audio | Data | Property
-  name: string                 // display name, e.g. 'Add'
-  description: string          // tooltip text, verbatim from the game
-  inputs: PortDef[]            // label, signal type, optional
+  id: ComponentTypeId // our stable string id, e.g. 'arithmetic.add'
+  swType: number // the game's numeric type in XML
+  category: Category // Arithmetic | Logic | Comparison | Composite |
+  // Video | Audio | Data | Property
+  name: string // display name, e.g. 'Add'
+  description: string // tooltip text, verbatim from the game
+  inputs: PortDef[] // label, signal type, optional
   outputs: PortDef[]
-  properties: PropertyDef[]    // number / text / bool / dropdown / slider
-  size?: { w: number; h: number }        // grid units; defaults from port count
-  eval: EvalFn                 // pure, or stateful via the state slot
+  properties: PropertyDef[] // number / text / bool / dropdown / slider
+  size?: { w: number; h: number } // grid units; defaults from port count
+  eval: EvalFn // pure, or stateful via the state slot
   stateful?: boolean
 }
 ```
@@ -354,17 +354,17 @@ the outputs produced by the last completed tick.
   goes through a hand-written rasteriser rather than a canvas: Bresenham lines,
   a midpoint circle shared between outline and fill, scanline triangles, and
   the game's own bitmap font. Nothing is smoothed — a diagonal is a staircase
-  on a real monitor and it should be one here. The font is extracted from a
-  local installation of the game by `scripts/extract-tiny-font.mjs`, which
-  reads the BMFont pair the game ships and writes out one bitmask per glyph
-  row.
+  on a real monitor and it should be one here. The font is read at runtime
+  from the player's own installation (the BMFont pair the game ships, parsed to
+  one bitmask per glyph row); until they link it, an original stand-in face
+  with the same metrics fills in.
 - **Touch:** a monitor in the game reports back over composite — its size on
   number channels 1 and 2, the touch position on 3 and 4, and whether it is
   being touched on on/off channel 1. The script editor's monitor does the same,
   so a touch interface can be built and tried without leaving the editor.
 - **Monitors:** the game has no monitor component inside a microcontroller —
   a monitor is a block on the vehicle — so a monitor here is an instrument
-  rather than a component. It attaches to any port that *emits* video — an output, or one of the
+  rather than a component. It attaches to any port that _emits_ video — an output, or one of the
   microcontroller's own output pins (double-click the port, or use the property
   panel) — and watches it without touching the document, which keeps saved files unaffected by where it is pointed.
   Attaching one tells the scripts upstream how big the screen is, which is what
@@ -385,7 +385,7 @@ the outputs produced by the last completed tick.
   rather than keeping a short original, because a kept name leaves the pool
   free to hand the same one to something else.
   The result is shown beside the script rather than replacing it; replacing is
-  a separate, undoable choice. On the thermostat that ships as a test fixture
+  a separate, undoable choice. On the touchscreen panel script in the test fixtures
   it is a 38% saving, verified by running both versions tick for tick and
   requiring identical outputs and drawing.
 - **Safety:** a per-tick instruction budget aborts runaway scripts; a worker
@@ -425,7 +425,7 @@ Handles are kept in the same browser database as the project library — one
 module owns that schema, because opening a database at two versions fails, and
 only once both features are used in one session.
 
-Chromium implements the picker; Safari and Firefox do not. The bundled font is
+Chromium implements the picker; Safari and Firefox do not. The stand-in font is
 what everyone else gets, so this is an improvement where it is available rather
 than something the app depends on.
 
@@ -491,15 +491,15 @@ sourced from the screenshot, so the skin is adjustable in one file.
 
 ## 12. Testing strategy
 
-| Layer | How it is tested |
-|---|---|
-| `model` | Unit tests per operation, plus invariant property tests |
+| Layer     | How it is tested                                                                                                                |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `model`   | Unit tests per operation, plus invariant property tests                                                                         |
 | `library` | Table-driven `eval` tests per component; a registry integrity test asserting unique ids, unique `swType`, and complete metadata |
-| `sim` | Multi-tick scenario tests, including feedback loops and every stateful component |
-| `lua` | Worker integration tests: script in, outputs and screen display list out |
-| `io` | Golden-file round-trip tests |
-| `editor` | Playwright interaction tests: place, drag, wire, marquee, undo |
-| `ui` | Testing Library for panels; no snapshot tests of the canvas |
+| `sim`     | Multi-tick scenario tests, including feedback loops and every stateful component                                                |
+| `lua`     | Worker integration tests: script in, outputs and screen display list out                                                        |
+| `io`      | Golden-file round-trip tests                                                                                                    |
+| `editor`  | Playwright interaction tests: place, drag, wire, marquee, undo                                                                  |
+| `ui`      | Testing Library for panels; no snapshot tests of the canvas                                                                     |
 
 Development follows TDD: each sub-project's plan writes tests before
 implementation for `model`, `library`, `sim`, and `io`, which is where
@@ -517,13 +517,13 @@ both are cheap to correct by design.
 All five sub-projects are complete, covered by 198 unit tests and 12 Playwright
 interaction tests.
 
-| # | Sub-project | State |
-|---|---|---|
-| 1 | Graph model + SVG editor | Done |
-| 2 | Component catalogue (60 types) | Done |
-| 3 | XML interop + project library | Done |
-| 4 | Tick engine | Done |
-| 5 | Lua subsystem | Done |
+| #   | Sub-project                    | State |
+| --- | ------------------------------ | ----- |
+| 1   | Graph model + SVG editor       | Done  |
+| 2   | Component catalogue (60 types) | Done  |
+| 3   | XML interop + project library  | Done  |
+| 4   | Tick engine                    | Done  |
+| 5   | Lua subsystem                  | Done  |
 
 A microcontroller saved by the game is now a fixture, and it round-trips: all
 51 components, 64 wires, the script, the icon. It confirmed the position scale

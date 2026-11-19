@@ -73,7 +73,7 @@ export async function fetchMicrocontroller(path: string): Promise<Result<Microco
 }
 
 /**
- * Signing in with CloudHost leaves the page and comes back to `/`, losing the
+ * Signing in through the OIDC issuer leaves the page and comes back to `/`, losing the
  * query. The wanted slug waits in sessionStorage until it has been opened.
  */
 const PENDING_OPEN = 'swmc.open'

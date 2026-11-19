@@ -1,5 +1,5 @@
-// Local runner. CloudHost never sees this file — only the package-level
-// Handle/Init in the server root are uploaded to the functions service.
+// Local runner. Only the package-level Handle/Init in the server root are
+// what a serverless functions host loads; this wraps them in net/http.
 package main
 
 import (

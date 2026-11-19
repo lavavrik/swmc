@@ -59,7 +59,7 @@ describe('cloud library client', () => {
     expect(init.body).toBe('<microprocessor name="Test Rig"/>')
   })
 
-  it('sends a stored CloudHost access token', async () => {
+  it('sends a stored OIDC access token', async () => {
     localStorage.setItem(
       'swmc_oidc',
       JSON.stringify({

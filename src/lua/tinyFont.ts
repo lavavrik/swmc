@@ -1,23 +1,26 @@
 /**
  * Which pixel font monitors are drawn in.
  *
- * A copy of the game's font is bundled so the app works on its own. When the
- * player points it at their own installation, the font is read from there
- * instead — the same file the game itself draws with.
+ * The game's own font is read from the player's installation when they point
+ * the app at one. Until then monitors use the stand-in face in
+ * `fallbackFont.ts`, which keeps the game's metrics but not its letterforms.
  */
-import { TINY_ADVANCE, TINY_GLYPHS, TINY_LINE_HEIGHT } from './tinyFont.generated'
+import { FALLBACK_FACE, FALLBACK_GLYPHS, TINY_ADVANCE, TINY_LINE_HEIGHT } from './fallbackFont'
 import { parseTinyFont, type TinyFont } from './tinyFontFile'
 
-const BUNDLED: TinyFont = {
+const FALLBACK: TinyFont = {
   advance: TINY_ADVANCE,
   lineHeight: TINY_LINE_HEIGHT,
-  glyphs: TINY_GLYPHS,
-  face: 'CG pixel 4x5 mono (bundled)',
+  glyphs: FALLBACK_GLYPHS,
+  face: FALLBACK_FACE,
 }
 
-let current: TinyFont = BUNDLED
+let current: TinyFont = FALLBACK
 
 export const tinyFont = (): TinyFont => current
+
+/** True until the game's own font has been read from the player's folder. */
+export const usingFallbackFont = (): boolean => current === FALLBACK
 
 /** Reads the font out of a game folder. Returns what it found, or the reason. */
 export function adoptFontFrom(descriptor: string, page: Uint8Array): string | null {
@@ -29,6 +32,6 @@ export function adoptFontFrom(descriptor: string, page: Uint8Array): string | nu
   }
 }
 
-export function adoptBundledFont(): void {
-  current = BUNDLED
+export function adoptFallbackFont(): void {
+  current = FALLBACK
 }

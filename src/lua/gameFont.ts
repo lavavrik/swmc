@@ -2,11 +2,11 @@
  * Loading the monitor font out of a player's Stormworks installation.
  *
  * The game keeps it as a BMFont pair under `graphics/fonts`; this reads both
- * halves and hands them to the parser. Anything missing leaves the bundled copy
+ * halves and hands them to the parser. Anything missing leaves the stand-in font
  * in place, so a folder that turns out not to have it changes nothing.
  */
 import { readFile, readText } from '@/io/gameFiles'
-import { adoptBundledFont, adoptFontFrom } from './tinyFont'
+import { adoptFallbackFont, adoptFontFrom } from './tinyFont'
 
 const DESCRIPTOR = 'graphics/fonts/tiny.xml'
 const PAGE = 'graphics/fonts/tiny_0.txtr'
@@ -17,4 +17,4 @@ export async function loadFontFrom(rom: FileSystemDirectoryHandle): Promise<stri
   return adoptFontFrom(descriptor, page)
 }
 
-export { adoptBundledFont }
+export { adoptFallbackFont }

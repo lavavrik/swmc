@@ -212,7 +212,7 @@ export function ProjectDialog({
               <button type="button" className="text-button" onClick={onSignIn}>
                 Sign in
               </button>{' '}
-              to save them to your CloudHost account.
+              to save them to your cloud library.
             </p>
           )}
           {projects.length === 0 && <p className="picker-empty">Nothing saved yet.</p>}

@@ -1,5 +1,5 @@
 /**
- * Cloud library account. CloudHost OIDC is Bearer on the API; homemade
+ * Cloud library account. OIDC is Bearer on the API; homemade
  * email/password still uses an HttpOnly cookie (local / tests).
  */
 import { apiFetch } from './http'
@@ -34,7 +34,7 @@ export async function finishOidcLogin(code: string, state: string): Promise<Acco
 
 /**
  * Who the API says is signed in. null is a definite "nobody"; a throw means
- * it could not tell (API down, issuer unreachable) and the stored CloudHost
+ * it could not tell (API down, issuer unreachable) and the stored OIDC
  * session is kept — see restoreAccount.
  */
 export async function me(): Promise<Account | null> {
@@ -47,7 +47,7 @@ export async function me(): Promise<Account | null> {
   if (res.status === 401) {
     // Tokens still stored here means the refresh failed for a passing
     // reason; a rejected refresh token has already been cleared.
-    if (hasOidcSession()) throw new Error('could not renew the CloudHost sign-in')
+    if (hasOidcSession()) throw new Error('could not renew the sign-in')
     session = null
     return null
   }

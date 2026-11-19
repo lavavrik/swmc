@@ -73,7 +73,7 @@ func TestUpsertOIDCUser(t *testing.T) {
 		t.Fatal(err)
 	}
 	if other.ID == first.ID {
-		t.Fatal("distinct Home users must not share a library account")
+		t.Fatal("distinct OIDC users must not share a library account")
 	}
 
 	existing := testUser(t, s, "legacy@example.com")
@@ -89,7 +89,7 @@ func TestUpsertOIDCUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if anon.Email != "sub-no-mail@oidc.example.com" {
+	if anon.Email != "sub-no-mail@oidc.invalid" {
 		t.Fatalf("synthetic email: %s", anon.Email)
 	}
 }

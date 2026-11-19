@@ -19,9 +19,9 @@ function scriptOf(fixture: string): string {
 }
 
 /**
- * Minifying must not change what a script does, so this runs a real one — the
- * 4 KB thermostat saved out of the game — both ways over a run of ticks and
- * requires the outputs and the drawing to match exactly.
+ * Minifying must not change what a script does, so this runs a real one — a
+ * touchscreen setpoint panel with closures, tables and an `onDraw` — both ways
+ * over a run of ticks and requires the outputs and the drawing to match exactly.
  */
 describe('a minified script behaves identically', () => {
   let wasm: string
@@ -29,24 +29,24 @@ describe('a minified script behaves identically', () => {
 
   beforeAll(() => {
     wasm = createRequire(import.meta.url).resolve('wasmoon/dist/glue.wasm')
-    script = scriptOf('thermostat-v3.xml')
+    script = readFileSync(join(process.cwd(), 'src/lua/__fixtures__/setpoint-panel.lua'), 'utf8')
     expect(script.length).toBeGreaterThan(3000)
   })
 
-  /** Inputs that exercise the thermostat: a temperature, and a touch. */
+  /** Inputs that exercise the panel: a measurement, and touches on its buttons. */
   const inputsFor = (tick: number): CompositeValue => ({
     numbers: [
       96, // screen width
       96, // screen height
-      44 + (tick % 3), // touch x, drifting across the buttons
-      92,
+      4 + (tick % 3) * 11, // touch x, moving across the three buttons
+      5,
       0,
       0,
-      18 + tick * 0.25, // measured temperature
-      21, // set temperature
+      18 + tick * 0.25, // measured value
+      0,
       ...Array.from({ length: 24 }, () => 0),
     ],
-    bools: Array.from({ length: 32 }, (_, i) => (i === 0 ? tick % 4 !== 0 : i === 6 && tick === 5)),
+    bools: Array.from({ length: 32 }, (_, i) => i === 0 && tick % 4 !== 0),
   })
 
   it('produces the same outputs and the same drawing, tick for tick', async () => {
@@ -63,8 +63,9 @@ describe('a minified script behaves identically', () => {
 
     for (let tick = 0; tick < 30; tick++) {
       const inputs = inputsFor(tick)
-      const a = original.tick(inputs, { 'Default Temp (c)': 16 }, true)
-      const b = shortened.tick(inputs, { 'Default Temp (c)': 16 }, true)
+      const a = original.tick(inputs, { 'Default Target': 16 }, true)
+      const b = shortened.tick(inputs, { 'Default Target': 16 }, true)
+      expect(a.error, `tick ${tick}`).toBeNull()
       expect(b.error, `tick ${tick}`).toBe(a.error)
       expect(b.outputs, `tick ${tick}`).toEqual(a.outputs)
       expect(b.commands, `tick ${tick}`).toEqual(a.commands)

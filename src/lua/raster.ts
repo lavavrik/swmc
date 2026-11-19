@@ -4,7 +4,7 @@
  * Stormworks monitors are small — 32x32 up to 288x160 — and every drawing
  * operation lands on whole pixels, so this rasterises by hand rather than
  * through a canvas: Bresenham lines, a midpoint circle, scanline triangles and
- * the game's own bitmap font. Nothing is smoothed, which is the point: a
+ * the monitor's bitmap font. Nothing is smoothed, which is the point: a
  * diagonal is a staircase on a real monitor and it should be one here.
  */
 import type { Rgba } from '@/library/video'
@@ -199,7 +199,7 @@ export class Raster {
     this.triangle(x1, y1, x2, y2, x3, y3, colour)
   }
 
-  /** Draws text in the game's bitmap font, one glyph every five pixels. */
+  /** Draws text in the monitor font, one glyph every five pixels. */
   text(x: number, y: number, text: string, colour: Rgba): void {
     const font = tinyFont()
     let cursor = Math.floor(x)

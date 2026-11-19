@@ -12,13 +12,14 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 )
 
-// AccessVerifier checks an CloudHost OIDC access token. The live verifier
-// talks to Home JWKS; tests inject a stub.
+// AccessVerifier checks an OIDC access token. The live verifier talks to
+// the issuer's JWKS; tests inject a stub.
 type AccessVerifier interface {
 	Verify(ctx context.Context, token string) (OIDCClaims, error)
 }
@@ -40,11 +41,11 @@ var (
 const jwksTTL = time.Hour
 const jwtSkew = 60 * time.Second
 
-// Verifier fetches Home JWKS and checks RS256 access tokens.
+// Verifier fetches the issuer's JWKS and checks RS256 access tokens.
 //
-// Hosted SPA and API are different *.example.com hosts, so a session cookie
-// would be cross-site. The SPA sends Authorization: Bearer instead; we
-// verify locally against JWKS and never share Home's HS256 JWT_SECRET.
+// The hosted SPA and API can live on different hosts, so a session cookie
+// would be cross-site. The SPA sends Authorization: Bearer instead, and we
+// verify locally against JWKS without sharing any secret with the issuer.
 type Verifier struct {
 	issuer      string
 	audience    string
@@ -57,8 +58,8 @@ type Verifier struct {
 	fetched time.Time
 }
 
-// NewVerifier builds a verifier for one public client. issuer is Home's
-// PUBLIC_URL (https://example.com). audience is that client's UUID.
+// NewVerifier builds a verifier for one public client. issuer is the OIDC
+// issuer URL; audience is that client's id.
 func NewVerifier(issuer, audience string) (*Verifier, error) {
 	issuer = strings.TrimRight(strings.TrimSpace(issuer), "/")
 	audience = strings.TrimSpace(audience)
@@ -136,7 +137,7 @@ func (v *Verifier) Verify(ctx context.Context, token string) (OIDCClaims, error)
 	if c.Nbf != 0 && now.Before(time.Unix(c.Nbf, 0).Add(-jwtSkew)) {
 		return OIDCClaims{}, errBadClaims
 	}
-	// Home access tokens often omit email (it sits on the id token /
+	// Access tokens often omit email (it sits on the id token /
 	// userinfo). The library still needs a unique address.
 	email := oidcEmail(c.Sub, c.Email)
 	if !validEmail(c.Email) && validEmail(c.Username) {
@@ -150,19 +151,35 @@ func (v *Verifier) Verify(ctx context.Context, token string) (OIDCClaims, error)
 	return OIDCClaims{Sub: c.Sub, Email: email}, nil
 }
 
+// syntheticEmailDomain names accounts whose issuer gives no email:
+// <sub>@<domain>. oidcFromEnv sets it from the issuer.
+var syntheticEmailDomain = "oidc.invalid"
+
+// emailDomainFor is OIDC_EMAIL_DOMAIN when set, else "oidc." + the issuer's
+// host, so the synthetic addresses stay the same for as long as the issuer does.
+func emailDomainFor(issuer, override string) string {
+	if d := strings.TrimSpace(override); d != "" {
+		return strings.ToLower(d)
+	}
+	if u, err := url.Parse(strings.TrimSpace(issuer)); err == nil && u.Hostname() != "" {
+		return "oidc." + strings.ToLower(u.Hostname())
+	}
+	return "oidc.invalid"
+}
+
 func oidcEmail(sub, email string) string {
 	email = normalizeEmail(email)
 	if validEmail(email) {
 		return email
 	}
-	return strings.ToLower(strings.TrimSpace(sub)) + "@oidc.example.com"
+	return strings.ToLower(strings.TrimSpace(sub)) + "@" + syntheticEmailDomain
 }
 
 func shouldReplaceEmail(have, want string) bool {
 	if have == want || !validEmail(want) {
 		return false
 	}
-	if strings.HasSuffix(want, "@oidc.example.com") {
+	if strings.HasSuffix(want, "@"+syntheticEmailDomain) {
 		return false
 	}
 	return true

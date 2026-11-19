@@ -22,7 +22,22 @@ export type TelemSample = {
   k: number
 }
 
-export const TELEM_KEYS = ['s', 'f', 'v', 'i', 'h', 'a', 'e', 'g', 'p', 'c', 'm', 'd', 'u', 'k'] as const
+export const TELEM_KEYS = [
+  's',
+  'f',
+  'v',
+  'i',
+  'h',
+  'a',
+  'e',
+  'g',
+  'p',
+  'c',
+  'm',
+  'd',
+  'u',
+  'k',
+] as const
 
 export function parseTelemQuery(url: string): TelemSample | null {
   const path = url.startsWith('/') ? url : `/${url}`

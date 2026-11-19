@@ -13,7 +13,7 @@ export interface AgentSetup {
 
 export interface AgentSetupInput {
   readonly token: string
-  /** This editor, e.g. https://swmc-ui-….example.com */
+  /** This editor's origin, e.g. https://swmc.example.com */
   readonly editor: string
   /** The library API this build talks to. */
   readonly api: string
@@ -24,7 +24,7 @@ const SCRIPT = '~/.swmc/swmc-mcp.mjs'
 export function agentSetup({ token, editor, api }: AgentSetupInput): AgentSetup {
   const base = editor.replace(/\/$/, '')
   const env: [string, string][] = [['SWMC_TOKEN', token]]
-  // The server defaults to the hosted pair; anything else has to be named
+  // The server defaults to the hosted pair it was built with; anything else is named
   if (api.replace(/\/$/, '') !== HOSTED_API) env.push(['SWMC_API_URL', api.replace(/\/$/, '')])
   if (base !== HOSTED_EDITOR) env.push(['SWMC_URL', base])
 

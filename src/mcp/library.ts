@@ -260,7 +260,14 @@ export interface LibraryEnv {
 export function libraryFromEnv(env: LibraryEnv, cwd: string): Library {
   const token = env.SWMC_TOKEN?.trim()
   if (token) {
-    return new CloudLibrary(env.SWMC_API_URL || HOSTED_API, token, env.SWMC_URL || HOSTED_EDITOR)
+    const api = env.SWMC_API_URL || HOSTED_API
+    const editor = env.SWMC_URL || HOSTED_EDITOR
+    if (!api || !editor) {
+      throw new Error(
+        'SWMC_TOKEN needs SWMC_API_URL and SWMC_URL: this build names no hosted library',
+      )
+    }
+    return new CloudLibrary(api, token, editor)
   }
   return new FolderLibrary(env.SWMC_DIR || cwd, env.SWMC_URL || LOCAL_EDITOR)
 }

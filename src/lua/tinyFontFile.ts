@@ -5,11 +5,9 @@
  * header followed by RGBA pixels, magenta where there is nothing and white
  * where the glyph is, stored bottom-up as a TGA would be.
  *
- * The same parser runs in two places — the script that generates the bundled
- * font, and the app when it is reading a player's own installation — so there
- * is one description of the format rather than two that can drift.
+ * The app runs it on the player's own installation; the font is never bundled.
  */
-import type { TinyGlyph } from './tinyFont.generated'
+import type { TinyGlyph } from './fallbackFont'
 
 export interface TinyFont {
   readonly advance: number

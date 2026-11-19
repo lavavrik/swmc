@@ -181,7 +181,7 @@ test('saves a microcontroller to the library and opens it again', async ({ page 
   await page.locator('.description-field').fill('holds heading')
 
   await page.getByTitle('Save or export this microcontroller').click()
-  await page.getByRole('button', { name: 'Save to library' }).click()
+  await page.getByRole('button', { name: 'Save to this browser' }).click()
 
   await page.getByTitle('Discard and start again').click()
   await expect(nodes(page)).toHaveCount(0)
@@ -554,7 +554,8 @@ test('offers the player’s own Stormworks folders', async ({ page, context }) =
   await expect(dialog).toContainText('Microcontrollers')
   // What it is for, and that nothing leaves the machine
   await expect(dialog).toContainText('nothing is uploaded')
-  await expect(dialog).toContainText('bundled')
+  // Until the game folder is linked, monitors draw in the stand-in font
+  await expect(dialog).toContainText('stand-in font')
 
   // Chromium has the picker, so the buttons are live
   await expect(dialog.getByRole('button', { name: 'Choose…' }).first()).toBeEnabled()

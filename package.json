@@ -1,7 +1,29 @@
 {
   "name": "swmc",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.4",
+  "description": "Browser editor, simulator and agent toolkit for Stormworks: Build and Rescue microcontrollers",
+  "license": "MIT",
+  "author": "Lavrentii",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lavavrik/swmc.git"
+  },
+  "homepage": "https://github.com/lavavrik/swmc#readme",
+  "bugs": {
+    "url": "https://github.com/lavavrik/swmc/issues"
+  },
+  "keywords": [
+    "stormworks",
+    "microcontroller",
+    "node-editor",
+    "lua",
+    "simulator",
+    "mcp"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +36,6 @@
     "test:server": "go test -C server ./...",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "extract-font": "tsx scripts/extract-tiny-font.ts",
     "mc": "tsx --tsconfig tsconfig.app.json src/recipe/cli.ts",
     "mcp": "tsx --tsconfig tsconfig.app.json src/mcp/server.ts",
     "build:mcp": "node scripts/build-mcp.mjs",
@@ -53,7 +74,10 @@
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.23.0",
     "vite": "^6.1.0",
-    "vitest": "^3.0.5",
+    "vitest": "^5.1.1",
     "yaml": "^2.9.0"
+  },
+  "overrides": {
+    "dompurify": "^3.4.18"
   }
 }

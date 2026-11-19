@@ -8,11 +8,7 @@
  * top-to-bottom. Within a column, a node sits at the median y of the nodes
  * that feed it, then packs downward.
  */
-import {
-  COMPONENT_WIDTH_UNITS,
-  EDITOR_WIDTH_SCALE,
-  componentHeightUnits,
-} from '@/library/geometry'
+import { COMPONENT_WIDTH_UNITS, EDITOR_WIDTH_SCALE, componentHeightUnits } from '@/library/geometry'
 import { getComponent } from '@/library/registry'
 import { POSITION_SCALE } from '@/io/schema'
 import { setPositions } from '@/model/ops'

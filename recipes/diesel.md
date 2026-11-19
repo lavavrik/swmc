@@ -40,6 +40,7 @@ Telemetry: every 5 ticks the Lua script `GET`s `http://127.0.0.1:8787/t?...` (St
 HUD: use a **3×1** monitor (96×32). Thin RPS, speed, **−** **+**, gear, **N**, mode, then fuel | battery.
 
 **Touch:** HUD video → monitor, monitor composite → **Touch**.
+
 - Speed: SET cruise (**P**). **−** / **+** = ±5 km/h. Tap speed again or brake = cancel. Regen clutch is off in **P**. Auto-shift still runs; throttle is cut for the clutch dip so it doesn’t dump.
 - **N**: forced neutral — drive clutch open, motor off. Pedal still revs the diesel; regen clutch locks so it can charge. Tap N again to leave.
 
@@ -51,53 +52,53 @@ MCU bits do not change. Set the **boxes** like this. Gear 1 = all off.
 
 GB1/GB2 arrows **toward the engine** (through the drive clutch). GB3 arrows **toward the wheels**.
 
-| Box | Arrows | Off (MCU 0) | On (MCU 1) |
-| --- | --- | --- | --- |
-| GB1 | toward engine | 1:1 | 6:5 |
-| GB2 | toward engine | 1:1 | 3:2 |
-| GB3 | toward wheels | **3:1** | 1:1 |
+| Box | Arrows        | Off (MCU 0) | On (MCU 1) |
+| --- | ------------- | ----------- | ---------- |
+| GB1 | toward engine | 1:1         | 6:5        |
+| GB2 | toward engine | 1:1         | 3:2        |
+| GB3 | toward wheels | **3:1**     | 1:1        |
 
 **GB3 reduction is the OFF ratio.** If you put 3:1 (or 5:2) on the ON side, gears 1–4 lose the reduction and 1st is 1:1.
 
 3:1 off is the shortest legal first (wheels ÷3 → ×0.33). 4th→5th is a bigger step (0.60→1.00).
 
 | Gear | GB1 | GB2 | GB3 | × engine |
-| --- | --- | --- | --- | --- |
-| 1 | off | off | off | 0.33 |
-| 2 | on | off | off | 0.40 |
-| 3 | off | on | off | 0.50 |
-| 4 | on | on | off | 0.60 |
-| 5 | off | off | on | 1.00 |
-| 6 | on | off | on | 1.20 |
-| 7 | off | on | on | 1.50 |
-| 8 | on | on | on | 1.80 |
+| ---- | --- | --- | --- | -------- |
+| 1    | off | off | off | 0.33     |
+| 2    | on  | off | off | 0.40     |
+| 3    | off | on  | off | 0.50     |
+| 4    | on  | on  | off | 0.60     |
+| 5    | off | off | on  | 1.00     |
+| 6    | on  | off | on  | 1.20     |
+| 7    | off | on  | on  | 1.50     |
+| 8    | on  | on  | on  | 1.80     |
 
 Optional **Reverse Box**: `-1:1` / `1:1`, driven by Reverse out.
 
 ## Pins
 
-Block is **4×6** (grew wider). Left-face and top pins kept their cells. The old right column slid to x=3 so it stays the right face. New: Battery (0, 5), Physics (2, 0).
+When this MCU needs more pins, grow it **wider**, not taller, and do not move existing pin cells: wiring in the vehicle depends on them. Block is **4×6** (grew wider). Left-face and top pins kept their cells. The old right column slid to x=3 so it stays the right face. New: Battery (0, 5), Physics (2, 0).
 
-| Pin | Wire |
-| --- | --- |
-| Ignition | Seat key |
-| Seat | Seat data composite (W/S = ch 2) |
-| Reverse | Seat reverse |
-| Engine RPS | ECU — start/idle |
-| Shaft RPS | RPS sensor after the motor |
-| Battery | Battery charge 0..1 |
-| Physics | Physics sensor composite |
-| Fuel | Tank litres |
-| Touch | Monitor composite (tap the HUD) |
-| Regen Clutch | T → generator |
-| Engine | ECU run |
-| Engine Throttle | ECU throttle |
-| Engine Clutch | Engine → T (crank + from Diesel from gear) |
-| Clutch | Drive — T → gearbox |
-| Starter Clutch | T → motor (crank + drive) |
-| Motor | Starter, then pedal (holds through shifts) |
-| Brakes | Wheel brakes |
-| Reverse Box | Optional reverse gearbox |
-| GB1–3 | The three boxes |
-| HUD | Video screen |
-| Instruments | ch 1 RPS, ch 2 gear |
+| Pin             | Wire                                       |
+| --------------- | ------------------------------------------ |
+| Ignition        | Seat key                                   |
+| Seat            | Seat data composite (W/S = ch 2)           |
+| Reverse         | Seat reverse                               |
+| Engine RPS      | ECU — start/idle                           |
+| Shaft RPS       | RPS sensor after the motor                 |
+| Battery         | Battery charge 0..1                        |
+| Physics         | Physics sensor composite                   |
+| Fuel            | Tank litres                                |
+| Touch           | Monitor composite (tap the HUD)            |
+| Regen Clutch    | T → generator                              |
+| Engine          | ECU run                                    |
+| Engine Throttle | ECU throttle                               |
+| Engine Clutch   | Engine → T (crank + from Diesel from gear) |
+| Clutch          | Drive — T → gearbox                        |
+| Starter Clutch  | T → motor (crank + drive)                  |
+| Motor           | Starter, then pedal (holds through shifts) |
+| Brakes          | Wheel brakes                               |
+| Reverse Box     | Optional reverse gearbox                   |
+| GB1–3           | The three boxes                            |
+| HUD             | Video screen                               |
+| Instruments     | ch 1 RPS, ch 2 gear                        |

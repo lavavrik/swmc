@@ -19,7 +19,7 @@ var (
 
 const cookieName = "swmc_session"
 
-// Init is called by the cloudhost runner after each successful build.
+// Init is called once by the functions host (or cmd/dev) before any request.
 func Init() error {
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
@@ -51,6 +51,7 @@ func oidcFromEnv() AccessVerifier {
 	if issuer == "" || clientID == "" {
 		return nil
 	}
+	syntheticEmailDomain = emailDomainFor(issuer, os.Getenv("OIDC_EMAIL_DOMAIN"))
 	v, err := NewVerifier(issuer, clientID)
 	if err != nil {
 		slog.Error("oidc verifier", "err", err)
@@ -60,7 +61,7 @@ func oidcFromEnv() AccessVerifier {
 	return v
 }
 
-// Handle is the required cloudhost entry point.
+// Handle serves every request; the functions host calls it directly.
 func Handle(w http.ResponseWriter, r *http.Request) {
 	if app == nil {
 		msg := "service unavailable"

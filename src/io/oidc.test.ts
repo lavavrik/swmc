@@ -30,7 +30,7 @@ describe('pkce', () => {
 
 const nowSec = () => Math.floor(Date.now() / 1000)
 const discovery = () =>
-  new Response(JSON.stringify({ token_endpoint: 'https://example.com/oidc/token' }), {
+  new Response(JSON.stringify({ token_endpoint: 'https://id.example.com/oidc/token' }), {
     status: 200,
   })
 const tokens = (access: string, refresh: string, expiresIn = 900) =>
@@ -53,6 +53,7 @@ describe('getAccessToken', () => {
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
+    vi.stubEnv('VITE_OIDC_ISSUER', 'https://id.example.com')
     vi.stubEnv('VITE_OIDC_CLIENT_ID', 'client-1')
   })
 

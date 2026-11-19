@@ -196,8 +196,8 @@ func uniqueViolation(err error) bool {
 		strings.Contains(msg, "unique")
 }
 
-// UpsertOIDCUser finds or creates the library account for a Home user.
-// sub is Home users.id (OIDC `sub`); it is stable across logins.
+// UpsertOIDCUser finds or creates the library account for an OIDC user.
+// sub is the OIDC `sub`; it is stable across logins.
 func (s *Store) UpsertOIDCUser(ctx context.Context, sub, email string) (User, error) {
 	if strings.TrimSpace(sub) == "" {
 		return User{}, errBadEmail

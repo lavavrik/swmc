@@ -32,7 +32,7 @@ func TestVerifierAcceptsAccessToken(t *testing.T) {
 	}))
 	t.Cleanup(jwks.Close)
 
-	v, err := NewVerifier("https://example.com", "client-1")
+	v, err := NewVerifier("https://id.example.com", "client-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestVerifierAcceptsAccessToken(t *testing.T) {
 	v.client = jwks.Client()
 
 	tok := mint(t, key, "test", map[string]any{
-		"iss":       "https://example.com",
+		"iss":       "https://id.example.com",
 		"sub":       "user-1",
 		"aud":       "client-1",
 		"email":     "a@example.com",
@@ -75,7 +75,7 @@ func TestVerifierRejectsWrongAudAlgAndExpired(t *testing.T) {
 		})
 	}))
 	t.Cleanup(jwks.Close)
-	v, err := NewVerifier("https://example.com", "client-1")
+	v, err := NewVerifier("https://id.example.com", "client-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestVerifierRejectsWrongAudAlgAndExpired(t *testing.T) {
 	v.client = jwks.Client()
 
 	claims := map[string]any{
-		"iss":       "https://example.com",
+		"iss":       "https://id.example.com",
 		"sub":       "user-1",
 		"aud":       "other",
 		"token_use": "access",
@@ -127,7 +127,7 @@ func TestVerifierFillsEmailWhenAccessTokenOmitsIt(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	v, err := NewVerifier("https://example.com", "client-1")
+	v, err := NewVerifier("https://id.example.com", "client-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestVerifierFillsEmailWhenAccessTokenOmitsIt(t *testing.T) {
 	v.client = srv.Client()
 
 	claims := map[string]any{
-		"iss":       "https://example.com",
+		"iss":       "https://id.example.com",
 		"sub":       "user-1",
 		"aud":       "client-1",
 		"token_use": "access",
@@ -155,7 +155,7 @@ func TestVerifierFillsEmailWhenAccessTokenOmitsIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Email != "user-1@oidc.example.com" {
+	if got.Email != "user-1@oidc.invalid" {
 		t.Fatalf("synthetic email: %s", got.Email)
 	}
 }
@@ -178,4 +178,18 @@ func mint(t *testing.T, key *rsa.PrivateKey, kid string, claims map[string]any) 
 		t.Fatal(err)
 	}
 	return h + "." + p + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+func TestEmailDomainFollowsTheIssuer(t *testing.T) {
+	cases := []struct{ issuer, override, want string }{
+		{"https://id.example.com", "", "oidc.id.example.com"},
+		{"https://ID.Example.com/realms/x/", "", "oidc.id.example.com"},
+		{"https://id.example.com", "Accounts.Example", "accounts.example"},
+		{"", "", "oidc.invalid"},
+	}
+	for _, c := range cases {
+		if got := emailDomainFor(c.issuer, c.override); got != c.want {
+			t.Errorf("emailDomainFor(%q, %q) = %q, want %q", c.issuer, c.override, got, c.want)
+		}
+	}
 }

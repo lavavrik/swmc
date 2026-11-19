@@ -20,7 +20,7 @@ Composite Read and Composite Write expose a variable number of ports — their
 `channel count` property decides how many channels are wired, which is what the
 "active inputs: 2, 3" line on an in-game card reports. The current
 `ComponentDef` has fixed `inputs`/`outputs` arrays and `GraphSchema` answers
-port questions from the component *type* alone.
+port questions from the component _type_ alone.
 
 So this lands first:
 
@@ -34,19 +34,19 @@ So this lands first:
 
 ## Components
 
-| File | Types |
-|---|---|
-| `logic.ts` | NOT 0, AND 1, OR 2, XOR 3, NAND 4, NOR 5, SR Latch 24, JK Flip Flop 25, Capacitor 26, Blinker 27, Push To Toggle 28, Pulse 48, Boolean Function 4-in 46, Boolean Function 8-in 47 |
+| File            | Types                                                                                                                                                                                                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logic.ts`      | NOT 0, AND 1, OR 2, XOR 3, NAND 4, NOR 5, SR Latch 24, JK Flip Flop 25, Capacitor 26, Blinker 27, Push To Toggle 28, Pulse 48, Boolean Function 4-in 46, Boolean Function 8-in 47                                                                                            |
 | `arithmetic.ts` | Add 6, Subtract 7, Multiply 8, Divide 9, Modulo 38, Abs 14, Clamp 11, Delta 35, Function 1-in 45, Function 3-in 10, Function 8-in 36, Numerical Junction 21, Numerical Switchbox 22, Up/Down Counter 37, Memory Register 13, PID Controller 23, PID Controller (advanced) 39 |
-| `comparison.ts` | Threshold 12, Greater Than 17, Less Than 18, Equal 42 |
-| `constants.ts` | Constant Number 15, Constant On 16 |
-| `timers.ts` | Timer TON 49, TOF 50, RTO 51, RTF 52 |
-| `composite.ts` | Composite Read on/off 29, Composite Read number 31, Composite Write on/off 41, Composite Write number 40, deprecated writes 30 and 32, Composite Switchbox 53, Number to Composite Binary 54, Composite Binary to Number 55 |
-| `properties.ts` | Property Slider 19, Dropdown 20, Toggle 33, Number 34, Text 58 |
-| `tooltips.ts` | Tooltip Number 43, Tooltip On/Off 44 |
-| `av.ts` | Video Switchbox 57, Audio Switchbox 59 |
-| `lua.ts` | Lua Script 56 |
-| `io.ts` | The microcontroller's own pins (no `swType` — bridge components) |
+| `comparison.ts` | Threshold 12, Greater Than 17, Less Than 18, Equal 42                                                                                                                                                                                                                        |
+| `constants.ts`  | Constant Number 15, Constant On 16                                                                                                                                                                                                                                           |
+| `timers.ts`     | Timer TON 49, TOF 50, RTO 51, RTF 52                                                                                                                                                                                                                                         |
+| `composite.ts`  | Composite Read on/off 29, Composite Read number 31, Composite Write on/off 41, Composite Write number 40, deprecated writes 30 and 32, Composite Switchbox 53, Number to Composite Binary 54, Composite Binary to Number 55                                                  |
+| `properties.ts` | Property Slider 19, Dropdown 20, Toggle 33, Number 34, Text 58                                                                                                                                                                                                               |
+| `tooltips.ts`   | Tooltip Number 43, Tooltip On/Off 44                                                                                                                                                                                                                                         |
+| `av.ts`         | Video Switchbox 57, Audio Switchbox 59                                                                                                                                                                                                                                       |
+| `lua.ts`        | Lua Script 56                                                                                                                                                                                                                                                                |
+| `io.ts`         | The microcontroller's own pins (no `swType` — bridge components)                                                                                                                                                                                                             |
 
 Stateful components (latches, timers, counters, memory, capacitor, blinker,
 delta, PID) carry their state in the eval state slot, so the tick engine in

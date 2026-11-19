@@ -47,12 +47,12 @@ describe('rasterise', () => {
     ])
   })
 
-  it('draws text in the game’s pixel font', () => {
+  it('draws text in the monitor font', () => {
     const rows = show([
       { op: 'color', r: 255, g: 255, b: 255, a: 255 },
       { op: 'text', x: 0, y: 0, text: 'A' },
     ])
-    expect(rows.slice(0, 5)).toEqual(['.##.....', '#..#....', '####....', '#..#....', '#..#....'])
+    expect(rows.slice(0, 5)).toEqual(['.##.....', '#..#....', '#..#....', '####....', '#..#....'])
   })
 
   it('respects the colour set before each shape', () => {

@@ -24,7 +24,14 @@ await build({
   minify: true,
   legalComments: 'none',
   alias: { '@': `${root}src` },
-  define: { __SWMC_GLUE_WASM__: JSON.stringify(readFileSync(wasm).toString('base64')) },
+  define: {
+    __SWMC_GLUE_WASM__: JSON.stringify(readFileSync(wasm).toString('base64')),
+    // The hosted pair this build is for, if any (src/mcp/hosted.ts)
+    __SWMC_HOSTED_EDITOR__: JSON.stringify(process.env.SWMC_HOSTED_EDITOR ?? ''),
+    __SWMC_HOSTED_API__: JSON.stringify(
+      process.env.SWMC_HOSTED_API ?? process.env.VITE_API_BASE_URL ?? '',
+    ),
+  },
   // Bundled CommonJS (wasmoon's emscripten glue, ajv) still reaches for
   // require, __filename and __dirname, which ES modules do not have.
   banner: {
