@@ -1,0 +1,33 @@
+# Monthly dependency updates, grouped so each ecosystem opens one pull request
+# for its minor and patch updates. Major updates come one at a time.
+#
+# Go: the functions host builds with Go 1.25 (see server/go.mod). Close any
+# update that raises the `go` line above 1.25.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gomod
+    directory: /server
+    vendor: true
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      go-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
